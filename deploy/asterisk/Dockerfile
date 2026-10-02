@@ -1,6 +1,6 @@
-# PET reference Asterisk (Debian bookworm, Asterisk 20.x from the distro).
+# PET reference Asterisk (Ubuntu 24.04 noble, Asterisk 20.x from the distro - Debian bookworm no longer ships asterisk).
 # Everything is installed at build time - the container never downloads anything at runtime.
-FROM debian:bookworm-slim
+FROM ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -19,7 +19,7 @@ COPY conf/ /opt/pet/conf/
 COPY scripts/ /opt/pet/scripts/
 COPY entrypoint.sh /opt/pet/entrypoint.sh
 RUN chmod +x /opt/pet/entrypoint.sh /opt/pet/scripts/*.sh \
-    && mkdir -p /etc/asterisk/keys /var/lib/asterisk/sounds/pet /var/spool/asterisk/voicemail \
+    && mkdir -p /etc/asterisk/keys /var/lib/asterisk/sounds/pet /var/spool/asterisk/voicemail /var/run/asterisk \
     && chown -R asterisk:asterisk /etc/asterisk /var/lib/asterisk /var/spool/asterisk /var/log/asterisk /var/run/asterisk
 
 # SIP (UDP/TCP/TLS), HTTP/ARI, WSS, AMI, RTP

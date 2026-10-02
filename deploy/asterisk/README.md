@@ -1,6 +1,6 @@
 # PET reference Asterisk container
 
-A self-contained Asterisk 20 (Debian bookworm packages) that gets **all** of its endpoint,
+A self-contained Asterisk 20 (Ubuntu 24.04 packages) that gets **all** of its endpoint,
 dialplan, voicemail and CDR data from PET's PostgreSQL database via ODBC realtime, and talks back
 to PET through the authenticated hook/route HTTP API. Nothing is downloaded at runtime: sounds,
 modules and the ODBC driver are installed at image build time.
@@ -16,7 +16,7 @@ softphone/DECT ──SIP──▶ Asterisk ──ODBC realtime──▶ PostgreS
 
 | Path | Purpose |
 |------|---------|
-| `Dockerfile` | `debian:bookworm-slim` + `asterisk asterisk-modules asterisk-config asterisk-core-sounds-en-gsm asterisk-moh-opsound-gsm odbc-postgresql unixodbc curl gettext-base ...` |
+| `Dockerfile` | `ubuntu:24.04` + `asterisk asterisk-modules asterisk-config asterisk-core-sounds-en-gsm asterisk-moh-opsound-gsm odbc-postgresql unixodbc curl gettext-base ...` |
 | `entrypoint.sh` | renders `conf/*` with `envsubst` into `/etc/asterisk`, writes `odbc.ini`/`odbcinst.ini`, generates a self-signed TLS cert into `/etc/asterisk/keys` if none is mounted, waits for PostgreSQL, then `exec asterisk -f -U asterisk -G asterisk` |
 | `conf/` | config **templates** (only the `${PET_*}`, `${DB_*}`, `${ARI_*}`, `${AMI_*}`, `${SIP_DOMAIN}`, `${RTP_*}` placeholders are substituted; Asterisk's own `${EXTEN}` etc. are untouched) |
 | `scripts/pet_contexts.sh` | `#exec`'d by `extensions.conf`: fetches the `[pet-<slug>]` shell contexts from PET (`GET /api/v1/pbx/dialplan/?shell=1`), falls back to `PET_EVENTS` |
