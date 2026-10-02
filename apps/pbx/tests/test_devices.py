@@ -19,13 +19,13 @@ def test_sync_sip_device_writes_ps_rows(pbx, event, user):
     assert auth.auth_type == "userpass" and auth.username == "demo-aaaa" and auth.password == "secretpw"
     aor = PsAor.objects.get(id="demo-aaaa")
     assert aor.max_contacts == 3 and aor.remove_existing == "yes"
-    assert aor.mailboxes == "4242@pet-demo"
+    assert aor.mailboxes == "4242@dial-demo"
     ep = PsEndpoint.objects.get(id="demo-aaaa")
-    assert ep.context == "pet-demo"
+    assert ep.context == "dial-demo"
     assert ep.transport == "transport-tcp"
     assert ep.aors == "demo-aaaa" and ep.auth == "demo-aaaa"
     assert ep.callerid == '"4242 Alice" <4242>'  # display_mode default: number + name
-    assert ep.set_var == "PET_EVENT=demo"
+    assert ep.set_var == "DIAL_EVENT=demo"
     assert ep.accountcode == "demo"
     assert ep.disallow == "all" and "alaw" in ep.allow
     assert ep.webrtc == "no"
@@ -88,10 +88,10 @@ def test_remove_device(pbx, event):
 
 
 def test_sync_event_prunes_stale_endpoints(pbx, event, ext_two_devices):
-    PsEndpoint.objects.create(id="demo-stale", accountcode="demo", context="pet-demo")
+    PsEndpoint.objects.create(id="demo-stale", accountcode="demo", context="dial-demo")
     PsAuth.objects.create(id="demo-stale")
     PsAor.objects.create(id="demo-stale")
-    PsEndpoint.objects.create(id="other-keep", accountcode="other", context="pet-other")
+    PsEndpoint.objects.create(id="other-keep", accountcode="other", context="dial-other")
     pbx.sync_event(event)
     ids = set(PsEndpoint.objects.values_list("id", flat=True))
     assert ids == {"demo-aaaa", "demo-bbbb", "other-keep"}

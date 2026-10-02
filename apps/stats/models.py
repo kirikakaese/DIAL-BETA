@@ -1,4 +1,4 @@
-"""Call statistics: PET's privacy-aware CDR copy plus hourly / per-extension aggregates.
+"""Call statistics: DIAL's privacy-aware CDR copy plus hourly / per-extension aggregates.
 
 ``CallRecord`` rows are only written when ``event.cdr_aggregate_only`` is off and are purged by the
 retention task; ``HourlyStat`` / ``ExtensionStat`` carry no per-call data and are kept.

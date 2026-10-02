@@ -1,4 +1,4 @@
-"""Token authentication for service accounts (``Authorization: Bearer pet_...``)."""
+"""Token authentication for service accounts (``Authorization: Bearer dial_...``)."""
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from rest_framework import authentication, exceptions
@@ -17,7 +17,7 @@ class ServiceTokenAuthentication(authentication.BaseAuthentication):
         if len(parts) != 2 or parts[0].lower() not in ("bearer", "token"):
             return None
         raw = parts[1]
-        if not raw.startswith("pet_"):
+        if not raw.startswith("dial_"):
             return None
         acct = ServiceAccount.objects.select_related("owner", "event").filter(
             token_hash=ServiceAccount.hash_token(raw), is_active=True,

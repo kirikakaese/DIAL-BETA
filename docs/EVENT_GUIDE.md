@@ -1,12 +1,12 @@
-# PET Event Guide - creating, staffing and running an event
+# DIAL Event Guide - creating, staffing and running an event
 
-This guide walks through the whole life of an event in PET: from the moment a **global admin** creates
+This guide walks through the whole life of an event in DIAL: from the moment a **global admin** creates
 it, through handing out the **orga role per event**, configuring the number plan, opening registration,
 running it on site, and archiving or cloning it for next year. It is written for the people who own an
 event; the [Operator Handbook](OPERATOR_HANDBOOK.md) covers infrastructure (DECT, SIP, Asterisk,
 monitoring) and the [User Guide](USER_GUIDE.md) covers what attendees see.
 
-Paths below are relative to your PET server, e.g. `https://pet.example.org/events/new/`. Every orga
+Paths below are relative to your DIAL server, e.g. `https://dial.example.org/events/new/`. Every orga
 page is also reachable from the orange **Orga** groups in the left sidebar of an event, so you rarely
 need to type them.
 
@@ -14,7 +14,7 @@ need to type them.
 
 ## 1. Who may do what
 
-PET has exactly one *global* privilege and four *per-event* roles.
+DIAL has exactly one *global* privilege and four *per-event* roles.
 
 | Level | How you get it | Scope |
 |---|---|---|
@@ -29,7 +29,7 @@ Key properties of the model:
 - **Roles are per event.** Being orga at *Camp 2025* gives you nothing at *Congress 2025*. The only
   exception is cloning: the new event inherits the orga/admin team of the source (see section 9).
 - **Only global admins create events.** The *New event* button, `POST /api/v1/events/`, *Clone* and
-  *Import* all check `is_superuser`; an orga gets `403`. This is deliberate: one PET server often hosts
+  *Import* all check `is_superuser`; an orga gets `403`. This is deliberate: one DIAL server often hosts
   several teams' events, and creating an event is a server-level decision.
 - **Orga can promote and demote within their event**, including to `admin`. That is fine because event
   admin and orga have identical rights - nobody can escalate beyond their own event.
@@ -43,24 +43,24 @@ Key properties of the model:
 
 ## 2. Before you create an event (server checklist)
 
-Do once per PET installation, as global admin:
+Do once per DIAL installation, as global admin:
 
 1. **Admin account** - `docker compose exec web python manage.py createsuperuser` (with
-   `PET_SEED_DEMO=0`). If the demo seed is on, `admin@pet.local` / `admin` exists; change or delete it
+   `DIAL_SEED_DEMO=0`). If the demo seed is on, `admin@dial.local` / `admin` exists; change or delete it
    before anything faces the internet.
-2. **Lookup tables** - `manage.py pet_provisioning_profiles` (SIP phone templates) and
-   `manage.py pet_dect_vendors` (DECT manufacturer codes). Idempotent.
+2. **Lookup tables** - `manage.py dial_provisioning_profiles` (SIP phone templates) and
+   `manage.py dial_dect_vendors` (DECT manufacturer codes). Idempotent.
 3. **Mail** - `EMAIL_URL` must deliver, because signup is e-mail-first by default
-   (`PET_REQUIRE_EMAIL_VERIFICATION=1`): nobody gets an account, and unverified accounts cannot register
+   (`DIAL_REQUIRE_EMAIL_VERIFICATION=1`): nobody gets an account, and unverified accounts cannot register
    extensions, until they click the link. Test it with your own address.
-4. **Feature switches** - `PET_FEATURES` decides which modules exist on the PET server at all (phonebook,
+4. **Feature switches** - `DIAL_FEATURES` decides which modules exist on the DIAL server at all (phonebook,
    callgroups, voicemail, stats, messaging, ivr, conferences, federation, breakout, emergency,
    guest_extensions, waitlist, webhooks). Each event can additionally switch off enabled features for
    itself (section 4), but cannot switch on what the server disabled.
 5. **Abuse protection** - defaults are sane (honeypot, login lockout, rate limits). If your team uses a
-   corporate domain, consider `PET_SIGNUP_ALLOWED_DOMAINS`; see the handbook's *Abuse protection*.
+   corporate domain, consider `DIAL_SIGNUP_ALLOWED_DOMAINS`; see the handbook's *Abuse protection*.
 6. **Single sign-on** (optional) - if your organisation has an OpenID Connect provider (Keycloak,
-   Authentik, …), set `PET_OIDC_*` and run `manage.py pet_oidc_check`; see the handbook's *Single
+   Authentik, …), set `DIAL_OIDC_*` and run `manage.py dial_oidc_check`; see the handbook's *Single
    sign-on*. Existing accounts link themselves on first SSO login when their e-mail address is verified.
 7. **LDAP phonebook** (optional) - desk phones and OMMs that want an LDAP directory need the `ldap`
    compose service (port `3890`) reachable from the venue; XML directories work without it (section 4,
@@ -84,7 +84,7 @@ Do once per PET installation, as global admin:
    | Location, timezone | Informational; timezone is used for wake-up calls and statistics. |
    | Public | Public events are listed to everyone and joinable with one click. Private events are invisible to non-members - you add people via the Members page. |
 
-3. Submit. PET now:
+3. Submit. DIAL now:
    - creates the event in state **draft** (invisible to normal users);
    - creates an empty **number plan** (3-5 digit numbers, everything allowed, no ranges yet);
    - makes you **event admin**;
@@ -97,13 +97,13 @@ POST /api/v1/events/            {"name": "...", "slug": "...", "start_date": "..
 POST /api/v1/events/<slug>/clone/   {"name": "...", "slug": "...", "start_date": "...", "end_date": "..."}
 ```
 
-Both need a token of a global admin (`manage.py pet_token <email>` or *API tokens* on your profile).
-Everyone else receives `403 Only global admins create events.` The `pet` CLI can list, show, transition
+Both need a token of a global admin (`manage.py dial_token <email>` or *API tokens* on your profile).
+Everyone else receives `403 Only global admins create events.` The `dial` CLI can list, show, transition
 and export events but intentionally has no `create` - use the API call above.
 
 ### From last year's event
 
-If a previous event exists on this PET server, prefer **Clone** (section 9) over starting from scratch:
+If a previous event exists on this DIAL server, prefer **Clone** (section 9) over starting from scratch:
 it copies settings, branding, number plan with all ranges, user groups and the orga team.
 
 ---
@@ -116,12 +116,12 @@ it copies settings, branding, number plan with all ranges, user groups and the o
 |---|---|---|
 | Basics | name, description, dates, location, timezone, public | Description and dates show on the event page. |
 | Branding | logo, primary colour, accent colour, announcement, default language | The announcement is a free-text (Markdown-free) banner on the event dashboard - use it for "DECT registration opens Thursday" style notices. |
-| Dial plan | SIP domain, dial prefix | `sip_domain` is the realm devices register against (e.g. `camp27.pet.local`). `dial_prefix` is only needed for federation with another PET. |
-| Schedule | registration opens at, goes live at, archives at | Optional timestamps (entered in the event's timezone) at which PET changes the state for you - see section 8. Empty = manual transitions only. |
+| Dial plan | SIP domain, dial prefix | `sip_domain` is the realm devices register against (e.g. `camp27.dial.local`). `dial_prefix` is only needed for federation with another DIAL. |
+| Schedule | registration opens at, goes live at, archives at | Optional timestamps (entered in the event's timezone) at which DIAL changes the state for you - see section 8. Empty = manual transitions only. |
 | Quotas | max extensions per user, guest extensions, breakout | Guest extensions unlocks the *Guest numbers* page (section 7). Breakout allows PSTN dialing if the venue PBX has a trunk. |
 | GSM | has GSM, GSM trunk | Only if an on-site cell network is connected to the PBX; see handbook §8. |
 | Privacy | CDR aggregate-only, CDR retention days | Aggregate-only keeps statistics but no per-call records. Retention empty = follow the server default. |
-| Features | disabled features | Tick modules this event does not want (e.g. messaging, conferences). Only features enabled on the PET server are listed. |
+| Features | disabled features | Tick modules this event does not want (e.g. messaging, conferences). Only features enabled on the DIAL server are listed. |
 
 Save often; every change is audit-logged with a before/after diff (*Orga · Event → Audit log*).
 
@@ -134,7 +134,7 @@ flag (unpublished pages are only visible to orga) and **show on dashboard**, whi
 event dashboard for everyone. Headings, lists, links, tables and code work; raw HTML is escaped and
 blockquotes are not supported. Pages are part of the event export/import and of a clone, are
 audit-logged and fire the `page.updated` webhook; scripts use `/api/v1/pages/?event=` or
-`pet pages list|show --event <slug>`.
+`dial pages list|show --event <slug>`.
 
 ### Bulk-loading numbers from CSV
 
@@ -151,22 +151,22 @@ owner; with **create accounts** ticked, unknown addresses get a new account with
 further numbers themselves). `group` adds the person to a user group, `role` to the member list. Numbers
 follow your number plan; the importer runs as orga, so approval steps are skipped - check the preview.
 Scripted: `POST /api/v1/extensions/import/?event=<slug>` with `{csv, dry_run, create_users,
-allow_ownerless}` or `pet extensions import --event <slug> --file f.csv [--dry-run] [--create-users]`.
+allow_ownerless}` or `dial extensions import --event <slug> --file f.csv [--dry-run] [--create-users]`.
 
 ### Remote directory for phones
 
 Desk phones and the venue's DECT OMM can show the event phonebook directly on the device - users search
-by name on the handset, the phone asks PET. The switch and the credentials live on
+by name on the handset, the phone asks DIAL. The switch and the credentials live on
 `/e/<slug>/phonebook/settings/` (*Phonebook → Settings*, orga only), card **Remote directory for
 phones**: one XML URL per phone vendor, the LDAP server details and the event's **directory token**.
 Because phones cannot log in, that token *is* the password - it sits in every URL and is the LDAP bind
 password. Treat the page like the SIP credentials.
 
-- Phones that PET autoprovisions (handbook §8) get the directory automatically through their own
+- Phones that DIAL autoprovisions (handbook §8) get the directory automatically through their own
   provisioning token; only manually configured phones and the OMM need the URLs or LDAP settings from
   this page. Hand those to whoever configures the venue phones - the vendor-by-vendor recipe is in the
   [Operator Handbook](OPERATOR_HANDBOOK.md) §8 (*Remote phonebook* and *LDAP phonebook*).
-- **Rotate the token** (button on the page, `pet phonebook directory --event <slug> --rotate`) when a
+- **Rotate the token** (button on the page, `dial phonebook directory --event <slug> --rotate`) when a
   configured phone or the OMM leaves your control, when the URL was pasted somewhere public, or after
   the event if the venue keeps the hardware. Every phone, OMM and LDAP client has to be given the new
   URL / password afterwards, so do it before you roll out phones, not during the event.
@@ -176,51 +176,51 @@ password. Treat the page like the SIP credentials.
 
 ### Connect the venue infrastructure
 
-PET is one central service; **your event's phones live at your venue**. Somebody on the orga team has
-to tell PET how to reach the venue's Asterisk and - if you hand out handsets - the venue's DECT
+DIAL is one central service; **your event's phones live at your venue**. Somebody on the orga team has
+to tell DIAL how to reach the venue's Asterisk and - if you hand out handsets - the venue's DECT
 controller. This is `/e/<slug>/pbx/` (sidebar *Orga · Infrastructure → PBX & DECT connection*).
 
 | Form | Fields | What to enter |
 |---|---|---|
-| PBX connection | backend, **provisioning**, ARI URL, ARI user/password/app, AMI host/port/user/password, hook secret, notes | Backend **Asterisk**. *Provisioning* decides how the venue Asterisk gets its configuration - see below. ARI URL like `http://10.20.0.5:8088/ari` (the venue box as seen over the VPN). AMI is optional (used for `dialplan reload` and as a fallback). Pick a long random **hook secret** - the venue Asterisk must send it as `X-PET-PBX-Secret`, and the venue agent uses it to fetch the configuration. |
+| PBX connection | backend, **provisioning**, ARI URL, ARI user/password/app, AMI host/port/user/password, hook secret, notes | Backend **Asterisk**. *Provisioning* decides how the venue Asterisk gets its configuration - see below. ARI URL like `http://10.20.0.5:8088/ari` (the venue box as seen over the VPN). AMI is optional (used for `dialplan reload` and as a fallback). Pick a long random **hook secret** - the venue Asterisk must send it as `X-DIAL-PBX-Secret`, and the venue agent uses it to fetch the configuration. |
 | DECT connection | backend, host, port, user, password, verify TLS, notes | Backend **Mitel SIP-DECT OMM**, host of the OMM, AXI user and password; untick *verify TLS* for self-signed OMMs. |
 
 The status card at the top tells you what the event currently uses: **server default** (nothing
-configured - the event runs on the PET server's own `ASTERISK`/`OMM` settings, which are usually
+configured - the event runs on the DIAL server's own `ASTERISK`/`OMM` settings, which are usually
 simulators on a shared server) or the configured backend. The orga dashboard repeats this as a
 *Venue connection* card, highlighted while something is still on the server default. **Test connection** pings both systems and
 shows version / RFP count for the OMM. Password fields never show their value; leave them empty on a
 later edit to keep what is stored. **Reset** removes the connection and returns the event to the server
 default. Everything here is also available via the API (`/api/v1/pbx/connection/?event=`) and the
-CLI (`pet pbx connection show|set|reset`) for scripted venue setups.
+CLI (`dial pbx connection show|set|reset`) for scripted venue setups.
 
-Below the forms PET prints the environment the venue Asterisk needs (`PET_API_URL`, `PET_EVENTS`, `PET_PBX_HOOK_SECRET`,
+Below the forms DIAL prints the environment the venue Asterisk needs (`DIAL_API_URL`, `DIAL_EVENTS`, `DIAL_PBX_HOOK_SECRET`,
 hook/route/dialplan URLs, the SIP domain). Hand that to whoever sets up the box; the full recipe is in
 [`deploy/asterisk/README.md`](../deploy/asterisk/README.md).
 
-**Choose the provisioning mode.** The venue Asterisk needs PET's endpoint and dialplan rows, and there
+**Choose the provisioning mode.** The venue Asterisk needs DIAL's endpoint and dialplan rows, and there
 are two ways to get them there:
 
 | Mode | How the rows travel | Pick it when |
 |---|---|---|
-| **Shared database** (default) | the venue Asterisk reads PET's PostgreSQL directly over the VPN; changes are live immediately | the venue has a solid VPN to the PET server, or Asterisk runs on the same box as PET (lab, single-event server) |
-| **Venue agent** | a small agent on the venue box pulls snapshots from PET over HTTPS (default every 15 s) into a local database; Asterisk reads that | the venue is behind NAT / on a flaky uplink, you do not want to open the database to the venue, or the venue must keep phoning when the internet goes |
+| **Shared database** (default) | the venue Asterisk reads DIAL's PostgreSQL directly over the VPN; changes are live immediately | the venue has a solid VPN to the DIAL server, or Asterisk runs on the same box as DIAL (lab, single-event server) |
+| **Venue agent** | a small agent on the venue box pulls snapshots from DIAL over HTTPS (default every 15 s) into a local database; Asterisk reads that | the venue is behind NAT / on a flaky uplink, you do not want to open the database to the venue, or the venue must keep phoning when the internet goes |
 
 With *Shared database* the VPN must also carry PostgreSQL - the operator handbook §2 has the reachability
-table. With *Venue agent* only HTTPS from the venue to PET is needed; the page then shows a **Venue
+table. With *Venue agent* only HTTPS from the venue to DIAL is needed; the page then shows a **Venue
 agent** card with the environment to copy onto the box and, once it runs, *online / stale* and
 *up to date / behind* badges plus the registered handsets it reports. The orga dashboard repeats the
 agent state in one line. Setting up the box is the operator's job:
 [Operator Handbook](OPERATOR_HANDBOOK.md) §9, *Provisioning mode* and *Running the venue agent*. Either
-way, changes you make in PET still reach the venue without a resync - the difference is "now" versus
+way, changes you make in DIAL still reach the venue without a resync - the difference is "now" versus
 "within the poll interval".
 
 Checklist for the venue link:
 
 - [ ] provisioning mode chosen (shared database or venue agent)
-- [ ] VPN up; PET worker can reach ARI/AMI and the OMM, the venue box can reach `PET_PUBLIC_URL` - and PostgreSQL in shared-database mode
+- [ ] VPN up; DIAL worker can reach ARI/AMI and the OMM, the venue box can reach `DIAL_PUBLIC_URL` - and PostgreSQL in shared-database mode
 - [ ] PBX connection saved, *Test connection* green
-- [ ] venue agent mode: agent shows **online** and **up to date** on `/e/<slug>/pbx/`, `PET_EMERGENCY_FALLBACK` set on the box
+- [ ] venue agent mode: agent shows **online** and **up to date** on `/e/<slug>/pbx/`, `DIAL_EMERGENCY_FALLBACK` set on the box
 - [ ] DECT connection saved (if applicable), RFP count matches what is racked
 - [ ] one **Resync** (`/e/<slug>/orga/resync/`) after connecting, then register a test extension and call the test ringback number
 
@@ -238,11 +238,11 @@ the worked example in handbook §4 goes deeper. The essentials:
   another (`23` blocks `2323`), so every number is dialable without a timeout. Switch off only if all
   numbers have the same length anyway.
 - **Default policy** when no range matches: allowed yes/no, requires approval yes/no.
-- **Service numbers** PET provides itself: test ringback, wake-up, site survey, echo test, voicemail,
+- **Service numbers** DIAL provides itself: test ringback, wake-up, site survey, echo test, voicemail,
   **DECT claim number** (dial-to-claim handsets, User Guide §4) and the **announcement recording
   number** (e.g. `9005`): owners of an IVR announcement press *Record by phone* on the announcement
   page, get a one-time code, dial the number from their handset, enter the code and speak after the
-  beep. Needs the shared recordings directory between PET and the venue Asterisk (handbook §9); empty
+  beep. Needs the shared recordings directory between DIAL and the venue Asterisk (handbook §9); empty
   = feature off.
 - **Feature codes** (form section *Feature codes*): callback request/cancel (`*66`/`*86`), call group
   login/logout (`*71`/`*72`) and call forwarding from the handset - `*21<number>` forward always,
@@ -267,7 +267,7 @@ types (DECT, SIP, GSM, …), set a per-user quota, and be flagged **vanity** (al
 
 ```
 prio 1   prefix 0   blocked      trunk / breakout prefix
-prio 1   prefix 9   blocked      PET service numbers live here
+prio 1   prefix 9   blocked      DIAL service numbers live here
 prio 5   pattern (\d)\1{3}  vanity   repeated digits -> approval
 prio 10  prefix 1   restricted   roles orga, admin        "Orga"
 prio 20  prefix 2   restricted   group angels             "Angels"
@@ -280,7 +280,7 @@ evaluated against the new rules.
 **SIP trunk blocks.** An extension of type *SIP trunk* hands a whole block of numbers to a remote PBX
 (a village, a sponsor booth with its own phone system). The base number must end in as many zeros as the
 block has wildcard digits: `4700` with 2 digits is `4700–4799`, `4000` with 3 digits is `4000–4999`
-(1, 2 or 3 digits). The remote PBX registers with the trunk's single SIP account and PET dials every
+(1, 2 or 3 digits). The remote PBX registers with the trunk's single SIP account and DIAL dials every
 number of the block through it unchanged; the phonebook lists the block as `4700–4799`. Rules:
 
 - The **whole block** must pass the plan: base and last number are evaluated, no service, emergency or
@@ -293,7 +293,7 @@ number of the block through it unchanged; the phonebook lists the block as `4700
   base (`4700`), not the individual number - see `deploy/asterisk/README.md`.
 
 The availability checker knows blocks too (`/api/v1/availability/?event=<slug>&number=4700&type=trunk&block_digits=2`);
-the CLI registers one with `pet extensions create --event <slug> --number 4700 --type trunk --block-digits 2`.
+the CLI registers one with `dial extensions create --event <slug> --number 4700 --type trunk --block-digits 2`.
 
 **Numbers are per event.** Nobody owns a number beyond the event it was registered in; there is no way
 to claim `2323` permanently. *Porting* (section 9) only re-requests last year's number and goes through
@@ -305,8 +305,8 @@ the full plan policy of the new event; an orga **claim** reserves a number withi
 
 `/e/<slug>/orga/members/` (sidebar *Orga · People → Members*).
 
-**Add staff**: enter a **nickname or e-mail** of an existing PET account and pick the role
-(User / Helpdesk / Orga / Event admin). The person must already have an account on the PET server - PET
+**Add staff**: enter a **nickname or e-mail** of an existing DIAL account and pick the role
+(User / Helpdesk / Orga / Event admin). The person must already have an account on the DIAL server - DIAL
 never creates accounts on someone's behalf; ask them to sign up first. If they are already a member, the
 form simply changes their role.
 
@@ -324,7 +324,7 @@ Recommendations:
   (they can look people up and fix handsets but cannot change the plan or approve numbers).
 - Keep at least **two admins/orga** per event so nobody is locked out when one person is unreachable.
 - The audit log records every role change (`update`, target = membership, `role: [old, new]`).
-- Roles of the demo seed (`PET_SEED_DEMO=1`): `admin@pet.local` (global admin), `alice@pet.local` and
+- Roles of the demo seed (`DIAL_SEED_DEMO=1`): `admin@dial.local` (global admin), `alice@dial.local` and
   friends with password `demo1234!` - do not rely on them for a real event.
 
 There is no API to write memberships; `GET /api/v1/events/<slug>/members/` (helpdesk+) lists them.
@@ -365,7 +365,7 @@ a direct registration link as soon as the number is freed.
 ## 8. Lifecycle: opening, running and closing
 
 Change the state with the **→ state** buttons on the orga dashboard (`/e/<slug>/orga/`) or settings
-page, or `pet events transition <slug> <state>` / `POST /api/v1/events/<slug>/transition/`.
+page, or `dial events transition <slug> <state>` / `POST /api/v1/events/<slug>/transition/`.
 
 ```mermaid
 stateDiagram-v2
@@ -415,17 +415,17 @@ orga dashboard subtitle then shows *Next: registration on …*; the settings pag
   the current one; the form and API reject anything else.
 - Cloning an event does **not** copy the schedule.
 
-Scripted: `pet events schedule <slug> [--registration ISO] [--live ISO] [--archive ISO] [--clear]` or
+Scripted: `dial events schedule <slug> [--registration ISO] [--live ISO] [--archive ISO] [--clear]` or
 `PATCH /api/v1/events/<slug>/` with `registration_opens_at` / `goes_live_at` / `archives_at`.
 
 ---
 
 ## 9. After the event: export, clone, port
 
-- **Export** (`/e/<slug>/orga/export/`, `pet events export <slug> > camp27.json`): full JSON dump - plan,
+- **Export** (`/e/<slug>/orga/export/`, `dial events export <slug> > camp27.json`): full JSON dump - plan,
   ranges, groups, extensions, devices, mailboxes. Keep it with the event's records.
 - **Import** (`/e/<slug>/orga/import/`, global admin only): restores such a dump into an existing
-  (usually freshly created, empty) event. Use it to move an event between PET servers.
+  (usually freshly created, empty) event. Use it to move an event between DIAL servers.
 - **Clone** (`/e/<slug>/orga/clone/`, `POST /api/v1/events/<slug>/clone/`, global admin only): creates
   a new **draft** event with the same settings, branding, number plan, ranges (group references
   re-linked by slug), groups, info pages and the **orga/admin team**. Regular members, extensions and the
@@ -455,13 +455,13 @@ Scripted: `pet events schedule <slug> [--registration ISO] [--live ISO] [--archi
 
 - [ ] settings: SIP domain, branding, announcement, quotas, guest numbers, privacy, disabled features
 - [ ] **schedule** set (registration / live / archive) if you want automatic transitions - and beat is
-      running on the PET server
+      running on the DIAL server
 - [ ] **venue connection**: PBX + DECT on `/e/<slug>/pbx/`, provisioning mode chosen, *Test connection* green (section 4)
 - [ ] **remote directory**: phonebook settings checked, directory token handed to whoever configures desk
       phones / the OMM (or rotated if last year's phones are reused) - section 4
 - [ ] number plan: lengths, prefix-free, service numbers, emergency numbers, DECT claim number,
       announcement recording number, feature codes
-- [ ] recordings directory shared between PET and the venue Asterisk if *record by phone* is used
+- [ ] recordings directory shared between DIAL and the venue Asterisk if *record by phone* is used
 - [ ] ranges: blocked prefixes first, then restricted/approval, vanity pattern, default policy
 - [ ] groups with join codes for badge-based ranges
 - [ ] staff and infrastructure numbers loaded via **Import CSV**
@@ -487,16 +487,16 @@ Scripted: `pet events schedule <slug> [--registration ISO] [--live ISO] [--archi
 | No **New event** button / `403` on `/events/new/` or *Clone* | you are orga, not global admin | ask a superuser; creating events is server-level |
 | A user cannot see the event | event is *draft* or *private* and they are not a member | change state or add them on the Members page |
 | "Registration is not open for this event." | state is *draft* or *archived* | move to *registration*; orga/admin are exempt and can register anyway |
-| "Please verify your e-mail address before registering an extension." | `PET_REQUIRE_EMAIL_VERIFICATION=1` and the account never clicked its link | user: *Resend verification e-mail* in the banner; orga can hand out the number via a **Claim** instead (section 7) |
+| "Please verify your e-mail address before registering an extension." | `DIAL_REQUIRE_EMAIL_VERIFICATION=1` and the account never clicked its link | user: *Resend verification e-mail* in the banner; orga can hand out the number via a **Claim** instead (section 7) |
 | Number lands in the queue although the range is *open* | vanity pattern or the default policy has *requires approval*; ranges are checked by priority | check which range matched via `/api/v1/availability/?event=<slug>&number=…` |
 | Newly added orga still sees `403` | added to the wrong event, or they are logged in as a different account | roles are per event - check the slug in the URL |
 | Cannot remove a member | it is yourself | ask another orga |
 | Cannot change the slug | by design | create a new event (clone) with the right slug while still in draft |
 | Scheduled transition did not happen | Celery beat is not running, or the timestamp targets a state the event already passed | check `docker compose logs beat`; the dashboard *Next:* hint disappears once applied; set it again if needed |
 | SIP trunk request stuck in the queue although the range is *open* | trunk blocks always need approval | approve it in the queue, or let an orga register the trunk |
-| *Record by phone* code accepted but no audio appears on the announcement | PET cannot read the recorded file | the recordings directory (`PET_RECORDING_DIR`) must be a volume shared with the venue Asterisk - handbook §9 |
+| *Record by phone* code accepted but no audio appears on the announcement | DIAL cannot read the recorded file | the recordings directory (`DIAL_RECORDING_DIR`) must be a volume shared with the venue Asterisk - handbook §9 |
 | Status card says **server default** although you configured the venue | the connection was reset, or you are looking at a different event | check `/e/<slug>/pbx/` for *this* slug; *Test connection* must be green |
-| PBX **unreachable** on `/e/<slug>/pbx/` | VPN down, wrong ARI URL/port, ARI user not enabled in `ari.conf`, or PET's server cannot route to the venue | curl the ARI URL from the PET server; check `http.conf`/`ari.conf` on the venue box |
-| Hooks from the venue answer `401` | the hook secret on the venue box differs from the one saved on the PBX connection (or from `PET_PBX_HOOK_SECRET` when none is saved) | copy the secret from the env snippet on `/e/<slug>/pbx/` into the Asterisk container's environment and restart it |
+| PBX **unreachable** on `/e/<slug>/pbx/` | VPN down, wrong ARI URL/port, ARI user not enabled in `ari.conf`, or DIAL's server cannot route to the venue | curl the ARI URL from the DIAL server; check `http.conf`/`ari.conf` on the venue box |
+| Hooks from the venue answer `401` | the hook secret on the venue box differs from the one saved on the PBX connection (or from `DIAL_PBX_HOOK_SECRET` when none is saved) | copy the secret from the env snippet on `/e/<slug>/pbx/` into the Asterisk container's environment and restart it |
 | Venue agent card says **stale** | the box has not sent a heartbeat for three poll intervals - uplink down, agent stopped, or wrong hook secret | phones at the venue keep working on the last snapshot; get the operator to check the box (handbook §19) |
 | Desk phones show an empty or no directory | the directory token was rotated, *Remote directory enabled* is off, or the phone was configured with the Grandstream URL including `/phonebook.xml` | copy the current URL from *Phonebook → Settings*; enable the directory; for LDAP also check the event is in *registration*/*live* |

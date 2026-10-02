@@ -1,9 +1,9 @@
 """Emergency services.
 
-PBX contract: ``route(event, number) -> str | None`` - a dial target (``Local/<ext>@pet-<slug>`` for a
+PBX contract: ``route(event, number) -> str | None`` - a dial target (``Local/<ext>@dial-<slug>`` for a
 configured destination extension, or the raw fallback number) for an emergency number; ``None``
 when the flag is off / no target. The route API does not tell us who is calling, so the PBX
-``pet-emergency`` context should additionally ``POST`` to ``/api/v1/emergency/incident-log/``
+``dial-emergency`` context should additionally ``POST`` to ``/api/v1/emergency/incident-log/``
 (``{event, number, caller}``) which calls :func:`log_incident`.
 """
 from __future__ import annotations
@@ -22,7 +22,7 @@ from apps.pbx.base import PBXError
 
 from .models import BroadcastAnnouncement, EmergencyIncident, EmergencyTarget
 
-logger = logging.getLogger("pet.emergency")
+logger = logging.getLogger("dial.emergency")
 
 
 class EmergencyError(Exception):

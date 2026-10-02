@@ -92,7 +92,7 @@ def test_test_ringback_endpoint(event, user, other_user, ext_alice, pbx):
 def test_pbx_result_hook(client, event, user, ext_alice, pbx):
     call = services.schedule_wakeup(event, user, ext_alice, timezone.now() + dt.timedelta(minutes=1))
     services.fire_scheduled_call(call)
-    hdr = {"HTTP_X_PET_PBX_SECRET": hook_secret()}
+    hdr = {"HTTP_X_DIAL_PBX_SECRET": hook_secret()}
     r = client.post("/api/v1/callback/result/", {"event": "demo", "kind": "wakeup", "id": call.pk,
                                                   "result": "answered"})
     assert r.status_code == 401
@@ -107,7 +107,7 @@ def test_pbx_result_hook(client, event, user, ext_alice, pbx):
 
 def test_feature_code_hook_end_to_end(client, event, ext_alice, ext_bob, pbx):
     """The real ``apps/pbx/api.py`` hook dispatches into our services."""
-    hdr = {"HTTP_X_PET_PBX_SECRET": hook_secret()}
+    hdr = {"HTTP_X_DIAL_PBX_SECRET": hook_secret()}
     r = client.post("/api/v1/pbx/hooks/feature-code/", {"event": "demo", "caller": "4242", "code": "*66",
                                                         "target": "4300"}, **hdr)
     assert r.json()["handled"] is True

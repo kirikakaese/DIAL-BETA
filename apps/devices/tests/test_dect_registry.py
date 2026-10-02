@@ -52,11 +52,11 @@ def test_load_builtin_manufacturers_is_idempotent_and_keeps_user_rows():
     assert DECTManufacturer.objects.get(emc=emc).name == "Renamed by user"
 
 
-def test_management_command_pet_dect_vendors():
+def test_management_command_dial_dect_vendors():
     from django.core.management import call_command
 
-    call_command("pet_dect_vendors")
-    call_command("pet_dect_vendors")
+    call_command("dial_dect_vendors")
+    call_command("dial_dect_vendors")
     assert DECTManufacturer.objects.count() == len(BUILTIN_MANUFACTURERS)
 
 

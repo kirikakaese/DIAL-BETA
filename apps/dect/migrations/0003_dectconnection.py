@@ -18,7 +18,7 @@ class Migration(migrations.Migration):
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('created_at', models.DateTimeField(auto_now_add=True, db_index=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('backend', models.CharField(default='omm', help_text='Adapter key from PET_DECT_BACKENDS.', max_length=40)),
+                ('backend', models.CharField(default='omm', help_text='Adapter key from DIAL_DECT_BACKENDS.', max_length=40)),
                 ('host', models.CharField(blank=True, help_text='IP or hostname of the OMM.', max_length=200, verbose_name='OMM host')),
                 ('port', models.PositiveIntegerField(default=12622, verbose_name='AXI port')),
                 ('user', models.CharField(blank=True, default='omm', max_length=64, verbose_name='AXI user')),

@@ -2,8 +2,8 @@
 # Quick smoke test from inside the container (or any host with curl):
 #   ./ari_smoke.sh [ari-base-url] [user] [password]
 URL="${1:-${ARI_URL:-http://127.0.0.1:8088/ari}}"
-USER="${2:-${ARI_USER:-pet}}"
-PASS="${3:-${ARI_PASSWORD:-pet}}"
+USER="${2:-${ARI_USER:-dial}}"
+PASS="${3:-${ARI_PASSWORD:-dial}}"
 set -e
 echo "== asterisk/info"
 curl -fsS -u "$USER:$PASS" "$URL/asterisk/info" | jq '.system.version, .status'

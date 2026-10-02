@@ -26,7 +26,7 @@ from apps.extensions.services import (
     validate_forward_target,
 )
 
-log = logging.getLogger("pet.extensions.feature_codes")
+log = logging.getLogger("dial.extensions.feature_codes")
 
 FM = Extension.ForwardMode
 

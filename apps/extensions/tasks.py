@@ -4,7 +4,7 @@ import logging
 from celery import shared_task
 from django.utils import timezone
 
-log = logging.getLogger("pet.extensions")
+log = logging.getLogger("dial.extensions")
 
 
 @shared_task
@@ -101,9 +101,9 @@ def notify_waitlist(event_id: str, number: str):
     for req in ExtensionRequest.objects.filter(event_id=event_id, number=number, notified_at__isnull=True):
         try:
             send_mail(
-                f"[PET] {number} is available again at {req.event.name}",
+                f"[DIAL] {number} is available again at {req.event.name}",
                 f"The extension {number} you were waiting for is free. Register it now:\n"
-                f"{settings.PET_PUBLIC_URL}/e/{req.event.slug}/extensions/new/?number={number}\n",
+                f"{settings.DIAL_PUBLIC_URL}/e/{req.event.slug}/extensions/new/?number={number}\n",
                 settings.DEFAULT_FROM_EMAIL, [req.user.email], fail_silently=True,
             )
         finally:

@@ -25,7 +25,7 @@ def security(event, orga):
 
 def test_route(event, orga, security):
     t = services.create_target(event, orga, "112", destination_extension=security, fallback_number="+49301234")
-    assert services.route(event, "112") == "Local/4911@pet-demo"
+    assert services.route(event, "112") == "Local/4911@dial-demo"
     assert services.route(event, "110") is None
     security.state = "suspended"
     security.save()
@@ -47,7 +47,7 @@ def test_create_target_validation(event, orga, security):
 
 def test_flag_off(event, orga, security, settings):
     services.create_target(event, orga, "112", destination_extension=security)
-    settings.PET_FEATURES = {**settings.PET_FEATURES, "emergency": False}
+    settings.DIAL_FEATURES = {**settings.DIAL_FEATURES, "emergency": False}
     assert services.route(event, "112") is None
     assert services.broadcast_all(event, orga, "fire") is None
     assert services.log_incident(event, "112", "4242") is None
@@ -68,7 +68,7 @@ def test_broadcast_all_uses_pbx_and_messaging(event, user, other_user, orga, ang
     assert ba.targets == 2 and len(pbx.originated) == 2
     assert {o["destination"] for o in pbx.originated} == {"4242", "4300"}
     assert pbx.originated[0]["caller_id"] == "EMERGENCY"
-    assert pbx.originated[0]["variables"] == {"PET_ANNOUNCEMENT": "Evacuate the main hall", "PET_PRIORITY": "10"}
+    assert pbx.originated[0]["variables"] == {"DIAL_ANNOUNCEMENT": "Evacuate the main hall", "DIAL_PRIORITY": "10"}
     assert ba.results["text_broadcast"] is not None  # messaging broadcast stored (no handsets -> failed, but logged)
 
     pbx.reset()
@@ -92,11 +92,11 @@ def test_set_priority_audits(event, user, orga, member):
 
 def test_pbx_route_api(client, event, orga, security, settings):
     services.create_target(event, orga, "112", destination_extension=security)
-    settings.PET_PBX_HOOK_SECRET = "s3cret"
-    d = client.get("/api/v1/pbx/route/?event=demo&number=112", HTTP_X_PET_PBX_SECRET="s3cret").json()
-    assert d["type"] == "emergency" and d["dial_string"] == "Local/4911@pet-demo" and d["priority"] == 100
+    settings.DIAL_PBX_HOOK_SECRET = "s3cret"
+    d = client.get("/api/v1/pbx/route/?event=demo&number=112", HTTP_X_DIAL_PBX_SECRET="s3cret").json()
+    assert d["type"] == "emergency" and d["dial_string"] == "Local/4911@dial-demo" and d["priority"] == 100
     r = client.post("/api/v1/emergency/incident-log/", {"event": "demo", "number": "112", "caller": "4911"},
-                    HTTP_X_PET_PBX_SECRET="s3cret")
+                    HTTP_X_DIAL_PBX_SECRET="s3cret")
     assert r.status_code == 200 and r.json()["handled"] is True and EmergencyIncident.objects.count() == 1
     assert client.post("/api/v1/emergency/incident-log/", {"event": "demo", "number": "112"}).status_code == 401
 
@@ -111,7 +111,7 @@ def test_views(client, event, user, orga, member, security, pbx):
     r = client.post(reverse("emergency:target_save", args=[event.slug]),
                     {"number": "112", "label": "Security", "destination_extension": str(security.pk),
                      "announce_location": "on", "priority": 100})
-    assert r.status_code == 302 and services.route(event, "112") == "Local/4911@pet-demo"
+    assert r.status_code == 302 and services.route(event, "112") == "Local/4911@dial-demo"
     r = client.post(reverse("emergency:broadcast", args=[event.slug]), {"announcement": "Test", "confirm": "on"})
     assert r.status_code == 302 and BroadcastAnnouncement.objects.count() == 1 and len(pbx.originated) == 1
     assert client.post(reverse("emergency:broadcast", args=[event.slug]), {"announcement": "x"}).status_code == 302
@@ -133,7 +133,7 @@ def test_api(client, event, user, orga, member, security, pbx):
     client.force_login(orga)
     r = client.post("/api/v1/emergency/targets/",
                     {"event": "demo", "number": "110", "destination_extension": str(security.pk)})
-    assert r.status_code == 201 and r.json()["dial_target"] == "Local/4911@pet-demo"
+    assert r.status_code == 201 and r.json()["dial_target"] == "Local/4911@dial-demo"
     r = client.post("/api/v1/emergency/targets/", {"event": "demo", "number": "4242", "fallback_number": "1"})
     assert r.status_code == 400
     r = client.post("/api/v1/emergency/broadcast/", {"event": "demo", "announcement": "Test"})

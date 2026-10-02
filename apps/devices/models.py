@@ -33,7 +33,7 @@ class DeviceType(models.TextChoices):
 
 
 def generate_sip_password(length: int | None = None) -> str:
-    length = length or settings.PET_SIP_PASSWORD_LENGTH
+    length = length or settings.DIAL_SIP_PASSWORD_LENGTH
     alphabet = string.ascii_letters + string.digits
     return "".join(secrets.choice(alphabet) for _ in range(length))
 
@@ -178,7 +178,7 @@ class Device(TimeStampedModel):
         """
         links = {"generic": self.softphone_deeplink(), "linphone": "", "acrobits": ""}
         if self.provisioning_token:
-            base = f"{settings.PET_PUBLIC_URL.rstrip('/')}/prov/{self.provisioning_token}"
+            base = f"{settings.DIAL_PUBLIC_URL.rstrip('/')}/prov/{self.provisioning_token}"
             links["linphone"] = f"linphone-config:{base}/linphone.xml"
             links["acrobits"] = f"{base}/acrobits.xml"
         return links
@@ -240,7 +240,7 @@ class Device(TimeStampedModel):
         """Absolute URL a phone fetches its config from (``/prov/<token>/<filename>``)."""
         if not self.provisioning_token or self.provisioning_profile_id is None:
             return ""
-        return f"{settings.PET_PUBLIC_URL.rstrip('/')}/prov/{self.provisioning_token}/{self.provisioning_filename}"
+        return f"{settings.DIAL_PUBLIC_URL.rstrip('/')}/prov/{self.provisioning_token}/{self.provisioning_filename}"
 
     @property
     def primary_extension(self):

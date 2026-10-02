@@ -90,7 +90,7 @@ def test_sync_updates_handsets(dect, event, dect_extension, dect_device):
     assert services.sync_handset_positions(event) == 1
 
 
-@override_settings(ALERTING={"WEBHOOK_URL": "", "NTFY_URL": "https://ntfy.example/pet", "EMAILS": "noc@example.org"})
+@override_settings(ALERTING={"WEBHOOK_URL": "", "NTFY_URL": "https://ntfy.example/dial", "EMAILS": "noc@example.org"})
 def test_notify_alert_fans_out(event):
     rfp = RFP.objects.create(event=event, omm_id="1", name="RFP-1")
     alert = Alert.objects.create(event=event, kind="rfp.down", severity="critical", message="RFP-1 is down", rfp=rfp)
@@ -100,7 +100,7 @@ def test_notify_alert_fans_out(event):
     assert emit.call_args.args[0] == "dect.rfp.down"
     assert emit.call_args.args[1]["rfp"] == "RFP-1" and emit.call_args.kwargs["event"] == event
     post.assert_called_once()
-    assert post.call_args.args[0] == "https://ntfy.example/pet"
+    assert post.call_args.args[0] == "https://ntfy.example/dial"
     assert post.call_args.kwargs["headers"]["Priority"] == "urgent"
     assert post.call_args.kwargs["data"] == b"RFP-1 is down"
     assert len(mail.outbox) == 1 and mail.outbox[0].to == ["noc@example.org"]

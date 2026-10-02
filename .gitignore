@@ -15,7 +15,7 @@ htmlcov/
 
 # Django
 *.sqlite3
-pet.sqlite3
+dial.sqlite3
 build.sqlite3
 media/
 staticfiles/

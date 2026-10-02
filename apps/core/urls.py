@@ -1,4 +1,4 @@
-"""Root-level core URLs (PWA shell). Mounted at ``/`` by ``pet.urls``; not a portal feature app."""
+"""Root-level core URLs (PWA shell). Mounted at ``/`` by ``dial.urls``; not a portal feature app."""
 from django.urls import path
 
 from . import views

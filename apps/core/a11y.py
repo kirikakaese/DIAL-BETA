@@ -7,7 +7,7 @@ without ``alt``, tables without headers, inline ``onclick`` handlers, heading ju
 a replacement for axe/pa11y or manual screen-reader testing.
 
 Used by ``apps/core/tests/test_a11y.py`` (renders the smoke-test URL list) and by
-``manage.py pet_a11y``.
+``manage.py dial_a11y``.
 
 Rules
 -----
@@ -305,7 +305,7 @@ def smoke_page_lists(**kwargs) -> dict[str, list[str]]:
     from django.conf import settings
 
     path = settings.BASE_DIR / "scripts" / "smoke.py"
-    spec = importlib.util.spec_from_file_location("pet_smoke", path)
+    spec = importlib.util.spec_from_file_location("dial_smoke", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module.page_lists(**kwargs)

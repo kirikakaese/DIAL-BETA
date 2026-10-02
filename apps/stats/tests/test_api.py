@@ -65,7 +65,7 @@ def test_pbx_cdr_hook_ingests(event, ext_alice, ext_bob):
 
     c = APIClient()
     payload = {"event": "demo", **cdr(uniqueid="hook-1")}
-    r = c.post("/api/v1/pbx/hooks/cdr/", payload, format="json", HTTP_X_PET_PBX_SECRET=hook_secret())
+    r = c.post("/api/v1/pbx/hooks/cdr/", payload, format="json", HTTP_X_DIAL_PBX_SECRET=hook_secret())
     assert r.status_code == 200, r.content
     assert r.json()["handled"] is True
     assert CallRecord.objects.filter(uniqueid="hook-1").exists()

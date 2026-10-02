@@ -71,7 +71,7 @@ def test_settings_view(client, event, user, other_user, member, ext_alice):
     assert mb.pin == "2468" and mb.email_delivery and mb.max_messages == 20 and mb.greeting.name.endswith("hello.wav")
     from apps.pbx.models import VoicemailUser
 
-    assert VoicemailUser.objects.get(context="pet-demo", mailbox="4242").password == "2468"
+    assert VoicemailUser.objects.get(context="dial-demo", mailbox="4242").password == "2468"
     r = client.post(_url("settings", event, ext_alice.pk), {"enabled": "on", "pin": "12", "max_messages": 20})
     assert r.status_code == 200 and "4 to 6 digits" in r.content.decode()
 
@@ -86,7 +86,7 @@ def test_orga_all_view(client, event, user, orga, member, ext_alice):
 
 
 def test_feature_flag_off(client, event, user, member, settings):
-    settings.PET_FEATURES = dict(settings.PET_FEATURES, voicemail=False)
+    settings.DIAL_FEATURES = dict(settings.DIAL_FEATURES, voicemail=False)
     client.force_login(user)
     assert client.get(_url("index", event)).status_code == 404
 

@@ -29,7 +29,7 @@ class Migration(migrations.Migration):
                 ('created_at', models.DateTimeField(auto_now_add=True, db_index=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
                 ('number', models.CharField(db_index=True, max_length=16, validators=[django.core.validators.RegexValidator('^\\d*$', 'Digits only')])),
-                ('type', models.CharField(choices=[('dect', 'DECT handset'), ('sip', 'SIP endpoint'), ('gsm', 'GSM (local cell network)'), ('webrtc', 'WebRTC browser softphone'), ('analog', 'Analog via ATA'), ('group', 'Call group / hunt group'), ('announcement', 'Announcement'), ('ivr', 'IVR menu'), ('conference', 'Conference room'), ('voicemail', 'Voicemail box'), ('app', 'Application / service'), ('federation', 'Federation trunk (PET-VPN)'), ('breakout', 'PSTN breakout')], default='dect', max_length=20)),
+                ('type', models.CharField(choices=[('dect', 'DECT handset'), ('sip', 'SIP endpoint'), ('gsm', 'GSM (local cell network)'), ('webrtc', 'WebRTC browser softphone'), ('analog', 'Analog via ATA'), ('group', 'Call group / hunt group'), ('announcement', 'Announcement'), ('ivr', 'IVR menu'), ('conference', 'Conference room'), ('voicemail', 'Voicemail box'), ('app', 'Application / service'), ('federation', 'Federation trunk (DIAL-VPN)'), ('breakout', 'PSTN breakout')], default='dect', max_length=20)),
                 ('email', models.EmailField(blank=True, help_text='Invite address if the person has no account yet.', max_length=254)),
                 ('token', models.CharField(default=apps.numbering.models._new_token, max_length=64, unique=True)),
                 ('valid_until', models.DateTimeField(default=apps.numbering.models._default_claim_validity)),

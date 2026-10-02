@@ -154,10 +154,10 @@ def test_claim_requires_free_number_and_claimant(event, user, other_user, orga):
 
 
 def test_redeem_creates_active_extension(event, user, orga, mailoutbox, settings):
-    settings.PET_PUBLIC_URL = "https://pet.example"
+    settings.DIAL_PUBLIC_URL = "https://dial.example"
     claim = numbering.create_claim(event, "1234", orga, user=user, note="Infodesk")  # orga-only range
     assert len(mailoutbox) == 1 and claim.token in mailoutbox[0].body
-    assert f"https://pet.example/e/{event.slug}/numbering/claim/{claim.token}/" in mailoutbox[0].body
+    assert f"https://dial.example/e/{event.slug}/numbering/claim/{claim.token}/" in mailoutbox[0].body
     ext = numbering.redeem_claim(claim.token, user)
     assert ext.state == Extension.State.ACTIVE and ext.owner == user and ext.number == "1234"
     assert ext.request_note == "Infodesk"

@@ -1,22 +1,22 @@
-{% load i18n static pet_nav %}<!DOCTYPE html>
-<html lang="{{ LANGUAGE_CODE }}" data-theme="{{ request.COOKIES.pet_theme|default:'dark' }}">
+{% load i18n static dial_nav %}<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE }}" data-theme="{{ request.COOKIES.dial_theme|default:'dark' }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}PET{% endblock %} · {% if current_event %}{{ current_event.name }}{% else %}{% trans "Portable Event Telephone" %}{% endif %}</title>
-  <link rel="stylesheet" href="{% static 'css/pet.css' %}?v={{ ASSET_VERSION }}">
+  <title>{% block title %}DIAL{% endblock %} · {% if current_event %}{{ current_event.name }}{% else %}{% trans "DECT &amp; IP Administration Layer" %}{% endif %}</title>
+  <link rel="stylesheet" href="{% static 'css/dial.css' %}?v={{ ASSET_VERSION }}">
   <link rel="stylesheet" href="{% static 'css/pwa.css' %}?v={{ ASSET_VERSION }}">
   {% if current_event %}
   <style>:root{--primary:{{ current_event.primary_color }};--accent:{{ current_event.accent_color }};}</style>
   {% endif %}
   <meta name="color-scheme" content="dark light">
-  <meta name="theme-color" content="{% if current_event %}{{ current_event.primary_color }}{% else %}{{ PET_PWA_THEME_COLOR }}{% endif %}">
+  <meta name="theme-color" content="{% if current_event %}{{ current_event.primary_color }}{% else %}{{ DIAL_PWA_THEME_COLOR }}{% endif %}">
   <link rel="icon" type="image/svg+xml" href="{% static 'icons/favicon.svg' %}?v={{ ASSET_VERSION }}">
   <link rel="apple-touch-icon" href="{% static 'icons/apple-touch-icon.png' %}">
-  {% if PET_PWA_ENABLED %}
+  {% if DIAL_PWA_ENABLED %}
   <link rel="manifest" href="{% url 'core:manifest' %}">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="PET">
+  <meta name="apple-mobile-web-app-title" content="DIAL">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   {% endif %}
   <script src="{% static 'js/pwa.js' %}?v={{ ASSET_VERSION }}" defer></script>
@@ -33,7 +33,7 @@
     </button>
     {% endif %}
     <a class="brand" href="{% url 'portal:home' %}">
-      <span class="brand-icon" aria-hidden="true">☏</span><span>PET</span>
+      <span class="brand-icon" aria-hidden="true">☏</span><span>DIAL</span>
     </a>
 
     <ul class="nav-links">
@@ -112,21 +112,21 @@
 
 <footer class="footer">
   <div class="footer-inner">
-    <span>PET — Portable Event Telephone</span>
+    <span>DIAL — DECT &amp; IP Administration Layer</span>
     <span class="footer-links"><a href="{% url 'portal:docs_index' %}">{% trans "Docs" %}</a><a href="/api/docs/">{% trans "API" %}</a><a href="https://github.com/">{% trans "Source" %}</a></span>
     {% if current_event and current_event.announcement %}<span class="muted footer-announcement">{{ current_event.announcement|truncatechars:120 }}</span>{% endif %}
   </div>
 </footer>
-<div id="pet-pwa" class="pwa" data-ping="{% url 'core:manifest' %}"{% if PET_PWA_ENABLED %} data-sw="{% url 'core:service_worker' %}"{% endif %}>
-  <div id="pet-offline" class="pwa-banner" role="status" aria-live="polite" hidden>{% trans "You're offline - showing saved pages. Changes need a connection." %}</div>
-  <div id="pet-update" class="pwa-toast" role="status" aria-live="polite" hidden>
-    <span>{% trans "PET was updated." %}</span>
-    <button type="button" class="btn btn-sm btn-primary" id="pet-update-reload">{% trans "Reload" %}</button>
-    <button type="button" class="btn btn-sm btn-ghost btn-icon" id="pet-update-dismiss" aria-label="{% trans 'Dismiss' %}">✕</button>
+<div id="dial-pwa" class="pwa" data-ping="{% url 'core:manifest' %}"{% if DIAL_PWA_ENABLED %} data-sw="{% url 'core:service_worker' %}"{% endif %}>
+  <div id="dial-offline" class="pwa-banner" role="status" aria-live="polite" hidden>{% trans "You're offline - showing saved pages. Changes need a connection." %}</div>
+  <div id="dial-update" class="pwa-toast" role="status" aria-live="polite" hidden>
+    <span>{% trans "DIAL was updated." %}</span>
+    <button type="button" class="btn btn-sm btn-primary" id="dial-update-reload">{% trans "Reload" %}</button>
+    <button type="button" class="btn btn-sm btn-ghost btn-icon" id="dial-update-dismiss" aria-label="{% trans 'Dismiss' %}">✕</button>
   </div>
-  <button type="button" class="btn btn-sm pwa-install" id="pet-install" hidden>{% trans "Install PET on this device" %}</button>
+  <button type="button" class="btn btn-sm pwa-install" id="dial-install" hidden>{% trans "Install DIAL on this device" %}</button>
 </div>
-<script src="{% static 'js/pet.js' %}?v={{ ASSET_VERSION }}" defer></script>
+<script src="{% static 'js/dial.js' %}?v={{ ASSET_VERSION }}" defer></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

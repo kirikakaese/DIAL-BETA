@@ -2,7 +2,7 @@
 
 Usage: .venv/bin/python scripts/make_icons.py
 
-The mark is a stylised handset (an arch with two round ends) on the PET primary blue. The geometry mirrors
+The mark is a stylised handset (an arch with two round ends) on the DIAL primary blue. The geometry mirrors
 static/icons/favicon.svg, so all icons look alike. Regular icons are rounded squares with transparent
 corners; the maskable icon and the Apple touch icon are full-bleed (the OS applies its own mask).
 """
@@ -44,10 +44,10 @@ def icon(size: int, *, rounded: bool, scale: float = 1.0) -> Image.Image:
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     files = {
-        "pet-192.png": icon(192, rounded=True),
-        "pet-512.png": icon(512, rounded=True),
+        "dial-192.png": icon(192, rounded=True),
+        "dial-512.png": icon(512, rounded=True),
         # maskable: full bleed, mark shrunk into the 80% safe zone
-        "pet-maskable-512.png": icon(512, rounded=False, scale=0.78),
+        "dial-maskable-512.png": icon(512, rounded=False, scale=0.78),
         "apple-touch-icon.png": icon(180, rounded=False, scale=0.9).convert("RGB"),
     }
     for name, img in files.items():

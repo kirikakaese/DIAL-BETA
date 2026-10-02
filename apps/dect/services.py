@@ -1,4 +1,4 @@
-"""DECT monitoring services: mirror OMM state into PET, raise/resolve alerts, site survey, coverage.
+"""DECT monitoring services: mirror OMM state into DIAL, raise/resolve alerts, site survey, coverage.
 
 ``sync_infrastructure(event)`` is called by the ``poll_infrastructure`` beat task every 30 s for
 every event in state *registration* or *live*. It is idempotent and safe to call from a view
@@ -68,7 +68,7 @@ def notify_alert(alert: Alert) -> None:
     }
     emit(f"dect.{alert.kind}", payload, event=alert.event)
 
-    title = f"[PET/{alert.event.slug}] {alert.get_severity_display()}: {alert.kind}"
+    title = f"[DIAL/{alert.event.slug}] {alert.get_severity_display()}: {alert.kind}"
     priority = {"critical": "urgent", "warning": "high", "info": "default"}.get(alert.severity, "default")
     ntfy_url = cfg.get("NTFY_URL")
     if ntfy_url:
@@ -175,7 +175,7 @@ def sync_infrastructure(event) -> dict:
             handset_counts[rfp.pk] += 1
         device = devices.get(hs.ipei)
         if device is None:
-            # unknown to PET: with the claim feature on, take it into the pool so its user can dial the code
+            # unknown to DIAL: with the claim feature on, take it into the pool so its user can dial the code
             try:
                 from apps.dect.claim import adopt_handset
 

@@ -406,7 +406,7 @@ def extension_transfer(request, slug, *, event, pk):
         "to_user")
     return render(request, "portal/extension_transfer.html", {
         "event": event, "ext": ext, "form": form, "transfers": open_transfers,
-        "public_url": settings.PET_PUBLIC_URL,
+        "public_url": settings.DIAL_PUBLIC_URL,
     })
 
 
@@ -913,7 +913,7 @@ def orga_groups(request, slug, *, event):
 
 
 def _claim_url(ext):
-    return settings.PET_PUBLIC_URL.rstrip("/") + reverse("portal:claim_guest", args=[ext.claim_token])
+    return settings.DIAL_PUBLIC_URL.rstrip("/") + reverse("portal:claim_guest", args=[ext.claim_token])
 
 
 @require_orga
@@ -1001,7 +1001,7 @@ def orga_webhooks(request, slug, *, event):
 @require_orga
 def orga_export(request, slug, *, event):
     audit(action="other", actor=request.user, target=event, event=event, request=request, message="Event export")
-    return _json_download(export_event(event), f"pet-{event.slug}.json")
+    return _json_download(export_event(event), f"dial-{event.slug}.json")
 
 
 @require_orga
@@ -1075,7 +1075,7 @@ def orga_import_csv_sample(request, slug, *, event):
     from apps.extensions.csv_import import sample_csv
 
     resp = HttpResponse(sample_csv(), content_type="text/csv; charset=utf-8")
-    resp["Content-Disposition"] = f'attachment; filename="pet-{event.slug}-extensions-sample.csv"'
+    resp["Content-Disposition"] = f'attachment; filename="dial-{event.slug}-extensions-sample.csv"'
     return resp
 
 

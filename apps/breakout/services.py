@@ -24,7 +24,7 @@ RATE_LIMIT_WINDOW = 600       # ... per 10 minutes
 
 
 def blocklist() -> list[str]:
-    return list(getattr(settings, "PET_BREAKOUT_BLOCKLIST", DEFAULT_BLOCKLIST))
+    return list(getattr(settings, "DIAL_BREAKOUT_BLOCKLIST", DEFAULT_BLOCKLIST))
 
 
 def trunk_for(event, destination: str, extension=None) -> Trunk | None:
@@ -89,7 +89,8 @@ def _rate_key(extension) -> str:
 
 
 def rate_limited(extension) -> bool:
-    return (cache.get(_rate_key(extension)) or 0) >= int(getattr(settings, "PET_BREAKOUT_RATE_LIMIT", RATE_LIMIT_CALLS))
+    limit = int(getattr(settings, "DIAL_BREAKOUT_RATE_LIMIT", RATE_LIMIT_CALLS))
+    return (cache.get(_rate_key(extension)) or 0) >= limit
 
 
 def count_attempt(extension) -> None:
@@ -154,15 +155,15 @@ def record_usage(event, extension, billsec: int) -> BreakoutUsage:
 def pjsip_trunk_config(trunk: Trunk) -> str:
     name = trunk.endpoint_name
     lines = [
-        f"; PET breakout trunk: {trunk.name}",
-        f"[{name}]", "type=endpoint", f"transport=transport-{trunk.transport}", "context=pet-breakout-in",
+        f"; DIAL breakout trunk: {trunk.name}",
+        f"[{name}]", "type=endpoint", f"transport=transport-{trunk.transport}", "context=dial-breakout-in",
         "disallow=all", "allow=alaw,ulaw,g722", f"aors={name}",
         f"from_domain={trunk.from_domain or trunk.sip_host}",
         f"media_encryption={'sdes' if trunk.transport == 'tls' else 'no'}",
         "rtp_symmetric=yes", "force_rport=yes", "rewrite_contact=yes", "direct_media=no", "send_pai=yes",
     ]
     if trunk.caller_id_default:
-        lines.append(f'callerid="PET" <{trunk.caller_id_default}>')
+        lines.append(f'callerid="DIAL" <{trunk.caller_id_default}>')
     if trunk.auth_user:
         lines.append(f"outbound_auth={name}-auth")
     lines += ["", f"[{name}]", "type=aor", f"contact=sip:{trunk.sip_host}:{trunk.port};transport={trunk.transport}",

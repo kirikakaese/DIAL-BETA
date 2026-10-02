@@ -1,4 +1,4 @@
-# PET - Portable Event Telephone
+# DIAL - DECT & IP Administration Layer
 PY      := .venv/bin/python
 PIP     := .venv/bin/pip
 MANAGE  := $(PY) manage.py
@@ -21,16 +21,16 @@ run:
 	$(MANAGE) runserver 0.0.0.0:8000
 
 worker:
-	.venv/bin/celery -A pet worker -l info
+	.venv/bin/celery -A dial worker -l info
 
 beat:
-	.venv/bin/celery -A pet beat -l info
+	.venv/bin/celery -A dial beat -l info
 
 test:
 	$(PY) -m pytest -p no:cacheprovider
 
 lint:
-	.venv/bin/ruff check apps pet
+	.venv/bin/ruff check apps dial
 
 migrate:
 	$(MANAGE) migrate --noinput
@@ -46,7 +46,7 @@ openapi:
 	$(MANAGE) spectacular --file docs/api/openapi.yaml
 
 check:
-	SECRET_KEY=x DATABASE_URL=sqlite:///build.sqlite3 $(MANAGE) check --settings=pet.settings.prod --deploy
+	SECRET_KEY=x DATABASE_URL=sqlite:///build.sqlite3 $(MANAGE) check --settings=dial.settings.prod --deploy
 	rm -f build.sqlite3
 
 # --- Docker Compose ---------------------------------------------------------
@@ -67,7 +67,7 @@ shell:
 	$(COMPOSE) exec web python manage.py shell
 
 dbshell:
-	$(COMPOSE) exec db psql -U pet pet
+	$(COMPOSE) exec db psql -U dial dial
 
 clean:
 	find . -name __pycache__ -type d -prune -exec rm -rf {} +

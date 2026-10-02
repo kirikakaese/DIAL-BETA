@@ -49,6 +49,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='pbxconnection',
             name='provisioning',
-            field=models.CharField(choices=[('shared_db', "Shared database – venue Asterisk reads PET's PostgreSQL"), ('agent', 'Venue agent – pulls snapshots over HTTPS into a local database')], default='shared_db', help_text='How the realtime rows reach the venue Asterisk.', max_length=12, verbose_name='Provisioning'),
+            field=models.CharField(choices=[('shared_db', "Shared database – venue Asterisk reads DIAL's PostgreSQL"), ('agent', 'Venue agent – pulls snapshots over HTTPS into a local database')], default='shared_db', help_text='How the realtime rows reach the venue Asterisk.', max_length=12, verbose_name='Provisioning'),
         ),
     ]

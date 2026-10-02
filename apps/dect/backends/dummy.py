@@ -2,7 +2,7 @@
 
 Simulates a small venue: two sync clusters with several RFPs, a couple of handsets parked
 on them, and (optionally) a flapping base station. Enable random flapping with
-``PET_DECT_DUMMY_FLAP = True`` to exercise alerting in a dev environment.
+``DIAL_DECT_DUMMY_FLAP = True`` to exercise alerting in a dev environment.
 
 Deterministic by default: ``list_rfps()`` returns the same set on every call.
 """
@@ -55,7 +55,7 @@ class DummyDECT(DECTAdapter):
         self.subs[str(ppn)]["rfp_id"] = str(rfp_id)
 
     def _maybe_flap(self):
-        if not getattr(settings, "PET_DECT_DUMMY_FLAP", False):
+        if not getattr(settings, "DIAL_DECT_DUMMY_FLAP", False):
             return
         for rid in ("5", "6"):  # only the camp RFPs flap - keeps the demo dashboard readable
             if self._rng.random() < 0.3:
@@ -122,7 +122,7 @@ class DummyDECT(DECTAdapter):
                               sip_password=sip_password, pin=pin, user_id=ppn)
         return ppn
 
-    # -- test/demo helper: a handset that subscribed without PET knowing it (OMM auto-create) ------------
+    # -- test/demo helper: a handset that subscribed without DIAL knowing it (OMM auto-create) ------------
     def add_foreign_handset(self, ipei: str, *, number: str = "", rfp_id: str = "1", with_user: bool = True) -> str:
         self._ppn_seq += 1
         ppn = str(self._ppn_seq)

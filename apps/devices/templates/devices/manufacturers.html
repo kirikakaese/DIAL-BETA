@@ -22,7 +22,7 @@
         <td class="small">{% if r.manufacturer %}{{ r.manufacturer.get_source_display }}{% endif %}</td>
         <td><span class="badge {% if r.count %}badge-active{% endif %}">{{ r.count }}</span></td>
       </tr>
-      {% empty %}<tr><td colspan="5" class="empty">{% trans "No DECT handsets and no vendor entries yet. Run" %} <code>manage.py pet_dect_vendors</code>.</td></tr>{% endfor %}
+      {% empty %}<tr><td colspan="5" class="empty">{% trans "No DECT handsets and no vendor entries yet. Run" %} <code>manage.py dial_dect_vendors</code>.</td></tr>{% endfor %}
       </tbody>
     </table></div>
   </section>

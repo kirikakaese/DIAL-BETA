@@ -3,7 +3,7 @@ from django import forms
 from django.utils.translation import gettext_lazy as _
 
 from apps.dect.models import DECTConnection, dect_backend_choices
-from apps.portal.forms import PetModelForm
+from apps.portal.forms import DialModelForm
 
 from .models import PBXConnection, pbx_backend_choices
 
@@ -30,7 +30,7 @@ class _SecretFieldsMixin:
         return data
 
 
-class PBXConnectionForm(_SecretFieldsMixin, PetModelForm):
+class PBXConnectionForm(_SecretFieldsMixin, DialModelForm):
     secret_fields = ("ari_password", "ami_password", "hook_secret")
     backend = forms.ChoiceField(label=_("Backend"), choices=pbx_backend_choices)
 
@@ -53,13 +53,13 @@ class PBXConnectionForm(_SecretFieldsMixin, PetModelForm):
         if not data.get("agent_poll_interval"):
             data["agent_poll_interval"] = PBXConnection._meta.get_field("agent_poll_interval").default
         agent = data.get("provisioning") == PBXConnection.Provisioning.AGENT
-        # in agent mode the venue box is usually not reachable from PET - ARI is optional there
+        # in agent mode the venue box is usually not reachable from DIAL - ARI is optional there
         if data.get("backend") == "asterisk" and not data.get("ari_url") and not agent:
             self.add_error("ari_url", _("The ARI URL is required for Asterisk."))
         return data
 
 
-class DECTConnectionForm(_SecretFieldsMixin, PetModelForm):
+class DECTConnectionForm(_SecretFieldsMixin, DialModelForm):
     secret_fields = ("password",)
     backend = forms.ChoiceField(label=_("Backend"), choices=dect_backend_choices)
 

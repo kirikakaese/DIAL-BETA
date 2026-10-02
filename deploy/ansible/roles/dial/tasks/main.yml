@@ -39,36 +39,36 @@
     state: started
     enabled: true
 
-- name: Create PET directory
+- name: Create DIAL directory
   ansible.builtin.file:
-    path: "{{ pet_dir }}"
+    path: "{{ dial_dir }}"
     state: directory
     mode: "0750"
 
-- name: Check out PET sources (includes docker-compose.yml and deploy/asterisk)
+- name: Check out DIAL sources (includes docker-compose.yml and deploy/asterisk)
   ansible.builtin.git:
-    repo: "{{ pet_repo_url }}"
-    dest: "{{ pet_src_dir }}"
-    version: "{{ pet_repo_version }}"
+    repo: "{{ dial_repo_url }}"
+    dest: "{{ dial_src_dir }}"
+    version: "{{ dial_repo_version }}"
     force: true
-  notify: Restart pet stack
+  notify: Restart dial stack
 
 - name: Render .env
   ansible.builtin.template:
     src: env.j2
-    dest: "{{ pet_src_dir }}/.env"
+    dest: "{{ dial_src_dir }}/.env"
     mode: "0600"
-  notify: Restart pet stack
+  notify: Restart dial stack
 
 - name: Pull base images
   ansible.builtin.command:
     cmd: docker compose pull --ignore-buildable
-    chdir: "{{ pet_src_dir }}"
+    chdir: "{{ dial_src_dir }}"
   changed_when: false
 
 - name: Build and start the stack
   ansible.builtin.command:
     cmd: docker compose up -d --build --remove-orphans
-    chdir: "{{ pet_src_dir }}"
-  register: pet_up
-  changed_when: "'Started' in pet_up.stderr or 'Created' in pet_up.stderr"
+    chdir: "{{ dial_src_dir }}"
+  register: dial_up
+  changed_when: "'Started' in dial_up.stderr or 'Created' in dial_up.stderr"

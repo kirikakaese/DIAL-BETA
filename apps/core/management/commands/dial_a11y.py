@@ -1,8 +1,8 @@
-"""``manage.py pet_a11y`` - run the built-in accessibility linter against rendered pages.
+"""``manage.py dial_a11y`` - run the built-in accessibility linter against rendered pages.
 
-    manage.py pet_a11y                 # smoke-test URL list, logged in as the demo admin
-    manage.py pet_a11y --all           # also the pages from the anonymous / user lists as those personas
-    manage.py pet_a11y --url /events/ --url /e/demo/orga/
+    manage.py dial_a11y                 # smoke-test URL list, logged in as the demo admin
+    manage.py dial_a11y --all           # also the pages from the anonymous / user lists as those personas
+    manage.py dial_a11y --url /events/ --url /e/demo/orga/
 
 Needs the seeded dev database (``manage.py seed_demo``). Prints one line per finding
 (``<rule>: <element> (line N)``) and exits non-zero when anything was found. The same checks run in
@@ -25,8 +25,8 @@ class Command(BaseCommand):
         parser.add_argument("--all", action="store_true",
                             help="Also check the anonymous and user URL lists as anonymous / alice.")
         parser.add_argument("--event", default="demo", help="Event slug (default: demo).")
-        parser.add_argument("--admin", default="admin@pet.local", help="Admin e-mail to log in with.")
-        parser.add_argument("--user", default="alice@pet.local", help="Regular user e-mail for --all.")
+        parser.add_argument("--admin", default="admin@dial.local", help="Admin e-mail to log in with.")
+        parser.add_argument("--user", default="alice@dial.local", help="Regular user e-mail for --all.")
 
     def handle(self, *args, **opts):
         from apps.accounts.models import User

@@ -16,7 +16,7 @@
     <ol class="help-steps">
       <li>{% trans "Take a subscribed DECT handset and walk the venue." %}</li>
       <li>{% blocktrans with n=survey_number %}At every spot you want to check, dial <strong class="number">{{ n }}</strong>.{% endblocktrans %}</li>
-      <li>{% trans "The PBX announces the name of the base station (RFP) currently serving your handset and PET records it here." %}</li>
+      <li>{% trans "The PBX announces the name of the base station (RFP) currently serving your handset and DIAL records it here." %}</li>
     </ol>
     {% else %}
     <p class="alert alert-warning">{% trans "No site survey number is configured in the number plan yet. Set one under Orga → Number plan." %}</p>

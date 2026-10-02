@@ -136,20 +136,20 @@ def test_dn_helpers():
     esc = directory.escape_rdn_value
     assert esc("Bob, Jr. + Co") == "Bob\\, Jr. \\+ Co"
     assert esc(" lead") == "\\ lead" and esc("#hash") == "\\#hash" and esc("trail ") == "trail\\ "
-    assert directory.parse_dn("CN=Bob\\, Jr.+telephoneNumber=4300, OU=Phonebook,dc=demo,dc=PET") == (
-        frozenset({("dc", "pet")}), frozenset({("dc", "demo")}), frozenset({("ou", "phonebook")}),
+    assert directory.parse_dn("CN=Bob\\, Jr.+telephoneNumber=4300, OU=Phonebook,dc=demo,dc=DIAL") == (
+        frozenset({("dc", "dial")}), frozenset({("dc", "demo")}), frozenset({("ou", "phonebook")}),
         frozenset({("cn", "bob, jr."), ("telephonenumber", "4300")}))
-    assert directory.parse_dn("cn=Bob\\2c Jr.,dc=demo,dc=pet") == directory.parse_dn("cn=Bob\\, Jr.,dc=demo,dc=pet")
+    assert directory.parse_dn("cn=Bob\\2c Jr.,dc=demo,dc=dial") == directory.parse_dn("cn=Bob\\, Jr.,dc=demo,dc=dial")
     assert directory.parse_dn("") == ()
-    assert directory.event_slug_from_dn("ou=phonebook,dc=demo,dc=pet") == "demo"
-    assert directory.event_slug_from_dn("dc=demo,dc=pet") == "demo"
-    assert directory.event_slug_from_dn("dc=pet") is None
+    assert directory.event_slug_from_dn("ou=phonebook,dc=demo,dc=dial") == "demo"
+    assert directory.event_slug_from_dn("dc=demo,dc=dial") == "demo"
+    assert directory.event_slug_from_dn("dc=dial") is None
     assert directory.event_slug_from_dn("ou=phonebook,dc=demo,dc=example") is None
-    assert directory.bind_dn_slug("cn=directory,dc=demo,dc=pet") == "demo"
-    assert directory.bind_dn_slug("cn=Directory, DC=demo, DC=pet") == "demo"
-    assert directory.bind_dn_slug("cn=admin,dc=demo,dc=pet") is None
-    assert directory.bind_dn_slug("cn=directory,ou=x,dc=demo,dc=pet") is None
-    assert directory.bind_dn("demo") == "cn=directory,dc=demo,dc=pet"
+    assert directory.bind_dn_slug("cn=directory,dc=demo,dc=dial") == "demo"
+    assert directory.bind_dn_slug("cn=Directory, DC=demo, DC=dial") == "demo"
+    assert directory.bind_dn_slug("cn=admin,dc=demo,dc=dial") is None
+    assert directory.bind_dn_slug("cn=directory,ou=x,dc=demo,dc=dial") is None
+    assert directory.bind_dn("demo") == "cn=directory,dc=demo,dc=dial"
     assert directory.split_name("Bob the Builder") == ("Bob the", "Builder")
     assert directory.split_name("alice") == ("", "alice")
 
@@ -164,11 +164,11 @@ def test_directory_entries(event, ext_alice, ext_bob, ext_group, ext_hidden):
     d = directory.load_event_directory("demo")
     assert d is not None and d.enabled and d.token == s.directory_token and d.name == "Demo Camp"
     dns = [e.dn for e in d.entries]
-    assert dns[:2] == ["dc=demo,dc=pet", "ou=phonebook,dc=demo,dc=pet"]
+    assert dns[:2] == ["dc=demo,dc=dial", "ou=phonebook,dc=demo,dc=dial"]
     assert dns[2:] == [
-        "cn=alice+telephoneNumber=4242,ou=phonebook,dc=demo,dc=pet",
-        "cn=Bob Builder+telephoneNumber=4300,ou=phonebook,dc=demo,dc=pet",
-        "cn=Infodesk+telephoneNumber=4400,ou=phonebook,dc=demo,dc=pet",
+        "cn=alice+telephoneNumber=4242,ou=phonebook,dc=demo,dc=dial",
+        "cn=Bob Builder+telephoneNumber=4300,ou=phonebook,dc=demo,dc=dial",
+        "cn=Infodesk+telephoneNumber=4400,ou=phonebook,dc=demo,dc=dial",
     ]
     alice, bob, desk = (e.attributes for e in d.entries[2:])
     assert alice["objectClass"] == ["top", "person", "organizationalPerson", "inetOrgPerson"]
@@ -179,15 +179,15 @@ def test_directory_entries(event, ext_alice, ext_bob, ext_group, ext_hidden):
     assert bob["description"] == ["Ask for bricks"] and "ou" not in bob
     assert desk["ou"] == ["Services"] and desk["title"] == [str(ext_group.get_type_display())]
     # scopes / selection
-    base = directory.parse_dn("ou=phonebook,dc=demo,dc=pet")
+    base = directory.parse_dn("ou=phonebook,dc=demo,dc=dial")
     assert [e.matches_scope(base, protocol.SCOPE_BASE) for e in d.entries] == [False, True, False, False, False]
     assert [e.matches_scope(base, protocol.SCOPE_ONE) for e in d.entries] == [False, False, True, True, True]
     assert sum(e.matches_scope(base, protocol.SCOPE_SUB) for e in d.entries) == 4
     assert d.entries[2].select(["CN", "mobile"]) == {"cn": ["alice"], "mobile": ["4242"]}
     assert d.entries[2].select(["1.1"]) == {}
     assert d.entries[2].select([], types_only=True)["cn"] == []
-    found, matched = d.search("cn=nobody,ou=phonebook,dc=demo,dc=pet", protocol.SCOPE_BASE, lambda e: True)
-    assert found is None and matched == "ou=phonebook,dc=demo,dc=pet"
+    found, matched = d.search("cn=nobody,ou=phonebook,dc=demo,dc=dial", protocol.SCOPE_BASE, lambda e: True)
+    assert found is None and matched == "ou=phonebook,dc=demo,dc=dial"
     # privacy switch hides the location
     s.show_location = False
     s.save()
@@ -198,7 +198,7 @@ def test_directory_entries(event, ext_alice, ext_bob, ext_group, ext_hidden):
 @pytest.mark.django_db
 def test_directory_visibility_and_cache(event, ext_alice):
     assert directory.load_event_directory("nope") is None
-    assert directory.load_naming_contexts() == ["dc=demo,dc=pet"]
+    assert directory.load_naming_contexts() == ["dc=demo,dc=dial"]
     s = services.get_settings(event)
     s.directory_enabled = False
     s.save()
@@ -343,22 +343,22 @@ def token(event):
     return services.get_settings(event).directory_token
 
 
-BIND_DN = "cn=directory,dc=demo,dc=pet"
-BASE = "ou=phonebook,dc=demo,dc=pet"
+BIND_DN = "cn=directory,dc=demo,dc=dial"
+BASE = "ou=phonebook,dc=demo,dc=dial"
 server_db = pytest.mark.django_db(transaction=True)
 
 
 @server_db
 def test_server_bind(client, event, ext_alice, token):
     assert client.bind(BIND_DN, "wrong-password").result_code == protocol.INVALID_CREDENTIALS
-    assert client.bind("cn=directory,dc=other,dc=pet", token).result_code == protocol.INVALID_CREDENTIALS
-    assert client.bind("cn=admin,dc=demo,dc=pet", token).result_code == protocol.INVALID_CREDENTIALS
+    assert client.bind("cn=directory,dc=other,dc=dial", token).result_code == protocol.INVALID_CREDENTIALS
+    assert client.bind("cn=admin,dc=demo,dc=dial", token).result_code == protocol.INVALID_CREDENTIALS
     anon = client.bind("", "")
     assert anon.result_code == protocol.INAPPROPRIATE_AUTHENTICATION and "anonymous" in anon.message
     assert client.bind(BIND_DN, "").result_code == protocol.UNWILLING_TO_PERFORM
     ok = client.bind(BIND_DN, token)
     assert ok.result_code == protocol.SUCCESS and ok.message == ""
-    assert client.bind("CN=Directory, DC=demo, DC=pet", token).result_code == protocol.SUCCESS
+    assert client.bind("CN=Directory, DC=demo, DC=dial", token).result_code == protocol.SUCCESS
     # LDAPv2 is refused
     client.mid += 1
     client.send_raw(protocol.bind_request(client.mid, BIND_DN, token, version=2))
@@ -370,7 +370,7 @@ def test_server_search_sub_with_filters(client, event, ext_alice, ext_bob, ext_g
     assert client.bind(BIND_DN, token).result_code == protocol.SUCCESS
     entries, done = client.search(BASE, "(cn=*b*)")
     assert done.result_code == protocol.SUCCESS
-    assert [e.dn for e in entries] == ["cn=Bob Builder+telephoneNumber=4300,ou=phonebook,dc=demo,dc=pet"]
+    assert [e.dn for e in entries] == ["cn=Bob Builder+telephoneNumber=4300,ou=phonebook,dc=demo,dc=dial"]
     assert entries[0].attributes["telephoneNumber"] == ["4300"] and entries[0].attributes["givenName"] == ["Bob"]
     entries, done = client.search(BASE, "(|(cn=*a*)(telephoneNumber=44*))", attributes=["cn", "telephoneNumber"])
     assert done.result_code == protocol.SUCCESS
@@ -388,14 +388,14 @@ def test_server_search_sub_with_filters(client, event, ext_alice, ext_bob, ext_g
     assert entries[0].attributes["objectClass"] == ["top", "organizationalUnit"]
     entries, _done = client.search(BASE, scope=protocol.SCOPE_ONE)
     assert len(entries) == 3 and all(e.attributes["objectClass"][-1] == "inetOrgPerson" for e in entries)
-    entries, _done = client.search("dc=demo,dc=pet")
-    assert len(entries) == 5 and entries[0].dn == "dc=demo,dc=pet"
-    entries, done = client.search("cn=alice+telephoneNumber=4242,ou=phonebook,dc=demo,dc=pet",
+    entries, _done = client.search("dc=demo,dc=dial")
+    assert len(entries) == 5 and entries[0].dn == "dc=demo,dc=dial"
+    entries, done = client.search("cn=alice+telephoneNumber=4242,ou=phonebook,dc=demo,dc=dial",
                                   scope=protocol.SCOPE_BASE, types_only=True)
     assert done.result_code == 0 and entries[0].attributes["cn"] == []
     # unknown base below a known event -> noSuchObject with the nearest matched DN
-    entries, done = client.search("ou=nothing,dc=demo,dc=pet")
-    assert entries == [] and done.result_code == protocol.NO_SUCH_OBJECT and done.matched_dn == "dc=demo,dc=pet"
+    entries, done = client.search("ou=nothing,dc=demo,dc=dial")
+    assert entries == [] and done.result_code == protocol.NO_SUCH_OBJECT and done.matched_dn == "dc=demo,dc=dial"
 
 
 @server_db
@@ -409,7 +409,7 @@ def test_server_size_limit_and_access(client, event, ext_alice, ext_bob, ext_gro
     entries, done = client.search(BASE, "(objectClass=inetOrgPerson)", size_limit=3)
     assert len(entries) == 3 and done.result_code == protocol.SUCCESS
     # bound to demo -> other events are off limits; foreign suffixes do not exist
-    _e, done = client.search("ou=phonebook,dc=other,dc=pet")
+    _e, done = client.search("ou=phonebook,dc=other,dc=dial")
     assert done.result_code == protocol.INSUFFICIENT_ACCESS_RIGHTS
     _e, done = client.search("dc=example,dc=org")
     assert done.result_code == protocol.NO_SUCH_OBJECT
@@ -439,14 +439,14 @@ def test_server_root_dse_and_unbind(client, event, ext_alice, token):
     entries, done = client.search("", scope=protocol.SCOPE_BASE)
     assert done.result_code == 0 and len(entries) == 1 and entries[0].dn == ""
     dse = entries[0].attributes
-    assert dse["supportedLDAPVersion"] == ["3"] and dse["vendorName"] == ["PET"]
+    assert dse["supportedLDAPVersion"] == ["3"] and dse["vendorName"] == ["DIAL"]
     assert dse["namingContexts"] == []  # not bound, anonymous disabled -> nothing to reveal
     assert client.bind(BIND_DN, token).result_code == 0
     entries, _done = client.search("", scope=protocol.SCOPE_BASE, attributes=["namingContexts"])
-    assert entries[0].attributes == {"namingContexts": ["dc=demo,dc=pet"]}
+    assert entries[0].attributes == {"namingContexts": ["dc=demo,dc=dial"]}
     entries, done = client.search("", "(cn=alice)")  # sub from the root covers the bound event
     assert done.result_code == 0 and [e.dn for e in entries] == [
-        "cn=alice+telephoneNumber=4242,ou=phonebook,dc=demo,dc=pet"]
+        "cn=alice+telephoneNumber=4242,ou=phonebook,dc=demo,dc=dial"]
     client.send(protocol.unbind_request)
     with pytest.raises(ConnectionError):
         client.recv()
@@ -482,8 +482,8 @@ def test_server_anonymous_and_disabled_events(start_server, event, ext_alice, to
     entries, done = c.search(BASE, "(telephoneNumber=4242)")
     assert done.result_code == 0 and len(entries) == 1
     dse, _done = c.search("", scope=protocol.SCOPE_BASE)
-    assert dse[0].attributes["namingContexts"] == ["dc=demo,dc=pet"]
-    _e, done = c.search("ou=phonebook,dc=unknown,dc=pet")
+    assert dse[0].attributes["namingContexts"] == ["dc=demo,dc=dial"]
+    _e, done = c.search("ou=phonebook,dc=unknown,dc=dial")
     assert done.result_code == protocol.NO_SUCH_OBJECT
     s = services.get_settings(event)
     s.directory_enabled = False
@@ -506,7 +506,7 @@ def test_server_unicode_and_escaped_dns(client, event, user, token):
     entries, done = client.search(BASE, "(cn=zoë*)")
     assert done.result_code == 0 and len(entries) == 1
     dn = entries[0].dn
-    assert dn == "cn=Zoë Ünïcode\\, Jr.+telephoneNumber=4711,ou=phonebook,dc=demo,dc=pet"
+    assert dn == "cn=Zoë Ünïcode\\, Jr.+telephoneNumber=4711,ou=phonebook,dc=demo,dc=dial"
     assert entries[0].attributes["sn"] == ["Jr."] and entries[0].attributes["givenName"] == ["Zoë Ünïcode,"]
     entries, done = client.search(dn, scope=protocol.SCOPE_BASE)
     assert done.result_code == 0 and len(entries) == 1
@@ -517,9 +517,9 @@ def test_server_unicode_and_escaped_dns(client, event, user, token):
 def test_management_command_defaults(settings):
     from django.core.management import get_commands
 
-    assert get_commands()["pet_ldap"] == "apps.phonebook"
-    assert settings.PET_LDAP_PORT == 3890 and settings.PET_LDAP_HOST == "0.0.0.0"
-    assert settings.PET_LDAP_ALLOW_ANONYMOUS is False and settings.PET_LDAP_CACHE_SECONDS == 30
+    assert get_commands()["dial_ldap"] == "apps.phonebook"
+    assert settings.DIAL_LDAP_PORT == 3890 and settings.DIAL_LDAP_HOST == "0.0.0.0"
+    assert settings.DIAL_LDAP_ALLOW_ANONYMOUS is False and settings.DIAL_LDAP_CACHE_SECONDS == 30
 
 
 @server_db
@@ -537,7 +537,7 @@ def test_ldapsearch_integration(ldap_server, event, ext_alice, ext_bob, ext_grou
     res = run("-b", BASE, "(cn=*)")
     assert res.returncode == 0, res.stderr
     out = res.stdout
-    assert "dn: cn=Bob Builder+telephoneNumber=4300,ou=phonebook,dc=demo,dc=pet" in out
+    assert "dn: cn=Bob Builder+telephoneNumber=4300,ou=phonebook,dc=demo,dc=dial" in out
     assert "telephoneNumber: 4242" in out and "cn: Infodesk" in out and "sn: Builder" in out
     assert out.count("objectClass: inetOrgPerson") == 3
     res = run("-b", BASE, "-z", "1", "(objectClass=inetOrgPerson)", "telephoneNumber")
@@ -547,5 +547,5 @@ def test_ldapsearch_integration(ldap_server, event, ext_alice, ext_bob, ext_grou
     res = run("-b", "", "-s", "base", "(objectClass=*)", "vendorName", password=None)
     assert res.returncode == 48 and "anonymous bind is disabled" in res.stderr
     res = run("-b", "", "-s", "base", "(objectClass=*)", "vendorName", "namingContexts")
-    assert res.returncode == 0 and "vendorName: PET" in res.stdout
-    assert "namingContexts: dc=demo,dc=pet" in res.stdout
+    assert res.returncode == 0 and "vendorName: DIAL" in res.stdout
+    assert "namingContexts: dc=demo,dc=dial" in res.stdout

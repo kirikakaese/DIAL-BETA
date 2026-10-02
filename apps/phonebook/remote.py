@@ -51,7 +51,7 @@ def _x(value) -> str:
 
 
 def public_base() -> str:
-    return (getattr(dj_settings, "PET_PUBLIC_URL", "") or "").rstrip("/")
+    return (getattr(dj_settings, "DIAL_PUBLIC_URL", "") or "").rstrip("/")
 
 
 def servable(event, settings: PhonebookSettings | None = None) -> bool:
@@ -169,7 +169,7 @@ def render_directory(event, vendor: str, q: str | None = None, exts=None) -> str
 # --------------------------------------------------------------------------- URLs
 
 def directory_url(event, vendor: str, settings: PhonebookSettings | None = None) -> str:
-    """Absolute ``/e/<slug>/phonebook/remote/<token>/<vendor>.xml`` rooted at ``PET_PUBLIC_URL``."""
+    """Absolute ``/e/<slug>/phonebook/remote/<token>/<vendor>.xml`` rooted at ``DIAL_PUBLIC_URL``."""
     settings = settings or services.get_settings(event)
     return public_base() + reverse("phonebook:remote_directory",
                                    args=[event.slug, settings.directory_token, vendor])
@@ -198,20 +198,20 @@ def vendor_for_device(device, requested: str | None = None) -> str:
 
 
 def ldap_info(event) -> dict:
-    """What to type into a phone's LDAP directory settings (the LDAP server is ``manage.py pet_ldap``).
+    """What to type into a phone's LDAP directory settings (the LDAP server is ``manage.py dial_ldap``).
 
-    ``PET_LDAP_HOST`` is the *bind* address of that server; wildcard binds (``0.0.0.0`` / ``::``) are not
-    reachable names, so the public hostname of ``PET_PUBLIC_URL`` is shown instead.
+    ``DIAL_LDAP_HOST`` is the *bind* address of that server; wildcard binds (``0.0.0.0`` / ``::``) are not
+    reachable names, so the public hostname of ``DIAL_PUBLIC_URL`` is shown instead.
     """
-    host = getattr(dj_settings, "PET_LDAP_HOST", "") or ""
+    host = getattr(dj_settings, "DIAL_LDAP_HOST", "") or ""
     if host in ("0.0.0.0", "::", "*"):
         host = ""
     host = host or urlsplit(public_base()).hostname or "localhost"
     return {
         "host": host,
-        "port": int(getattr(dj_settings, "PET_LDAP_PORT", LDAP_DEFAULT_PORT)),
+        "port": int(getattr(dj_settings, "DIAL_LDAP_PORT", LDAP_DEFAULT_PORT)),
         "base_dn": services.base_dn(event),
-        "bind_dn": f"cn=directory,dc={event.slug},dc=pet",
+        "bind_dn": f"cn=directory,dc={event.slug},dc=dial",
         "name_attributes": "cn sn",
         "number_attribute": "telephoneNumber",
     }

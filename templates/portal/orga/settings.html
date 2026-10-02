@@ -18,7 +18,7 @@
   <form method="post" enctype="multipart/form-data">{% csrf_token %}
     <div class="form-cols">{% include "portal/_form.html" with form=form form_fields=form.general_fields %}</div>
     <h2 id="schedule">{% trans "Schedule" %}</h2>
-    <p class="small muted">{% blocktrans with tz=event.timezone %}Optional: PET changes the event state automatically at these times (event timezone {{ tz }}). Leave empty to switch states by hand.{% endblocktrans %}</p>
+    <p class="small muted">{% blocktrans with tz=event.timezone %}Optional: DIAL changes the event state automatically at these times (event timezone {{ tz }}). Leave empty to switch states by hand.{% endblocktrans %}</p>
     <div class="form-cols">{% include "portal/_form.html" with form=form form_fields=form.schedule_fields bare=True %}</div>
     <div class="form-actions"><button class="btn btn-primary">{% trans "Save settings" %}</button></div>
   </form>

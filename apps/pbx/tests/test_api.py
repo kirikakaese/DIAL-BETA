@@ -15,12 +15,12 @@ from .conftest import bind, make_device, make_extension
 pytestmark = pytest.mark.django_db
 
 SECRET = "hook-secret-123"
-HDR = {"HTTP_X_PET_PBX_SECRET": SECRET}
+HDR = {"HTTP_X_DIAL_PBX_SECRET": SECRET}
 
 
 @pytest.fixture(autouse=True)
 def _secret(settings):
-    settings.PET_PBX_HOOK_SECRET = SECRET
+    settings.DIAL_PBX_HOOK_SECRET = SECRET
 
 
 @pytest.fixture
@@ -41,14 +41,14 @@ def fake_module(monkeypatch, name, **funcs):
 def test_hook_requires_secret(client, event):
     r = client.post("/api/v1/pbx/hooks/feature-code/", {"event": "demo"})
     assert r.status_code == 401
-    r = client.post("/api/v1/pbx/hooks/feature-code/", {"event": "demo"}, HTTP_X_PET_PBX_SECRET="wrong")
+    r = client.post("/api/v1/pbx/hooks/feature-code/", {"event": "demo"}, HTTP_X_DIAL_PBX_SECRET="wrong")
     assert r.status_code == 401
 
 
 def test_hook_falls_back_to_ari_password(client, event, settings):
-    del settings.PET_PBX_HOOK_SECRET
+    del settings.DIAL_PBX_HOOK_SECRET
     r = client.post("/api/v1/pbx/hooks/extension-idle/", {"event": "demo", "number": "4242"},
-                    HTTP_X_PET_PBX_SECRET=settings.ASTERISK["ARI_PASSWORD"])
+                    HTTP_X_DIAL_PBX_SECRET=settings.ASTERISK["ARI_PASSWORD"])
     assert r.status_code == 200
 
 
@@ -147,7 +147,7 @@ def test_route_endpoint_extension(client, event, user):
     r = client.get("/api/v1/pbx/route/?event=demo&number=4242", **HDR)
     assert r.status_code == 200
     d = r.json()
-    assert d["type"] == "sip" and d["context"] == "pet-demo"
+    assert d["type"] == "sip" and d["context"] == "dial-demo"
     assert d["targets"] == ["PJSIP/demo-aaaa", "PJSIP/demo-bbbb"]
     assert d["dial_string"] == "PJSIP/demo-aaaa&PJSIP/demo-bbbb"
     assert d["strategy"] == "parallel" and d["timeout"] == 20 and d["priority"] == 3
@@ -164,8 +164,8 @@ def test_route_group_uses_callgroups_service(client, event, user, monkeypatch):
                 dial_targets=lambda ext: {"targets": ["4242", "4243"], "strategy": "serial"})
     d = client.get("/api/v1/pbx/route/?event=demo&number=4400", **HDR).json()
     assert d["type"] == "group" and d["strategy"] == "serial"
-    assert d["targets"] == ["PJSIP/demo-aaaa", "Local/4243@pet-demo"]
-    assert d["dial_string"] == "PJSIP/demo-aaaa&Local/4243@pet-demo"
+    assert d["targets"] == ["PJSIP/demo-aaaa", "Local/4243@dial-demo"]
+    assert d["dial_string"] == "PJSIP/demo-aaaa&Local/4243@dial-demo"
     assert grp.number == "4400"
 
 
@@ -173,19 +173,19 @@ def test_route_group_without_service_uses_config(client, event, user, monkeypatc
     monkeypatch.setitem(sys.modules, "apps.callgroups.services", None)
     make_extension(event, "4400", etype=ExtensionType.GROUP, owner=user, config={"members": ["4242"]})
     d = client.get("/api/v1/pbx/route/?event=demo&number=4400", **HDR).json()
-    assert d["targets"] == ["Local/4242@pet-demo"]
+    assert d["targets"] == ["Local/4242@dial-demo"]
 
 
 def test_route_ivr_and_announcement(client, event, user, monkeypatch):
     monkeypatch.setitem(sys.modules, "apps.ivr.services", None)
     make_extension(event, "4800", etype=ExtensionType.IVR, owner=user,
-                   config={"audio": "pet/menu", "options": {"1": "4242", "2": "4243"}, "timeout": 7})
-    make_extension(event, "4801", etype=ExtensionType.ANNOUNCEMENT, owner=user, config={"audio": "pet/hello"})
+                   config={"audio": "dial/menu", "options": {"1": "4242", "2": "4243"}, "timeout": 7})
+    make_extension(event, "4801", etype=ExtensionType.ANNOUNCEMENT, owner=user, config={"audio": "dial/hello"})
     d = client.get("/api/v1/pbx/route/?event=demo&number=4800", **HDR).json()
-    assert d["type"] == "ivr" and d["ivr_greeting"] == "pet/menu" and d["ivr_timeout"] == 7
+    assert d["type"] == "ivr" and d["ivr_greeting"] == "dial/menu" and d["ivr_timeout"] == 7
     assert d["ivr_options"] == {"1": "4242", "2": "4243"}
     d = client.get("/api/v1/pbx/route/?event=demo&number=4801", **HDR).json()
-    assert d["type"] == "announcement" and d["ivr_greeting"] == "pet/hello" and d["ivr_options"] == {}
+    assert d["type"] == "announcement" and d["ivr_greeting"] == "dial/hello" and d["ivr_options"] == {}
 
 
 def test_route_unknown_number_asks_emergency_and_federation(client, event, monkeypatch):
@@ -203,7 +203,7 @@ def test_route_unknown_number_asks_emergency_and_federation(client, event, monke
 def test_route_conference(client, event, user):
     make_extension(event, "4500", etype=ExtensionType.CONFERENCE, owner=user, config={"pin": "42"})
     d = client.get("/api/v1/pbx/route/?event=demo&number=4500", **HDR).json()
-    assert d["conference"] == {"name": "pet-demo-4500", "pin": "42"}
+    assert d["conference"] == {"name": "dial-demo-4500", "pin": "42"}
 
 
 # --------------------------------------------------------------------------- dialplan export
@@ -213,14 +213,14 @@ def test_dialplan_export(client, event, user):
     assert client.get("/api/v1/pbx/dialplan/?shell=1").status_code == 401
     r = client.get("/api/v1/pbx/dialplan/?shell=1", **HDR)
     assert r.status_code == 200 and r["Content-Type"].startswith("text/plain")
-    assert r.content.decode() == "[pet-demo]\ninclude => pet-internal\nswitch => Realtime/@\n"
+    assert r.content.decode() == "[dial-demo]\ninclude => dial-internal\nswitch => Realtime/@\n"
     r = client.get("/api/v1/pbx/dialplan/?event=demo", **HDR)
-    assert "exten => 4242,1,Set(__PET_EVENT=demo)" in r.content.decode()
+    assert "exten => 4242,1,Set(__DIAL_EVENT=demo)" in r.content.decode()
 
 
 # --------------------------------------------------------------------------- orga tools
 
-@override_settings(PET_PBX_BACKEND="apps.pbx.backends.asterisk.AsteriskPBX")
+@override_settings(DIAL_PBX_BACKEND="apps.pbx.backends.asterisk.AsteriskPBX")
 def test_resync_requires_orga(client, event, user, orga):
     reset_pbx_cache()
     try:
@@ -233,7 +233,7 @@ def test_resync_requires_orga(client, event, user, orga):
         r = client.post("/api/v1/pbx/resync/?event=demo")
         assert r.status_code == 200
         assert r.json() == {"event": "demo", "synced": 1, "backend": "asterisk"}
-        assert DialplanEntry.objects.filter(context="pet-demo", exten="4242").exists()
+        assert DialplanEntry.objects.filter(context="dial-demo", exten="4242").exists()
         assert client.post("/api/v1/pbx/resync/?event=nope").status_code == 404
     finally:
         reset_pbx_cache()

@@ -54,7 +54,7 @@
     <ol class="small">
       <li>{% blocktrans with from=range.0 to=range.1 %}Every call to a number from <strong>{{ from }}</strong> to <strong>{{ to }}</strong> is sent to your PBX; the dialled number arrives unchanged as the request URI user.{% endblocktrans %}</li>
       {% if trunk_device %}<li>{% blocktrans with user=trunk_device.sip_username domain=trunk_device.sip_domain %}Your PBX must register as <code>{{ user }}@{{ domain }}</code> (password on the device page).{% endblocktrans %}</li>
-      {% else %}<li>{% trans "Create the SIP account above; PET generates the username and password your PBX registers with." %}</li>{% endif %}
+      {% else %}<li>{% trans "Create the SIP account above; DIAL generates the username and password your PBX registers with." %}</li>{% endif %}
       <li>{% blocktrans with from=range.0 to=range.1 base=ext.number %}Outgoing calls from your PBX are presented with the caller ID {{ base }}. Passing through individual caller IDs from {{ from }}–{{ to }} is not enabled yet.{% endblocktrans %}</li>
     </ol>
     {% endwith %}
@@ -67,7 +67,7 @@
       <p class="claim-dial"><span class="number big-number">{{ claim_dial }}</span></p>
       <ol class="small">
         <li>{% trans "Subscribe any handset to the event's DECT network (ask the DECT desk for the PIN if your handset is not in the pool yet)." %}</li>
-        <li>{% blocktrans with n=claim_dial %}Dial <strong>{{ n }}</strong> from that handset. PET announces your number - the handset is now yours.{% endblocktrans %}</li>
+        <li>{% blocktrans with n=claim_dial %}Dial <strong>{{ n }}</strong> from that handset. DIAL announces your number - the handset is now yours.{% endblocktrans %}</li>
         <li>{% trans "Dialing the code from another handset moves the number to that handset." %}</li>
       </ol>
       <p class="small muted">{% trans "Anyone who knows this code can take over your number with their handset. Keep it private; get a new one if in doubt." %}
@@ -89,7 +89,7 @@
     {% if ext.is_endpoint and ext.type != 'dect' %}
     <h3>{% trans "How to connect a softphone" %}</h3>
     <ol class="small">
-      <li>{% trans "Add a SIP device above - PET generates a username and password." %}</li>
+      <li>{% trans "Add a SIP device above - DIAL generates a username and password." %}</li>
       <li>{% trans "Open the device page and scan the QR code with your softphone (Linphone, Zoiper, Grandstream Wave…) or copy the credentials." %}</li>
       <li>{% blocktrans with uri=ext.sip_uri %}Your public address is <code>{{ uri }}</code>.{% endblocktrans %}</li>
     </ol>
@@ -141,7 +141,7 @@
   </section>
 </div>
 
-{% if ext.state == 'active' and PET_FEATURES.phonebook %}
+{% if ext.state == 'active' and DIAL_FEATURES.phonebook %}
 <section class="card business-card">
   <div class="card-header"><h2>{% trans "Business card" %}</h2>
     <div class="actions">

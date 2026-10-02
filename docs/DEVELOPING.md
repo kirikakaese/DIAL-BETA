@@ -1,13 +1,13 @@
-# Developing PET
+# Developing DIAL
 
 This document describes the project layout, conventions and integration
-contracts between the PET apps. Read it before adding code.
+contracts between the DIAL apps. Read it before adding code.
 
 ## Toolchain
 
 ```sh
-.venv/bin/python manage.py <cmd>              # Django (settings: pet.settings.dev)
-.venv/bin/python -m pytest apps/<app> -p no:cacheprovider   # tests (settings: pet.settings.test, sqlite in-memory)
+.venv/bin/python manage.py <cmd>              # Django (settings: dial.settings.dev)
+.venv/bin/python -m pytest apps/<app> -p no:cacheprovider   # tests (settings: dial.settings.test, sqlite in-memory)
 .venv/bin/python manage.py makemigrations <app>
 .venv/bin/ruff check apps
 ```
@@ -17,7 +17,7 @@ Python 3.12+, Django 5.2, DRF, Celery (eager in dev/test), PostgreSQL in prod, s
 ## Layout
 
 ```
-pet/                 settings (base/dev/prod/test), urls, celery
+dial/                 settings (base/dev/prod/test), urls, celery
 apps/core            TimeStampedModel, AuditLog + audit.log(), feature flags, middleware
 apps/accounts        User (email login, `username` = public nickname, `oidc_subject`), ServiceAccount (API tokens), oidc.py / oidc_views.py (OpenID Connect login, PKCE, no extra deps)
 apps/events          Event (multi-tenant root, lifecycle schedule), UserGroup, EventMembership (roles), Webhook + webhooks.emit()
@@ -33,15 +33,15 @@ apps/callgroups, voicemail, stats        Section-3 features (fully implemented)
 apps/messaging, ivr, conferences, federation, breakout, emergency   Section-3 features (behind flags)
 apps/api             REST root (auto-discovery), auth, permissions, core API, CLI
 apps/portal          server-rendered self-service + orga UI
-deploy/venue-agent   pet_venue_agent.py (stdlib + psycopg, runs at the venue - not a Django app), Dockerfile, systemd unit, test_agent.py
-templates/base.html  shared layout; static/css/pet.css, static/js/pet.js
+deploy/venue-agent   dial_venue_agent.py (stdlib + psycopg, runs at the venue - not a Django app), Dockerfile, systemd unit, test_agent.py
+templates/base.html  shared layout; static/css/dial.css, static/js/dial.js
 ```
 
-Management commands worth knowing besides the seeds (`seed_demo`, `pet_provisioning_profiles [--update]`,
-`pet_dect_vendors`, `pet_purge_tokens`): `pet_ldap [--host H --port P --cert pem]` runs the LDAP
-phonebook server (compose service `ldap`), `pet_oidc_check` validates the `PET_OIDC_*` settings against
+Management commands worth knowing besides the seeds (`seed_demo`, `dial_provisioning_profiles [--update]`,
+`dial_dect_vendors`, `dial_purge_tokens`): `dial_ldap [--host H --port P --cert pem]` runs the LDAP
+phonebook server (compose service `ldap`), `dial_oidc_check` validates the `DIAL_OIDC_*` settings against
 the provider's discovery document, `pbx_venue_schema [--out file]` prints the PostgreSQL DDL a venue
-agent needs (`apps.pbx.snapshot.venue_schema_sql()`), `pet_a11y [--url U] [--all]` runs the accessibility
+agent needs (`apps.pbx.snapshot.venue_schema_sql()`), `dial_a11y [--url U] [--all]` runs the accessibility
 linter against the seeded demo pages (see *Accessibility conventions* below).
 
 ## Key model facts
@@ -103,7 +103,7 @@ linter against the seeded demo pages (see *Accessibility conventions* below).
 - Audit: `from apps.core.audit import log; log(action="approve", actor=user, target=obj, event=ev, message="...", changes={...}, request=request)`.
 - Feature flags: `apps.core.features.enabled("voicemail", event)` / `@require("voicemail")` decorator. Flags:
   phonebook, callgroups, voicemail, stats, messaging, ivr, conferences, federation, breakout, emergency,
-  guest_extensions, waitlist, webhooks. Template context has `PET_FEATURES` dict.
+  guest_extensions, waitlist, webhooks. Template context has `DIAL_FEATURES` dict.
 - Webhooks: `from apps.events.webhooks import emit; emit("extension.approved", payload_dict, event=ev)`.
 - Feature codes dialled from handsets: the `feature-code` hook walks `FEATURE_CODE_MODULES` in
   `apps/pbx/api.py` (`apps.callback.services`, `apps.callgroups.services`, `apps.extensions.feature_codes`)
@@ -113,8 +113,8 @@ linter against the seeded demo pages (see *Accessibility conventions* below).
   **Always pass the event** when you have one - it selects the event's venue PBX/OMM (`PBXConnection` /
   `DECTConnection`); `get_pbx()` without an event is the server default and only right for
   event-less code paths.
-- Settings: `settings.ASTERISK` dict, `settings.OMM` dict, `settings.ALERTING` dict, `settings.PET_*`.
-  Add new settings only via `getattr(settings, "PET_X", default)`; do not edit `pet/settings/*`.
+- Settings: `settings.ASTERISK` dict, `settings.OMM` dict, `settings.ALERTING` dict, `settings.DIAL_*`.
+  Add new settings only via `getattr(settings, "DIAL_X", default)`; do not edit `dial/settings/*`.
 
 ## Adding UI (portal) to an app
 
@@ -146,7 +146,7 @@ The base nav links to `phonebook:index`, `callgroups:index`, `callback:index`, `
 ### Language
 
 The web UI, e-mails, CLI and API are **English only** - there are no translation catalogs, no `locale/`
-directory, no language switcher and no per-user language. Write UI text in plain English using PET's
+directory, no language switcher and no per-user language. Write UI text in plain English using DIAL's
 vocabulary (extension, handset, claim, call group, orga, helpdesk); do not add `makemessages` /
 `compilemessages` steps. The existing `{% trans %}` / `gettext_lazy` markup in templates and models is
 harmless Django convention and may stay or be omitted in new code - it is not maintained as a translation
@@ -154,7 +154,7 @@ surface.
 
 The only language setting that exists is the **PBX announcement language** (Asterisk sound pack) - event
 default `Event.default_language` plus the per-extension override `Extension.language`, both limited to
-`settings.PET_PBX_LANGUAGES` (`en`, `de`). It ends up in `Set(CHANNEL(language)=…)` and
+`settings.DIAL_PBX_LANGUAGES` (`en`, `de`). It ends up in `Set(CHANNEL(language)=…)` and
 `ps_endpoints.language`, never in the web UI.
 
 ### Accessibility conventions (checked by tests)
@@ -166,11 +166,11 @@ small `html.parser`-based linter (rules: `img-alt`, `input-label`, `button-name`
 `duplicate-id`, `positive-tabindex`, `iframe-title`, `role-on-div-needs-tabindex`, `details-summary`;
 the module docstring explains each). There is no allow-list: fix the template. To get a new page checked,
 add its URL to the lists in `scripts/smoke.py` (they are shared via `a11y.smoke_page_lists()`). During
-development `manage.py pet_a11y --url /e/demo/orga/` (or `--all`) prints findings for the seeded demo DB.
+development `manage.py dial_a11y --url /e/demo/orga/` (or `--all`) prints findings for the seeded demo DB.
 
 What that means in practice:
 
-- **No inline handlers.** Use the delegated actions in `static/js/pet.js`:
+- **No inline handlers.** Use the delegated actions in `static/js/dial.js`:
   `<button data-action="print">`, `<button data-action="copy" data-target="#id" data-copied="{% trans 'Copied' %}">`,
   `<select data-action="submit">` (submit the enclosing form on change),
   `<select data-action="navigate" data-href="/x/__slug__/">`. JS never contains user-facing strings - pass
@@ -184,9 +184,9 @@ What that means in practice:
 - **Status messages**: Django messages render with `role="status"` (success/info) or `role="alert"`
   (error); live regions you add yourself get `aria-live="polite"`.
 - **Colour is never the only signal**: `.badge-ok/-warn/-err` carry ✓ / ! / ✕ via CSS `::before`; if you
-  add a badge class, extend that rule in `pet.css` (section *badges*).
+  add a badge class, extend that rule in `dial.css` (section *badges*).
 - CSS already handles `prefers-reduced-motion`, `prefers-contrast: more`, 44 px touch targets under
-  `(pointer: coarse)` and horizontal table scrolling (`pet.css` section 11b) - don't override them. When
+  `(pointer: coarse)` and horizontal table scrolling (`dial.css` section 11b) - don't override them. When
   you change a theme colour, keep text/muted/badge contrast ≥ 4.5:1 in both themes (a 10-line WCAG
   luminance script against the `:root` / `[data-theme="light"]` variables is enough to check).
 
@@ -206,10 +206,10 @@ Create `apps/<app>/api.py` with `def register(router)` (DRF viewsets) and/or `ur
 It is auto-mounted under `/api/v1/`. Use permissions from `apps.api.permissions` (`HasScope`, `IsEventOrga`,
 `IsOwnerOrOrga`) and declare `required_scopes = {"get": ["<app>:read"], "default": ["<app>:write"]}`.
 
-## PBX ↔ PET contracts
+## PBX ↔ DIAL contracts
 
-The PBX (Asterisk) talks back to PET through authenticated hook endpoints exposed by `apps/pbx/api.py`
-(`POST /api/v1/pbx/hooks/<kind>/`, header `X-PET-PBX-Secret`). The PBX package dispatches into:
+The PBX (Asterisk) talks back to DIAL through authenticated hook endpoints exposed by `apps/pbx/api.py`
+(`POST /api/v1/pbx/hooks/<kind>/`, header `X-DIAL-PBX-Secret`). The PBX package dispatches into:
 
 | Hook kind        | Called into                                                                   |
 |------------------|--------------------------------------------------------------------------------|
@@ -219,10 +219,10 @@ The PBX (Asterisk) talks back to PET through authenticated hook endpoints expose
 | `voicemail`      | `apps.voicemail.services.store_message(event, mailbox_number, caller, file_path, duration)` |
 | `site-survey`    | `apps.dect.services.log_site_survey(event, caller_number)` → returns RFP name to announce |
 | `dect-claim`     | `apps.dect.claim.claim_handset(event, caller, code, callerid)` → `{handled, number}` |
-| `announcement-record-start` | `apps.ivr.services.begin_phone_recording(event, caller, code, callerid)` → `{handled, number, name, file}` (`file` = absolute path without extension inside `PET_RECORDING_DIR`, `name` = its basename) |
+| `announcement-record-start` | `apps.ivr.services.begin_phone_recording(event, caller, code, callerid)` → `{handled, number, name, file}` (`file` = absolute path without extension inside `DIAL_RECORDING_DIR`, `name` = its basename) |
 | `announcement-recorded` | `apps.ivr.services.finish_phone_recording(event, code, file, duration)` → `{handled, number}`; imports `<file>.wav` into `MEDIA_ROOT/ivr/<slug>/<number>/` when readable, emits `announcement.recorded` |
 
-The PBX asks PET for routing information via `GET /api/v1/pbx/route/?event=<slug>&number=<n>` which uses:
+The PBX asks DIAL for routing information via `GET /api/v1/pbx/route/?event=<slug>&number=<n>` which uses:
 
 - `apps.callgroups.services.dial_targets(extension) -> list[str]` (numbers of logged-in members + strategy)
 - `apps.ivr.services.dialplan_for(extension) -> dict`
@@ -232,14 +232,14 @@ The PBX asks PET for routing information via `GET /api/v1/pbx/route/?event=<slug
 
 Each of these must exist and degrade gracefully (return empty/None) when the feature flag is off.
 
-**Venue agent contract** (`apps/pbx/api.py`, auth: hook secret `X-PET-PBX-Secret`, service token with
+**Venue agent contract** (`apps/pbx/api.py`, auth: hook secret `X-DIAL-PBX-Secret`, service token with
 scope `pbx:sync`, or orga session):
 
 | Endpoint | Purpose |
 |---|---|
 | `GET /api/v1/pbx/snapshot/?event=` | `{event, version, generated_at, poll_interval, tables: {name: {key, rows}}}`; honours `If-None-Match` and answers `304` with the same `ETag` while the version is unchanged |
 | `GET /api/v1/pbx/snapshot/schema/?event=` | `{dialect: "postgresql", sql, tables}` - `CREATE TABLE IF NOT EXISTS` DDL from `SCHEMA_MODELS` |
-| `POST /api/v1/pbx/agent/heartbeat/` | body `{event, version, hostname, agent_version, asterisk_ok, message, contacts?}`; answers `{ok, current_version, poll_interval, behind, connection}`; `contacts` replace PET's `ps_contacts` for the event's endpoints |
+| `POST /api/v1/pbx/agent/heartbeat/` | body `{event, version, hostname, agent_version, asterisk_ok, message, contacts?}`; answers `{ok, current_version, poll_interval, behind, connection}`; `contacts` replace DIAL's `ps_contacts` for the event's endpoints |
 
 Adding a table to the snapshot means adding it to `SNAPSHOT_TABLES` (model + key column) and, if it must
 exist at the venue, to `SCHEMA_MODELS`; the agent maps unknown columns away with a warning, so old agents
@@ -262,7 +262,7 @@ Three test suites have extra needs:
   `apps/phonebook/ldap/protocol.py` (one test additionally shells out to `ldapsearch` when installed) -
   the sandbox or CI runner must allow listening on loopback.
 - **OIDC tests** (`apps/accounts/tests/test_oidc.py`) enable SSO via `override_settings` and mock
-  `requests`; `pet.settings.test` keeps `PET_OIDC_ENABLED=False` so other tests see the password login.
+  `requests`; `dial.settings.test` keeps `DIAL_OIDC_ENABLED=False` so other tests see the password login.
 - **Venue agent tests** live outside `apps/` and are not collected by the default configuration; run them
   explicitly from the repository root:
 
@@ -277,7 +277,7 @@ They mock the database, HTTP and AMI, so no PostgreSQL or Asterisk is needed.
 
 `apps/portal/docs.py` renders the Markdown files listed in its `DOCS` registry (title = first `#` heading,
 cached per file mtime). Python-Markdown with `tables`, `fenced_code`, `codehilite` (Pygments, theme-aware
-CSS in `pet.css` §10b), `toc` (h2–h3, `#` permalinks) plus two small tree processors: `*.md` links become
+CSS in `dial.css` §10b), `toc` (h2–h3, `#` permalinks) plus two small tree processors: `*.md` links become
 portal links, `- [ ]` becomes a checkbox. ```` ```mermaid ```` blocks pass through as `<pre class="mermaid">`
 and are drawn client-side only if the CDN loads. To add a guide: drop the file in `docs/` and append a
 `Doc(...)` entry (slug, path, label, audience, summary, icon).
@@ -287,7 +287,7 @@ and are drawn client-side only if the CDN loads. To add a guide: drop the file i
 - [`../README.md`](../README.md) - quickstart, feature matrix, repository layout
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) - data model, component/sequence diagrams, design decisions
 - [`EVENT_GUIDE.md`](EVENT_GUIDE.md) - creating, staffing and running an event
-- [`OPERATOR_HANDBOOK.md`](OPERATOR_HANDBOOK.md) - running PET at an event, troubleshooting
+- [`OPERATOR_HANDBOOK.md`](OPERATOR_HANDBOOK.md) - running DIAL at an event, troubleshooting
 - [`USER_GUIDE.md`](USER_GUIDE.md) - attendee documentation
 - [`API.md`](API.md) and [`api/openapi.yaml`](api/openapi.yaml) - REST API, webhooks, CLI
 - [`../deploy/asterisk/README.md`](../deploy/asterisk/README.md) - reference PBX container

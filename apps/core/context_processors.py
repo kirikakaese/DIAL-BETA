@@ -1,7 +1,7 @@
 from django.conf import settings
 
 # Files whose newest mtime forms ASSET_VERSION (also the service-worker cache name, see apps.core.views).
-VERSIONED_ASSETS = ("css/pet.css", "js/pet.js", "css/pwa.css", "js/pwa.js", "js/sw.js")
+VERSIONED_ASSETS = ("css/dial.css", "js/dial.js", "css/pwa.css", "js/pwa.js", "js/sw.js")
 
 
 def _asset_version() -> str:
@@ -26,7 +26,7 @@ def _event_scoped(request, event) -> bool:
     return match.kwargs.get("slug") == event.slug
 
 
-def pet(request):
+def dial(request):
     """Template context: feature flags, current event, event list for switcher, sidebar data."""
     events = []
     user = getattr(request, "user", None)
@@ -43,16 +43,16 @@ def pet(request):
 
         nav_pending = Extension.objects.filter(event=event, state=Extension.State.REQUESTED).count()
     return {
-        "PET_FEATURES": settings.PET_FEATURES,
-        "PET_PUBLIC_URL": settings.PET_PUBLIC_URL,
+        "DIAL_FEATURES": settings.DIAL_FEATURES,
+        "DIAL_PUBLIC_URL": settings.DIAL_PUBLIC_URL,
         "current_event": event,
         "switcher_events": events,
         "show_sidebar": show_sidebar,
         "nav_pending": nav_pending,
         "ASSET_VERSION": ASSET_VERSION,
         "signup_offered": _signup_offered(),
-        "PET_PWA_ENABLED": settings.PET_PWA_ENABLED,
-        "PET_PWA_THEME_COLOR": settings.PET_PWA_THEME_COLOR,
+        "DIAL_PWA_ENABLED": settings.DIAL_PWA_ENABLED,
+        "DIAL_PWA_THEME_COLOR": settings.DIAL_PWA_THEME_COLOR,
     }
 
 

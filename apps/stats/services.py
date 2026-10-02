@@ -27,7 +27,7 @@ from apps.pbx.models import Cdr
 
 from .models import CallRecord, ExtensionStat, HourlyStat
 
-log = logging.getLogger("pet.stats")
+log = logging.getLogger("dial.stats")
 
 ANSWERED = "ANSWERED"
 PRIVATE_LABEL = "private"
@@ -107,13 +107,13 @@ def _answered_number(event, dstchannel: str) -> str | None:
 
 
 def _synthetic_uniqueid(event, src, dst, started_at) -> str:
-    return "pet-" + hashlib.sha1(f"{event.pk}:{src}:{dst}:{started_at.isoformat()}".encode()).hexdigest()[:32]
+    return "dial-" + hashlib.sha1(f"{event.pk}:{src}:{dst}:{started_at.isoformat()}".encode()).hexdigest()[:32]
 
 
 def retention_days(event) -> int:
     days = event.cdr_retention_days
     if days is None:
-        days = getattr(settings, "PET_CDR_RETENTION_DAYS", 30)
+        days = getattr(settings, "DIAL_CDR_RETENTION_DAYS", 30)
     return int(days or 0)
 
 
@@ -442,7 +442,7 @@ def my_calls(user, event=None, limit: int = 200):
 
 
 def gdpr_export(user) -> dict:
-    """Everything statistics-related PET stores about ``user``: their extensions and call records."""
+    """Everything statistics-related DIAL stores about ``user``: their extensions and call records."""
     exts = Extension.objects.filter(owner=user).select_related("event").order_by("event__start_date", "number")
     return {
         "user": {"username": user.username, "email": user.email},

@@ -4,7 +4,7 @@ from django.utils.translation import gettext_lazy as _
 
 from apps.core.models import TimeStampedModel
 
-# option actions understood by the Asterisk ``pet-ivr`` context
+# option actions understood by the Asterisk ``dial-ivr`` context
 IVR_ACTIONS = ("dial", "announcement", "menu", "voicemail", "hangup")
 
 

@@ -7,7 +7,7 @@ PBX contract (see ``docs/DEVELOPING.md`` and ``deploy/asterisk/conf/extensions.c
     one of the service codes ``ringback`` / ``wakeup``. Additionally the dialplan may report call
     results through the same hook with ``code`` in ``callback-answered``, ``callback-failed``,
     ``wakeup-answered``, ``wakeup-failed``, ``ringback-answered``, ``ringback-failed`` and
-    ``target`` = the ``PET_*_ID`` channel variable set at originate time.
+    ``target`` = the ``DIAL_*_ID`` channel variable set at originate time.
 
 ``on_extension_idle(event, number) -> int``
     Called by the ``extension-idle`` hook from the hangup handler for *both* parties of a call.
@@ -15,9 +15,9 @@ PBX contract (see ``docs/DEVELOPING.md`` and ``deploy/asterisk/conf/extensions.c
     free; for CCNR Asterisk signals idle after the target's next call ends (i.e. the target has been
     active again), which is exactly when a "no reply" callback should be attempted.
 
-Originates carry ``PET_SERVICE`` (dialplan exten in ``pet-services``: ``callback``, ``ringback``,
-``wakeup-call``) plus ``PET_CALLBACK_ID``/``PET_CALLBACK_TARGET``, ``PET_RINGBACK_ID`` or
-``PET_WAKEUP_ID``/``PET_ANNOUNCEMENT``.
+Originates carry ``DIAL_SERVICE`` (dialplan exten in ``dial-services``: ``callback``, ``ringback``,
+``wakeup-call``) plus ``DIAL_CALLBACK_ID``/``DIAL_CALLBACK_TARGET``, ``DIAL_RINGBACK_ID`` or
+``DIAL_WAKEUP_ID``/``DIAL_ANNOUNCEMENT``.
 """
 from __future__ import annotations
 
@@ -38,7 +38,7 @@ from apps.pbx.base import PBXError
 
 from .models import CallbackRequest, ScheduledCall, TestRingback
 
-log = logging.getLogger("pet.callback")
+log = logging.getLogger("dial.callback")
 
 CALLBACK_RETRY_MINUTES = 1
 RESULT_CODES = {
@@ -116,7 +116,7 @@ def request_callback(event, requester_number: str, target_number: str, kind: str
                                       state__in=CallbackRequest.OPEN_STATES).exists():
         raise CallbackError(_("A callback to this extension is already pending."))
 
-    ttl = ttl_minutes or getattr(settings, "PET_CALLBACK_DEFAULT_TTL_MINUTES", 30)
+    ttl = ttl_minutes or getattr(settings, "DIAL_CALLBACK_DEFAULT_TTL_MINUTES", 30)
     req = CallbackRequest.objects.create(
         event=event, kind=kind, requester=requester, target=target,
         requester_number=requester.number, target_number=target.number,
@@ -170,9 +170,9 @@ def deliver_callback(req: CallbackRequest, *, now=None) -> bool:
     try:
         cid = get_pbx(req.event).originate(
             event=req.event, destination=req.requester_number, caller_id=f"Callback {req.target_number}",
-            context="pet-services",
-            variables={"PET_SERVICE": "callback", "PET_CALLBACK_TARGET": req.target_number,
-                       "PET_CALLBACK_ID": str(req.pk), "PET_CALLBACK_KIND": req.kind},
+            context="dial-services",
+            variables={"DIAL_SERVICE": "callback", "DIAL_CALLBACK_TARGET": req.target_number,
+                       "DIAL_CALLBACK_ID": str(req.pk), "DIAL_CALLBACK_KIND": req.kind},
         )
     except PBXError as exc:
         log.warning("callback %s originate failed (attempt %s): %s", req.pk, req.attempts, exc)
@@ -232,7 +232,7 @@ def request_test_ringback(event, caller_number: str, delay: int | None = None, *
     if user is not None and ext is not None and not _owns(user, ext):
         raise CallbackError(_("You may only request a ringback to your own extensions."))
     if delay is None:
-        delay = getattr(settings, "PET_TEST_RINGBACK_DELAY_SECONDS", 10)
+        delay = getattr(settings, "DIAL_TEST_RINGBACK_DELAY_SECONDS", 10)
     delay = max(0, min(int(delay), 600))
     rb = TestRingback.objects.create(event=event, extension=ext, caller_number=caller_number, delay_seconds=delay,
                                      next_attempt_at=timezone.now() + dt.timedelta(seconds=delay))
@@ -251,8 +251,8 @@ def fire_test_ringback(rb: TestRingback) -> bool:
     rb.save(update_fields=["state"])
     try:
         cid = get_pbx(rb.event).originate(
-            event=rb.event, destination=rb.caller_number, caller_id="Ringback test", context="pet-services",
-            variables={"PET_SERVICE": "ringback", "PET_RINGBACK_ID": str(rb.pk)},
+            event=rb.event, destination=rb.caller_number, caller_id="Ringback test", context="dial-services",
+            variables={"DIAL_SERVICE": "ringback", "DIAL_RINGBACK_ID": str(rb.pk)},
         )
     except PBXError as exc:
         log.warning("ringback %s originate failed: %s", rb.pk, exc)
@@ -403,9 +403,9 @@ def fire_scheduled_call(call: ScheduledCall, *, now=None) -> bool:
     call.save(update_fields=["state", "attempts", "updated_at"])
     try:
         cid = get_pbx(call.event).originate(
-            event=call.event, destination=call.extension.number, caller_id="Wake-up call", context="pet-services",
-            variables={"PET_SERVICE": "wakeup-call", "PET_WAKEUP_ID": str(call.pk),
-                       "PET_ANNOUNCEMENT": call.announcement_value},
+            event=call.event, destination=call.extension.number, caller_id="Wake-up call", context="dial-services",
+            variables={"DIAL_SERVICE": "wakeup-call", "DIAL_WAKEUP_ID": str(call.pk),
+                       "DIAL_ANNOUNCEMENT": call.announcement_value},
             timeout=45,
         )
     except PBXError as exc:
@@ -451,8 +451,8 @@ def dispatch_due(now=None) -> dict:
 def report_result(event, kind: str, pk, result: str, *, now=None) -> bool:
     """Record the outcome of an originated call.
 
-    ``kind`` is ``callback`` / ``wakeup`` / ``ringback`` (the ``PET_SERVICE`` used at originate),
-    ``pk`` the id from the ``PET_*_ID`` channel variable, ``result`` ``answered`` or ``failed``.
+    ``kind`` is ``callback`` / ``wakeup`` / ``ringback`` (the ``DIAL_SERVICE`` used at originate),
+    ``pk`` the id from the ``DIAL_*_ID`` channel variable, ``result`` ``answered`` or ``failed``.
     Reachable via the ``feature-code`` hook (``code=<kind>-<result>&target=<pk>``) or
     ``POST /api/v1/callback/result/`` with the PBX secret.
     """

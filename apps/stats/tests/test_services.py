@@ -79,7 +79,7 @@ def test_enforce_retention(event, ext_alice, ext_bob, settings):
     old = timezone.now() - dt.timedelta(days=40)
     services.ingest_cdr(event, cdr(uniqueid="old", start=old.isoformat()))
     services.ingest_cdr(event, cdr(uniqueid="new"))
-    settings.PET_CDR_RETENTION_DAYS = 30
+    settings.DIAL_CDR_RETENTION_DAYS = 30
     assert services.enforce_retention(event) == 1
     assert CallRecord.objects.get().uniqueid == "new"
     event.cdr_retention_days = 0  # keep forever

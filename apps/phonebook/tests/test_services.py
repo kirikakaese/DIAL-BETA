@@ -49,9 +49,9 @@ def test_vcf(event, ext_alice, ext_bob):
 
 def test_ldif(event, ext_alice, ext_bob, ext_group):
     body = services.render_ldif(event).decode()
-    assert services.base_dn(event) == "ou=phonebook,dc=demo,dc=pet"
-    assert body.startswith("dn: ou=phonebook,dc=demo,dc=pet\n")
-    assert "dn: telephoneNumber=4242,ou=phonebook,dc=demo,dc=pet" in body
+    assert services.base_dn(event) == "ou=phonebook,dc=demo,dc=dial"
+    assert body.startswith("dn: ou=phonebook,dc=demo,dc=dial\n")
+    assert "dn: telephoneNumber=4242,ou=phonebook,dc=demo,dc=dial" in body
     assert "objectClass: inetOrgPerson" in body and "telephoneNumber: 4300" in body
     assert "cn: Bob Builder" in body and "sn: Builder" in body and "givenName: Bob" in body
     assert "cn: Infodesk" in body

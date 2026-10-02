@@ -1,4 +1,4 @@
-"""Tests for the ``pet`` CLI: argument parsing, table rendering and one HTTP round-trip with
+"""Tests for the ``dial`` CLI: argument parsing, table rendering and one HTTP round-trip with
 ``requests`` mocked."""
 
 from __future__ import annotations
@@ -53,9 +53,9 @@ def test_parser_global_options_and_format():
     args = cli.build_parser().parse_args(
         [
             "--url",
-            "http://pet:8000",
+            "http://dial:8000",
             "--token",
-            "pet_x",
+            "dial_x",
             "--format",
             "csv",
             "phonebook",
@@ -63,19 +63,19 @@ def test_parser_global_options_and_format():
             "demo",
         ]
     )
-    assert args.url == "http://pet:8000"
-    assert args.token == "pet_x"
+    assert args.url == "http://dial:8000"
+    assert args.token == "dial_x"
     assert args.format == "csv"
     assert args.func is cli.cmd_phonebook
 
 
 def test_make_client_uses_environment(monkeypatch):
-    monkeypatch.setenv("PET_URL", "http://env.example/")
-    monkeypatch.setenv("PET_TOKEN", "pet_env")
+    monkeypatch.setenv("DIAL_URL", "http://env.example/")
+    monkeypatch.setenv("DIAL_TOKEN", "dial_env")
     args = cli.build_parser().parse_args(["health"])
     client = cli.make_client(args)
     assert client.base == "http://env.example"
-    assert client.session.headers["Authorization"] == "Bearer pet_env"
+    assert client.session.headers["Authorization"] == "Bearer dial_env"
 
 
 # --------------------------------------------------------------------------- rendering
@@ -146,9 +146,9 @@ def test_extensions_list_requests_and_paginates(capsys):
         rc = cli.main(
             [
                 "--url",
-                "http://pet.test",
+                "http://dial.test",
                 "--token",
-                "pet_abc",
+                "dial_abc",
                 "extensions",
                 "list",
                 "--event",
@@ -161,7 +161,7 @@ def test_extensions_list_requests_and_paginates(capsys):
     assert req.call_count == 2
     method, url = req.call_args_list[0].args
     assert method == "GET"
-    assert url == "http://pet.test/api/v1/extensions/"
+    assert url == "http://dial.test/api/v1/extensions/"
     params = req.call_args_list[0].kwargs["params"]
     assert params["event__slug"] == "demo"
     assert params["state"] == "active"
@@ -174,17 +174,17 @@ def test_extensions_list_requests_and_paginates(capsys):
 def test_extensions_approve_posts_note():
     resp = FakeResponse({"id": "a", "number": "8001", "state": "active"})
     with mock.patch("requests.Session.request", return_value=resp) as req:
-        rc = cli.main(["--url", "http://pet.test", "extensions", "approve", "a", "--note", "ok"])
+        rc = cli.main(["--url", "http://dial.test", "extensions", "approve", "a", "--note", "ok"])
     assert rc == 0
     method, url = req.call_args.args
-    assert (method, url) == ("POST", "http://pet.test/api/v1/extensions/a/approve/")
+    assert (method, url) == ("POST", "http://dial.test/api/v1/extensions/a/approve/")
     assert req.call_args.kwargs["json"] == {"note": "ok"}
 
 
 def test_http_error_is_reported(capsys):
     resp = FakeResponse({"detail": "Only requested extensions can be approved."}, status=400)
     with mock.patch("requests.Session.request", return_value=resp):
-        rc = cli.main(["--url", "http://pet.test", "extensions", "approve", "a"])
+        rc = cli.main(["--url", "http://dial.test", "extensions", "approve", "a"])
     assert rc == 2
     assert "HTTP 400" in capsys.readouterr().err
 
@@ -192,9 +192,9 @@ def test_http_error_is_reported(capsys):
 def test_resync_posts_event_query(capsys):
     resp = FakeResponse({"event": "demo", "synced": 12, "backend": "asterisk"})
     with mock.patch("requests.Session.request", return_value=resp) as req:
-        rc = cli.main(["--url", "http://pet.test", "resync", "--event", "demo"])
+        rc = cli.main(["--url", "http://dial.test", "resync", "--event", "demo"])
     assert rc == 0
-    assert req.call_args.args == ("POST", "http://pet.test/api/v1/pbx/resync/")
+    assert req.call_args.args == ("POST", "http://dial.test/api/v1/pbx/resync/")
     assert req.call_args.kwargs["params"] == {"event": "demo"}
     assert "12 extensions synced to asterisk" in capsys.readouterr().out
 
@@ -202,12 +202,12 @@ def test_resync_posts_event_query(capsys):
 def test_health_passes_event(capsys):
     resp = FakeResponse({"ok": True, "event": "demo", "pbx": {"ok": True}, "dect": {"ok": True}})
     with mock.patch("requests.Session.request", return_value=resp) as req:
-        rc = cli.main(["--url", "http://pet.test", "health", "--event", "demo"])
+        rc = cli.main(["--url", "http://dial.test", "health", "--event", "demo"])
     assert rc == 0
-    assert req.call_args.args == ("GET", "http://pet.test/api/v1/health/")
+    assert req.call_args.args == ("GET", "http://dial.test/api/v1/health/")
     assert req.call_args.kwargs["params"] == {"event": "demo"}
     with mock.patch("requests.Session.request", return_value=resp) as req:
-        cli.main(["--url", "http://pet.test", "health"])
+        cli.main(["--url", "http://dial.test", "health"])
     assert req.call_args.kwargs["params"] == {}
 
 
@@ -216,24 +216,24 @@ def test_pbx_connection_show_set_reset(capsys):
                                        "ari_url": "http://10.1.1.5:8088/ari"}, "dect": None,
              "effective": {"pbx": "asterisk", "dect": "dummy"}}
     with mock.patch("requests.Session.request", return_value=FakeResponse(state)) as req:
-        assert cli.main(["--url", "http://pet.test", "pbx", "connection", "show", "--event", "demo"]) == 0
-    assert req.call_args.args == ("GET", "http://pet.test/api/v1/pbx/connection/")
+        assert cli.main(["--url", "http://dial.test", "pbx", "connection", "show", "--event", "demo"]) == 0
+    assert req.call_args.args == ("GET", "http://dial.test/api/v1/pbx/connection/")
     out = capsys.readouterr().out
     assert "pbx: Asterisk @ http://10.1.1.5:8088/ari" in out and "dect: server default (dummy)" in out
 
     with mock.patch("requests.Session.request", return_value=FakeResponse(state)) as req:
-        rc = cli.main(["--url", "http://pet.test", "pbx", "connection", "set", "--event", "demo",
+        rc = cli.main(["--url", "http://dial.test", "pbx", "connection", "set", "--event", "demo",
                        "--pbx", '{"backend": "asterisk", "ari_url": "http://10.1.1.5:8088/ari"}'])
     assert rc == 0
-    assert req.call_args.args == ("PATCH", "http://pet.test/api/v1/pbx/connection/")
+    assert req.call_args.args == ("PATCH", "http://dial.test/api/v1/pbx/connection/")
     assert req.call_args.kwargs["json"] == {"pbx": {"backend": "asterisk", "ari_url": "http://10.1.1.5:8088/ari"}}
 
-    assert cli.main(["--url", "http://pet.test", "pbx", "connection", "set", "--event", "demo",
+    assert cli.main(["--url", "http://dial.test", "pbx", "connection", "set", "--event", "demo",
                      "--pbx", "not json"]) != 0
 
     with mock.patch("requests.Session.request", return_value=FakeResponse(state)) as req:
-        cli.main(["--url", "http://pet.test", "pbx", "connection", "reset", "--event", "demo", "--part", "dect"])
-    assert req.call_args.args == ("DELETE", "http://pet.test/api/v1/pbx/connection/")
+        cli.main(["--url", "http://dial.test", "pbx", "connection", "reset", "--event", "demo", "--part", "dect"])
+    assert req.call_args.args == ("DELETE", "http://dial.test/api/v1/pbx/connection/")
     assert req.call_args.kwargs["params"] == {"event": "demo", "part": "dect"}
 
 
@@ -251,13 +251,13 @@ def test_parser_pages_list_and_show(capsys):
             "show_on_dashboard": True, "updated_at": "2026-01-01T10:00:00Z", "body": "# Hi\n\nDial *1*."}
     listing = FakeResponse({"count": 1, "next": None, "results": [page]})
     with mock.patch("requests.Session.request", return_value=listing) as req:
-        assert cli.main(["--url", "http://pet.test", "pages", "show", "--event", "demo", "how-to-dect"]) == 0
-    assert req.call_args.args == ("GET", "http://pet.test/api/v1/pages/")
+        assert cli.main(["--url", "http://dial.test", "pages", "show", "--event", "demo", "how-to-dect"]) == 0
+    assert req.call_args.args == ("GET", "http://dial.test/api/v1/pages/")
     assert req.call_args.kwargs["params"]["event"] == "demo"
     out = capsys.readouterr().out
     assert "# DECT how-to" in out and "Dial *1*." in out
     with mock.patch("requests.Session.request", return_value=listing):
-        assert cli.main(["--url", "http://pet.test", "pages", "show", "--event", "demo", "nope"]) == 2
+        assert cli.main(["--url", "http://dial.test", "pages", "show", "--event", "demo", "nope"]) == 2
 
 
 def test_parser_events_schedule_and_patch(capsys):
@@ -273,17 +273,17 @@ def test_parser_events_schedule_and_patch(capsys):
           "goes_live_at": "2030-08-12T08:00:00Z", "archives_at": None,
           "next_scheduled_transition": {"state": "live", "at": "2030-08-12T08:00:00+00:00"}}
     with mock.patch("requests.Session.request", return_value=FakeResponse(ev)) as req:
-        rc = cli.main(["--url", "http://pet.test", "events", "schedule", "demo", "--clear",
+        rc = cli.main(["--url", "http://dial.test", "events", "schedule", "demo", "--clear",
                        "--live", "2030-08-12T10:00:00+02:00"])
     assert rc == 0
-    assert req.call_args.args == ("PATCH", "http://pet.test/api/v1/events/demo/")
+    assert req.call_args.args == ("PATCH", "http://dial.test/api/v1/events/demo/")
     assert req.call_args.kwargs["json"] == {"registration_opens_at": None, "archives_at": None,
                                             "goes_live_at": "2030-08-12T10:00:00+02:00"}
     out = capsys.readouterr().out
     assert "goes_live_at: 2030-08-12T08:00:00Z" in out and "next: live at" in out
     # neither a timestamp nor --clear -> usage error, no request
     with mock.patch("requests.Session.request") as req:
-        assert cli.main(["--url", "http://pet.test", "events", "schedule", "demo"]) == 2
+        assert cli.main(["--url", "http://dial.test", "events", "schedule", "demo"]) == 2
     assert req.call_count == 0
 
 
@@ -307,10 +307,10 @@ def test_parser_extensions_import_and_round_trip(tmp_path, capsys):
     dry = FakeResponse({"plan": plan, "applied": 0, "dry_run": True, "unknown_columns": [],
                         "errors": [{"line": 3, "number": "9100", "action": "error", "message": "blocked"}]})
     with mock.patch("requests.Session.request", return_value=dry) as req:
-        rc = cli.main(["--url", "http://pet.test", "extensions", "import", "--event", "demo",
+        rc = cli.main(["--url", "http://dial.test", "extensions", "import", "--event", "demo",
                        "--file", str(csv_file), "--dry-run", "--create-users"])
     assert rc == 1  # one row failed
-    assert req.call_args.args == ("POST", "http://pet.test/api/v1/extensions/import/")
+    assert req.call_args.args == ("POST", "http://dial.test/api/v1/extensions/import/")
     assert req.call_args.kwargs["params"] == {"event": "demo"}
     body = req.call_args.kwargs["json"]
     assert body["dry_run"] is True and body["create_users"] is True
@@ -322,7 +322,7 @@ def test_parser_extensions_import_and_round_trip(tmp_path, capsys):
     applied = FakeResponse({"plan": [dict(plan[0], action="created")], "applied": 1, "users_created": 0,
                             "skipped": 0, "dry_run": False, "unknown_columns": ["foo"], "errors": []})
     with mock.patch("requests.Session.request", return_value=applied) as req:
-        rc = cli.main(["--url", "http://pet.test", "extensions", "import", "--event", "demo",
+        rc = cli.main(["--url", "http://dial.test", "extensions", "import", "--event", "demo",
                        "--file", str(csv_file)])
     assert rc == 0 and req.call_args.kwargs["json"]["dry_run"] is False
     out = capsys.readouterr().out
@@ -330,6 +330,6 @@ def test_parser_extensions_import_and_round_trip(tmp_path, capsys):
     assert "ignored columns: foo" in out
 
     with mock.patch("requests.Session.request") as req:
-        assert cli.main(["--url", "http://pet.test", "extensions", "import", "--event", "demo",
+        assert cli.main(["--url", "http://dial.test", "extensions", "import", "--event", "demo",
                          "--file", str(tmp_path / "missing.csv")]) == 2
     assert req.call_count == 0

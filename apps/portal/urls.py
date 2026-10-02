@@ -2,7 +2,7 @@
 
 Core portal pages live in ``apps.portal.views``. Feature apps expose their own
 UI under ``apps.<app>.urls`` with ``app_name`` set and ``PORTAL_MOUNT = True``;
-``pet.urls`` mounts them at ``/e/<event_slug>/<app_label>/`` as top-level
+``dial.urls`` mounts them at ``/e/<event_slug>/<app_label>/`` as top-level
 namespaces (e.g. ``phonebook:index``).
 """
 from django.urls import path

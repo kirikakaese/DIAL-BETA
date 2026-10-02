@@ -1,13 +1,13 @@
 """GURU3-style handset claiming: dial ``<claim number><code>`` from any subscribed handset to bind it.
 
 Flow
-1. A handset gets onto the DECT network before PET knows whose it is. Two ways in:
-   - **pool**: the orga adds the IPEI on the *DECT handsets* page ("Add pool handset"); PET creates the
+1. A handset gets onto the DECT network before DIAL knows whose it is. Two ways in:
+   - **pool**: the orga adds the IPEI on the *DECT handsets* page ("Add pool handset"); DIAL creates the
      subscription with a fresh PIN and a temporary number (``add_pool_handset``), or
    - **adoption**: the OMM auto-creates the handset on subscription (event-wide AC) and
-     ``sync_infrastructure`` hands the unknown IPEI to ``adopt_handset`` - PET gives it its own SIP
+     ``sync_infrastructure`` hands the unknown IPEI to ``adopt_handset`` - DIAL gives it its own SIP
      identity, pushes that to the OMM user record and creates the Asterisk endpoint.
-   Either way PET ends up with ``Device(unclaimed=True)`` that can dial out.
+   Either way DIAL ends up with ``Device(unclaimed=True)`` that can dial out.
 2. The owner's extension page shows "dial 9004 123456" (``claim_dial_string``).
 3. Asterisk answers, POSTs ``dect-claim`` with the caller's PJSIP endpoint and the code.
 4. ``claim_handset`` binds the device to the extension, renumbers it on the OMM and returns the number
@@ -72,7 +72,7 @@ def pool_display_name(plan) -> str:
     """Name shown on an unclaimed handset's display (OMM user name, max 20 chars): a dialling hint."""
     if enabled(plan):
         return f"Dial {plan.dect_claim_number.strip()}+code"[:20]
-    return "PET pool"
+    return "DIAL pool"
 
 
 def unclaimed_devices(event):
@@ -80,7 +80,7 @@ def unclaimed_devices(event):
 
 
 def temp_number(event, plan) -> str:
-    """Temporary OMM number for a pool handset: ``<claim number>NNN``. Not dialable within PET; dialling
+    """Temporary OMM number for a pool handset: ``<claim number>NNN``. Not dialable within DIAL; dialling
     it just lands in the claim service with a bogus code."""
     base = (plan.dect_claim_number or "").strip() or "99"
     used = {(d.config or {}).get("temp_number") for d in unclaimed_devices(event).only("config")}
@@ -127,9 +127,9 @@ def add_pool_handset(event, ipei: str, *, actor=None, name: str = "") -> Device:
 
 
 def adopt_handset(event, hs: HandsetInfo, *, actor=None) -> Device | None:
-    """Discovery path: a subscribed handset the OMM knows but PET does not → unclaimed pool device.
+    """Discovery path: a subscribed handset the OMM knows but DIAL does not → unclaimed pool device.
 
-    Gives it PET SIP credentials (written to the OMM user record) and an Asterisk endpoint so it can dial
+    Gives it DIAL SIP credentials (written to the OMM user record) and an Asterisk endpoint so it can dial
     the claim number. Only active while the plan has a claim number; otherwise unknown handsets stay ignored.
     Returns the device, or ``None`` when nothing was adopted.
     """

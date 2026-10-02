@@ -15,7 +15,7 @@ def test_public_event_needs_no_login(client, event, ext_alice, ext_bob, ext_hidd
     assert r.status_code == 200
     body = r.content.decode()
     assert "4242" in body and "4300" in body and "4301" not in body
-    assert "ou=phonebook,dc=demo,dc=pet" in body
+    assert "ou=phonebook,dc=demo,dc=dial" in body
     r = client.get(_url("index", event) + "?q=bob")
     assert "4300" in r.content.decode() and "4242" not in r.content.decode().split("<tbody>")[1]
 
@@ -53,7 +53,7 @@ def test_settings_view_orga_only(client, event, user, member, orga):
 
 
 def test_feature_flag_off(client, event, settings, ext_alice):
-    settings.PET_FEATURES = dict(settings.PET_FEATURES, phonebook=False)
+    settings.DIAL_FEATURES = dict(settings.DIAL_FEATURES, phonebook=False)
     assert client.get(_url("index", event)).status_code == 404
 
 

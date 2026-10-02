@@ -1,7 +1,7 @@
 """DECT infrastructure models: RFPs (base stations), sync clusters, venue maps, alerts.
 
 State is mirrored from the DECT system (OMM) by ``apps.dect.tasks.poll_infrastructure``;
-positions/labels for the coverage map are maintained by orga in PET.
+positions/labels for the coverage map are maintained by orga in DIAL.
 """
 from django.db import models
 from django.utils.translation import gettext_lazy as _
@@ -158,17 +158,17 @@ DECT_BACKEND_LABELS = {
 def dect_backend_choices():
     from django.conf import settings
 
-    return [(k, DECT_BACKEND_LABELS.get(k, k)) for k in getattr(settings, "PET_DECT_BACKENDS", {})]
+    return [(k, DECT_BACKEND_LABELS.get(k, k)) for k in getattr(settings, "DIAL_DECT_BACKENDS", {})]
 
 
 class DECTConnection(TimeStampedModel):
-    """How PET reaches *this event's* DECT system (OMM) at the venue.
+    """How DIAL reaches *this event's* DECT system (OMM) at the venue.
 
     One row per event; events without one fall back to the server-wide ``OMM`` settings from ``.env``.
     """
 
     event = models.OneToOneField("events.Event", on_delete=models.CASCADE, related_name="dect_connection")
-    backend = models.CharField(max_length=40, default="omm", help_text=_("Adapter key from PET_DECT_BACKENDS."))
+    backend = models.CharField(max_length=40, default="omm", help_text=_("Adapter key from DIAL_DECT_BACKENDS."))
     host = models.CharField(_("OMM host"), max_length=200, blank=True, help_text=_("IP or hostname of the OMM."))
     port = models.PositiveIntegerField(_("AXI port"), default=12622)
     user = models.CharField(_("AXI user"), max_length=64, blank=True, default="omm")
@@ -187,7 +187,7 @@ class DECTConnection(TimeStampedModel):
         from django.conf import settings
 
         try:
-            return settings.PET_DECT_BACKENDS[self.backend]
+            return settings.DIAL_DECT_BACKENDS[self.backend]
         except KeyError as exc:
             raise ValueError(f"Unknown DECT backend {self.backend!r}") from exc
 

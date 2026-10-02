@@ -15,12 +15,12 @@ from apps.phonebook import remote, services
 
 pytestmark = [pytest.mark.django_db, pytest.mark.urls("apps.callback.tests.urls_stub")]
 
-PUBLIC = "https://pet.example.org"
+PUBLIC = "https://dial.example.org"
 
 
 @pytest.fixture
 def pb(event, settings):
-    settings.PET_PUBLIC_URL = PUBLIC + "/"
+    settings.DIAL_PUBLIC_URL = PUBLIC + "/"
     return services.get_settings(event)
 
 
@@ -95,7 +95,7 @@ def test_wrong_token_disabled_or_unknown_are_404(client, event, pb, ext_alice, s
     assert client.get(good).status_code == 404
     pb.directory_enabled = True
     pb.save()
-    settings.PET_FEATURES = dict(settings.PET_FEATURES, phonebook=False)
+    settings.DIAL_FEATURES = dict(settings.DIAL_FEATURES, phonebook=False)
     assert client.get(good).status_code == 404
 
 
@@ -121,11 +121,11 @@ def test_directory_urls_and_ldap_info(event, pb, settings):
     assert urls["snom"] == f"{PUBLIC}/e/demo/phonebook/remote/{pb.directory_token}/snom.xml"
     assert remote.directory_url(event, "mitel").endswith("/mitel.xml")
     info = remote.ldap_info(event)
-    assert info == {"host": "pet.example.org", "port": 3890, "base_dn": "ou=phonebook,dc=demo,dc=pet",
-                    "bind_dn": "cn=directory,dc=demo,dc=pet", "name_attributes": "cn sn",
+    assert info == {"host": "dial.example.org", "port": 3890, "base_dn": "ou=phonebook,dc=demo,dc=dial",
+                    "bind_dn": "cn=directory,dc=demo,dc=dial", "name_attributes": "cn sn",
                     "number_attribute": "telephoneNumber"}
-    settings.PET_LDAP_PORT = 389
-    settings.PET_LDAP_HOST = "ldap.camp.local"
+    settings.DIAL_LDAP_PORT = 389
+    settings.DIAL_LDAP_HOST = "ldap.camp.local"
     info = remote.directory_info(event)
     assert info["ldap"]["port"] == 389 and info["ldap"]["host"] == "ldap.camp.local"
     assert info["ldap"]["password"] == info["token"] == pb.directory_token and info["enabled"] is True
@@ -178,7 +178,7 @@ def test_prov_phonebook_404s(client, phone, pb, settings):
     phone.state = "new"
     phone.save()
     assert client.get(url).status_code == 200
-    settings.PET_FEATURES = dict(settings.PET_FEATURES, phonebook=False)
+    settings.DIAL_FEATURES = dict(settings.DIAL_FEATURES, phonebook=False)
     assert client.get(url).status_code == 404
 
 
@@ -195,7 +195,7 @@ def test_builtin_templates_carry_the_phonebook_url(phone, pb):
     assert "remote_phonebook.data.1.name = Demo Camp" in yealink and "features.remote_phonebook.enable = 1" in yealink
     gs = profiles["grandstream"].render(phone)
     assert "<P330>3</P330>" in gs  # HTTPS
-    assert f"<P331>pet.example.org/prov/{phone.provisioning_token}</P331>" in gs  # folder, phone appends the file
+    assert f"<P331>dial.example.org/prov/{phone.provisioning_token}</P331>" in gs  # folder, phone appends the file
     assert "<P332>60</P332>" in gs
     cisco = profiles["cisco"].render(phone)
     assert f"<XML_Directory_Service_URL>{prov_url}</XML_Directory_Service_URL>" in cisco
@@ -235,7 +235,7 @@ def test_settings_page_lists_urls_and_ldap(client, event, pb, orga):
     html = r.content.decode()
     for vendor in remote.VENDORS:
         assert remote.directory_url(event, vendor) in html, vendor
-    assert "cn=directory,dc=demo,dc=pet" in html and "ou=phonebook,dc=demo,dc=pet" in html
+    assert "cn=directory,dc=demo,dc=dial" in html and "ou=phonebook,dc=demo,dc=dial" in html
     assert "3890" in html and pb.directory_token in html
     assert reverse("phonebook:rotate_directory_token", args=[event.slug]) in html
     assert 'name="directory_enabled"' in html
@@ -298,7 +298,7 @@ def test_api_directory_orga_only(event, pb, user, member, orga, ext_alice):
     data = r.json()
     assert data["event"] == "demo" and data["enabled"] is True and data["token"] == pb.directory_token
     assert set(data["urls"]) == set(remote.VENDORS) and data["urls"]["yealink"].endswith("/yealink.xml")
-    assert data["ldap"]["bind_dn"] == "cn=directory,dc=demo,dc=pet" and data["ldap"]["password"] == pb.directory_token
+    assert data["ldap"]["bind_dn"] == "cn=directory,dc=demo,dc=dial" and data["ldap"]["password"] == pb.directory_token
     r = c.post("/api/v1/phonebook/directory/rotate/", {"event": "demo"}, format="json")
     assert r.status_code == 200 and r.json()["token"] != pb.directory_token
     pb.refresh_from_db()
@@ -325,21 +325,21 @@ class _Resp:
 
 def test_cli_phonebook_directory(capsys):
     payload = {"event": "demo", "enabled": True, "token": "tok", "urls": {"snom": "https://p/snom.xml"},
-               "ldap": {"host": "p", "port": 3890, "base_dn": "ou=phonebook,dc=demo,dc=pet",
-                        "bind_dn": "cn=directory,dc=demo,dc=pet", "password": "tok"}}
+               "ldap": {"host": "p", "port": 3890, "base_dn": "ou=phonebook,dc=demo,dc=dial",
+                        "bind_dn": "cn=directory,dc=demo,dc=dial", "password": "tok"}}
     with mock.patch("requests.Session.request", return_value=_Resp(payload)) as req:
-        assert cli.main(["--url", "http://pet.test", "phonebook", "directory", "--event", "demo"]) == 0
-    assert req.call_args.args[:2] == ("GET", "http://pet.test/api/v1/phonebook/directory/")
+        assert cli.main(["--url", "http://dial.test", "phonebook", "directory", "--event", "demo"]) == 0
+    assert req.call_args.args[:2] == ("GET", "http://dial.test/api/v1/phonebook/directory/")
     assert req.call_args.kwargs["params"] == {"event": "demo"}
     out = capsys.readouterr().out
-    assert "https://p/snom.xml" in out and "cn=directory,dc=demo,dc=pet" in out and "token:   tok" in out
+    assert "https://p/snom.xml" in out and "cn=directory,dc=demo,dc=dial" in out and "token:   tok" in out
     with mock.patch("requests.Session.request", return_value=_Resp(payload)) as req:
-        assert cli.main(["--url", "http://pet.test", "--format", "json", "phonebook", "directory", "--event", "demo",
+        assert cli.main(["--url", "http://dial.test", "--format", "json", "phonebook", "directory", "--event", "demo",
                          "--rotate"]) == 0
-    assert req.call_args.args[:2] == ("POST", "http://pet.test/api/v1/phonebook/directory/rotate/")
+    assert req.call_args.args[:2] == ("POST", "http://dial.test/api/v1/phonebook/directory/rotate/")
     assert req.call_args.kwargs["params"] == {"event": "demo"}
     assert '"token": "tok"' in capsys.readouterr().out
     # the plain listing still works
     with mock.patch("requests.Session.request", return_value=_Resp({"results": []})) as req:
-        assert cli.main(["--url", "http://pet.test", "phonebook", "--event", "demo"]) == 0
-    assert req.call_args.args[:2] == ("GET", "http://pet.test/api/v1/phonebook/")
+        assert cli.main(["--url", "http://dial.test", "phonebook", "--event", "demo"]) == 0
+    assert req.call_args.args[:2] == ("GET", "http://dial.test/api/v1/phonebook/")

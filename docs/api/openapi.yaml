@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: PET - Portable Event Telephone API
+  title: DIAL - DECT & IP Administration Layer API
   version: 1.0.0
   description: REST API for events, extensions, devices, DECT, callbacks and more.
 paths:
@@ -2238,7 +2238,7 @@ paths:
     post:
       operationId: v1_emergency_incident_log_create
       description: 'PBX hook: ``{event, number, caller}`` -> log an EmergencyIncident
-        (header ``X-PET-PBX-Secret``).'
+        (header ``X-DIAL-PBX-Secret``).'
       tags:
       - v1
       security:
@@ -4197,7 +4197,7 @@ paths:
       operationId: v1_pbx_agent_heartbeat_create
       description: |-
         Venue agent check-in: ``{event, version, hostname, agent_version, asterisk_ok, message, contacts?}``.
-        ``contacts`` (optional, ``ps_contacts`` rows) replace PET's copy for the event's endpoints. Not audited.
+        ``contacts`` (optional, ``ps_contacts`` rows) replace DIAL's copy for the event's endpoints. Not audited.
       tags:
       - v1
       security:
@@ -4277,7 +4277,7 @@ paths:
       description: |-
         Static dialplan for Asterisk ``#exec`` includes.
 
-        ``?shell=1`` returns only the ``[pet-<slug>]`` shell contexts (``switch => Realtime/@``) for all
+        ``?shell=1`` returns only the ``[dial-<slug>]`` shell contexts (``switch => Realtime/@``) for all
         non-archived events; without it the full static equivalent (``render_dialplan``) of one event
         (``?event=<slug>``) or all events is returned. Content-Type is text/plain.
       tags:
@@ -5418,8 +5418,8 @@ components:
       - in
       type: string
       description: |-
-        * `out` - Outbound (PET → handset)
-        * `in` - Inbound (handset → PET)
+        * `out` - Outbound (DIAL → handset)
+        * `in` - Inbound (handset → DIAL)
     Event:
       type: object
       properties:
@@ -5464,11 +5464,11 @@ components:
           description: Shown on the event dashboard.
         sip_domain:
           type: string
-          description: SIP realm, e.g. event.pet.local
+          description: SIP realm, e.g. event.dial.local
           maxLength: 120
         dial_prefix:
           type: string
-          description: Prefix used by federated peers to reach this event (PET-VPN).
+          description: Prefix used by federated peers to reach this event (DIAL-VPN).
           maxLength: 8
         max_extensions_per_user:
           type: integer
@@ -5554,11 +5554,11 @@ components:
           description: Shown on the event dashboard.
         sip_domain:
           type: string
-          description: SIP realm, e.g. event.pet.local
+          description: SIP realm, e.g. event.dial.local
           maxLength: 120
         dial_prefix:
           type: string
-          description: Prefix used by federated peers to reach this event (PET-VPN).
+          description: Prefix used by federated peers to reach this event (DIAL-VPN).
           maxLength: 8
         max_extensions_per_user:
           type: integer
@@ -5829,7 +5829,7 @@ components:
         * `conference` - Conference room
         * `voicemail` - Voicemail box
         * `app` - Application / service
-        * `federation` - Federation trunk (PET-VPN)
+        * `federation` - Federation trunk (DIAL-VPN)
         * `breakout` - PSTN breakout
         * `trunk` - SIP trunk (number block)
     Handset:
@@ -6944,11 +6944,11 @@ components:
           description: Shown on the event dashboard.
         sip_domain:
           type: string
-          description: SIP realm, e.g. event.pet.local
+          description: SIP realm, e.g. event.dial.local
           maxLength: 120
         dial_prefix:
           type: string
-          description: Prefix used by federated peers to reach this event (PET-VPN).
+          description: Prefix used by federated peers to reach this event (DIAL-VPN).
           maxLength: 8
         max_extensions_per_user:
           type: integer

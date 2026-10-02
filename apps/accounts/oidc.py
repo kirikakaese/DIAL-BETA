@@ -1,6 +1,6 @@
 """OpenID Connect login - authorization code flow with PKCE, implemented on plain ``requests``.
 
-No signature verification is performed on the ID token: it is fetched by PET directly from the token
+No signature verification is performed on the ID token: it is fetched by DIAL directly from the token
 endpoint over TLS, which OIDC Core 1.0 section 3.1.3.7 (rule 6) explicitly allows. Instead we validate
 ``iss``, ``aud``/``azp``, ``exp``, ``iat`` and the ``nonce`` we issued. Claims are then completed from the
 UserInfo endpoint (which wins on conflicts).
@@ -8,9 +8,9 @@ UserInfo endpoint (which wins on conflicts).
 Account linking rules (:func:`resolve_user`):
 
 1. ``User.oidc_subject == "<issuer>|<sub>"`` -> that user.
-2. Same e-mail address (case-insensitive): link only if the PET account has ``email_verified`` or the IdP
-   asserts ``email_verified`` (and ``PET_OIDC_TRUST_EMAIL_VERIFIED`` is on) - never via an unverified address.
-3. Otherwise create an account (``PET_OIDC_AUTO_CREATE``) with an unusable password.
+2. Same e-mail address (case-insensitive): link only if the DIAL account has ``email_verified`` or the IdP
+   asserts ``email_verified`` (and ``DIAL_OIDC_TRUST_EMAIL_VERIFIED`` is on) - never via an unverified address.
+3. Otherwise create an account (``DIAL_OIDC_AUTO_CREATE``) with an unusable password.
 """
 from __future__ import annotations
 
@@ -33,7 +33,7 @@ from apps.core.audit import log as audit
 
 from .models import User
 
-log = logging.getLogger("pet.oidc")
+log = logging.getLogger("dial.oidc")
 
 HTTP_TIMEOUT = 5
 DISCOVERY_TTL = 3600
@@ -54,26 +54,26 @@ def _setting(name, default=None):
 
 
 def issuer() -> str:
-    return (_setting("PET_OIDC_ISSUER", "") or "").strip().rstrip("/")
+    return (_setting("DIAL_OIDC_ISSUER", "") or "").strip().rstrip("/")
 
 
 def client_id() -> str:
-    return (_setting("PET_OIDC_CLIENT_ID", "") or "").strip()
+    return (_setting("DIAL_OIDC_CLIENT_ID", "") or "").strip()
 
 
 def enabled() -> bool:
-    return bool(_setting("PET_OIDC_ENABLED", False)) and bool(issuer()) and bool(client_id())
+    return bool(_setting("DIAL_OIDC_ENABLED", False)) and bool(issuer()) and bool(client_id())
 
 
 def password_login_allowed() -> bool:
     """False = SSO only: the password form, signup and reset links are hidden (admin login keeps working)."""
-    return not enabled() or bool(_setting("PET_OIDC_ALLOW_PASSWORD_LOGIN", True))
+    return not enabled() or bool(_setting("DIAL_OIDC_ALLOW_PASSWORD_LOGIN", True))
 
 
 def template_context() -> dict:
     return {
         "oidc_enabled": enabled(),
-        "oidc_button_label": _setting("PET_OIDC_BUTTON_LABEL", "Log in with SSO"),
+        "oidc_button_label": _setting("DIAL_OIDC_BUTTON_LABEL", "Log in with SSO"),
         "oidc_password_login": password_login_allowed(),
         "oidc_issuer": issuer(),
     }
@@ -149,7 +149,7 @@ def start_flow(request, next_url: str = "", link: bool = False) -> str:
         "response_type": "code",
         "client_id": client_id(),
         "redirect_uri": redirect_uri(request),
-        "scope": _setting("PET_OIDC_SCOPES", "openid email profile") or "openid email profile",
+        "scope": _setting("DIAL_OIDC_SCOPES", "openid email profile") or "openid email profile",
         "state": flow["state"],
         "nonce": flow["nonce"],
         "code_challenge": challenge,
@@ -171,7 +171,7 @@ def pop_flow(request) -> dict | None:
 def exchange_code(request, code: str, verifier: str) -> dict:
     """Redeem the authorization code at the token endpoint. Confidential clients use HTTP Basic."""
     doc = discovery()
-    secret = _setting("PET_OIDC_CLIENT_SECRET", "") or ""
+    secret = _setting("DIAL_OIDC_CLIENT_SECRET", "") or ""
     data = {
         "grant_type": "authorization_code",
         "code": code,
@@ -282,12 +282,12 @@ def claim_email(claims: dict) -> str:
     email = (claims.get("email") or "").strip()
     if not email or "@" not in email:
         raise OIDCError(_("Your identity provider did not share an e-mail address. "
-                          "Please allow PET to see your e-mail address or contact the operator."))
+                          "Please allow DIAL to see your e-mail address or contact the operator."))
     return User.objects.normalize_email(email).lower()
 
 
 def idp_email_verified(claims: dict) -> bool:
-    return bool(_setting("PET_OIDC_TRUST_EMAIL_VERIFIED", True)) and claims.get("email_verified") is True
+    return bool(_setting("DIAL_OIDC_TRUST_EMAIL_VERIFIED", True)) and claims.get("email_verified") is True
 
 
 def unique_username(base: str) -> str:
@@ -311,7 +311,7 @@ def _check_active(user):
 
 
 def resolve_user(claims: dict, request=None) -> tuple[User, str]:
-    """Map validated claims to a PET user. Returns ``(user, "existing" | "linked" | "created")``."""
+    """Map validated claims to a DIAL user. Returns ``(user, "existing" | "linked" | "created")``."""
     key = subject_key(claims)
     email = claim_email(claims)
     verified = idp_email_verified(claims)
@@ -331,7 +331,7 @@ def resolve_user(claims: dict, request=None) -> tuple[User, str]:
             raise OIDCError(_("This e-mail address belongs to an account that is linked to a different "
                               "single sign-on identity."))
         if not (user.email_verified or verified):
-            raise OIDCError(_("A PET account with this e-mail address exists but the address is not verified yet. "
+            raise OIDCError(_("A DIAL account with this e-mail address exists but the address is not verified yet. "
                               "Log in with your password, verify your e-mail address and try again."))
         user.oidc_subject = key
         fields = ["oidc_subject"]
@@ -343,15 +343,15 @@ def resolve_user(claims: dict, request=None) -> tuple[User, str]:
               changes={"oidc_subject": ["", key]})
         return user, "linked"
 
-    if not _setting("PET_OIDC_AUTO_CREATE", True):
-        raise OIDCError(_("There is no PET account for this e-mail address yet. Please sign up first."))
+    if not _setting("DIAL_OIDC_AUTO_CREATE", True):
+        raise OIDCError(_("There is no DIAL account for this e-mail address yet. Please sign up first."))
     from .forms import validate_signup_email
 
     try:
         validate_signup_email(email)
     except forms.ValidationError as exc:
         raise OIDCError(" ".join(exc.messages))
-    username_claim = _setting("PET_OIDC_USERNAME_CLAIM", "preferred_username") or "preferred_username"
+    username_claim = _setting("DIAL_OIDC_USERNAME_CLAIM", "preferred_username") or "preferred_username"
     username = unique_username(str(claims.get(username_claim) or email.split("@", 1)[0]))
     user = User(email=email, username=username, display_name=_display_name(claims),
                 oidc_subject=key, email_verified=verified)
@@ -369,7 +369,7 @@ def link_user(user, claims: dict, request=None) -> None:
     if user.oidc_subject == key:
         return
     if User.objects.filter(oidc_subject=key).exclude(pk=user.pk).exists():
-        raise OIDCError(_("This single sign-on identity is already linked to another PET account."))
+        raise OIDCError(_("This single sign-on identity is already linked to another DIAL account."))
     old = user.oidc_subject
     user.oidc_subject = key
     fields = ["oidc_subject"]
@@ -386,8 +386,8 @@ def link_user(user, claims: dict, request=None) -> None:
 
 
 def end_session_url(id_token: str, post_logout_redirect: str) -> str | None:
-    """RP-initiated logout URL (``PET_OIDC_LOGOUT_AT_IDP``) or ``None`` when unsupported/unreachable."""
-    if not (enabled() and _setting("PET_OIDC_LOGOUT_AT_IDP", False) and id_token):
+    """RP-initiated logout URL (``DIAL_OIDC_LOGOUT_AT_IDP``) or ``None`` when unsupported/unreachable."""
+    if not (enabled() and _setting("DIAL_OIDC_LOGOUT_AT_IDP", False) and id_token):
         return None
     try:
         endpoint = discovery().get("end_session_endpoint")

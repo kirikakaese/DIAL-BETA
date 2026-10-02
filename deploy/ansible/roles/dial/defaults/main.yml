@@ -1,0 +1,46 @@
+---
+dial_repo_url: https://github.com/example/dial.git
+dial_repo_version: main
+dial_dir: /opt/dial
+dial_src_dir: "{{ dial_dir }}/src"
+
+dial_public_url: http://localhost:8000
+dial_secret_key: CHANGE-ME
+dial_db_password: dial
+dial_pbx_password: dial          # ARI/AMI password and PBX hook secret
+dial_external_ip: ""
+dial_seed_demo: "1"
+
+# Rendered 1:1 into .env (see .env.example for the meaning of each key).
+dial_env:
+  DJANGO_SETTINGS_MODULE: dial.settings.prod
+  SECRET_KEY: "{{ dial_secret_key }}"
+  DEBUG: "0"
+  ALLOWED_HOSTS: "*"
+  CSRF_TRUSTED_ORIGINS: "{{ dial_public_url }}"
+  DIAL_PUBLIC_URL: "{{ dial_public_url }}"
+  TIME_ZONE: Europe/Berlin
+  EMAIL_URL: consolemail://
+  DEFAULT_FROM_EMAIL: dial@example.org
+  SESSION_COOKIE_SECURE: "{{ '1' if dial_public_url.startswith('https') else '0' }}"
+  CSRF_COOKIE_SECURE: "{{ '1' if dial_public_url.startswith('https') else '0' }}"
+  DIAL_FEATURES: ""
+  DIAL_CDR_RETENTION_DAYS: "30"
+  DIAL_DECT_BACKEND: apps.dect.backends.dummy.DummyDECT
+  OMM_HOST: ""
+  OMM_USER: omm
+  OMM_PASSWORD: ""
+  POSTGRES_USER: dial
+  POSTGRES_PASSWORD: "{{ dial_db_password }}"
+  POSTGRES_DB: dial
+  ARI_USER: dial
+  ARI_PASSWORD: "{{ dial_pbx_password }}"
+  AMI_USER: dial
+  AMI_PASSWORD: "{{ dial_pbx_password }}"
+  DIAL_PBX_HOOK_SECRET: "{{ dial_pbx_password }}"
+  SIP_DOMAIN: dial.local
+  EXTERNAL_IP: "{{ dial_external_ip }}"
+  DIAL_EVENTS: demo
+  WEB_CONCURRENCY: "3"
+  DIAL_SEED_DEMO: "{{ dial_seed_demo }}"
+dial_env_extra: {}

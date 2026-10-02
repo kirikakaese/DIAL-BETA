@@ -1,8 +1,8 @@
-/* PET PWA shell - offline banner, update toast, install button, standalone-mode tweaks.
- * Loaded after pet.css and only uses its tokens (--bg-elev2, --fg, --warn, --border-strong, --radius, ...).
+/* DIAL PWA shell - offline banner, update toast, install button, standalone-mode tweaks.
+ * Loaded after dial.css and only uses its tokens (--bg-elev2, --fg, --warn, --border-strong, --radius, ...).
  */
 
-#pet-pwa [hidden] { display: none !important; }
+#dial-pwa [hidden] { display: none !important; }
 .pwa { display: flex; justify-content: center; padding: 0 var(--space-4); }
 .pwa-install { margin: 0 auto var(--space-4); }
 
@@ -42,5 +42,5 @@ html.is-offline .pwa-toast { bottom: calc(3.5rem + env(safe-area-inset-bottom, 0
 }
 
 @media print {
-  #pet-pwa { display: none !important; }
+  #dial-pwa { display: none !important; }
 }

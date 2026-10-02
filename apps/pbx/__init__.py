@@ -1,8 +1,8 @@
 """PBX integration layer.
 
-PET is one permanent service; every event brings its own PBX at the venue. ``get_pbx(event)`` returns the
+DIAL is one permanent service; every event brings its own PBX at the venue. ``get_pbx(event)`` returns the
 adapter for that event's :class:`~apps.pbx.models.PBXConnection`; events without one - and callers
-without an event - get the server-wide default adapter (``settings.PET_PBX_BACKEND`` + ``ASTERISK``).
+without an event - get the server-wide default adapter (``settings.DIAL_PBX_BACKEND`` + ``ASTERISK``).
 Adapters implement :class:`apps.pbx.base.PBXAdapter` and accept ``config=`` (an ``ASTERISK``-shaped dict).
 """
 from __future__ import annotations
@@ -17,7 +17,7 @@ _per_event: dict = {}  # event pk -> ((connection pk, updated_at), adapter)
 
 @lru_cache(maxsize=1)
 def default_pbx():
-    return import_string(settings.PET_PBX_BACKEND)()
+    return import_string(settings.DIAL_PBX_BACKEND)()
 
 
 def get_pbx(event=None):

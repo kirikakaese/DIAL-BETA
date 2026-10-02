@@ -2,5 +2,5 @@
 
 Layers: :mod:`ber` (ASN.1 BER codec) -> :mod:`protocol` (LDAP PDUs + filters) -> :mod:`directory`
 (entries from :mod:`apps.phonebook.services`) -> :mod:`server` (asyncio TCP/TLS server).
-Started with ``manage.py pet_ldap``.
+Started with ``manage.py dial_ldap``.
 """

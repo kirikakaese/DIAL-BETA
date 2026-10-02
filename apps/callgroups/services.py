@@ -23,8 +23,8 @@ from .models import CallGroup, CallGroupInvite, GroupLoginLog, GroupMember
 
 #: How deep nested groups are expanded when resolving dial targets: root -> sub -> sub-sub -> sub-sub-sub.
 MAX_NESTING_DEPTH = 3
-#: Static dialplan context that hosts the delayed-leg exten ``_XXX*X.`` (see ``[pet-group]``).
-DELAYED_LEG_CONTEXT = "pet-group"
+#: Static dialplan context that hosts the delayed-leg exten ``_XXX*X.`` (see ``[dial-group]``).
+DELAYED_LEG_CONTEXT = "dial-group"
 
 
 class CallGroupError(Exception):
@@ -316,7 +316,7 @@ def sync_user_group(group: CallGroup, actor=None) -> int:
 # --------------------------------------------------------------------------- invites
 
 def _invite_url(invite: CallGroupInvite) -> str:
-    base = (getattr(settings, "PET_PUBLIC_URL", "") or "").rstrip("/")
+    base = (getattr(settings, "DIAL_PUBLIC_URL", "") or "").rstrip("/")
     return f"{base}/e/{invite.group.event.slug}/callgroups/invites/{invite.token}/"
 
 
@@ -333,7 +333,7 @@ def _send_invite_mail(invite: CallGroupInvite) -> bool:
     if invite.reason:
         body += f"\nReason: {invite.reason}\n"
     body += f"\nAccept or decline here:\n{_invite_url(invite)}\n"
-    send_mail(f"[PET] Invitation to call group {group.number} ({group.name})", body,
+    send_mail(f"[DIAL] Invitation to call group {group.number} ({group.name})", body,
               settings.DEFAULT_FROM_EMAIL, [owner.email], fail_silently=True)
     return True
 
@@ -492,7 +492,7 @@ def dial_waves(extension: Extension) -> list[dict]:
 def delayed_dial_target(number: str, delay: int) -> str:
     """Dial string for a member that must start ringing ``delay`` seconds late.
 
-    ``Local/005*4300@pet-group`` hits the ``_XXX*X.`` exten of the static ``[pet-group]`` context, which
+    ``Local/005*4300@dial-group`` hits the ``_XXX*X.`` exten of the static ``[dial-group]`` context, which
     ``Wait()``s and then dials the number in the event context - Asterisk cannot stagger legs of one
     ``Dial()`` natively.
     """

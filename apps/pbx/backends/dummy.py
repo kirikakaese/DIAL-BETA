@@ -75,7 +75,7 @@ class DummyPBX(PBXAdapter):
         return {"ok": self.healthy, "backend": self.name}
 
     # --- call control ------------------------------------------------------
-    def originate(self, *, event, destination, caller_id, context="pet-services", variables=None, timeout=30):
+    def originate(self, *, event, destination, caller_id, context="dial-services", variables=None, timeout=30):
         cid = f"dummy-{len(self.originated) + 1}"
         self.originated.append({"id": cid, "destination": destination, "caller_id": caller_id,
                                 "context": context, "variables": variables or {}, "timeout": timeout,

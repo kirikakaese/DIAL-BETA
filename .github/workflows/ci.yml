@@ -20,12 +20,12 @@ jobs:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_USER: pet
-          POSTGRES_PASSWORD: pet
-          POSTGRES_DB: pet
+          POSTGRES_USER: dial
+          POSTGRES_PASSWORD: dial
+          POSTGRES_DB: dial
         ports: ["5432:5432"]
         options: >-
-          --health-cmd "pg_isready -U pet -d pet"
+          --health-cmd "pg_isready -U dial -d dial"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 12
@@ -45,29 +45,29 @@ jobs:
           pip install -r requirements-ci.txt
 
       - name: Ruff
-        run: ruff check apps pet
+        run: ruff check apps dial
 
       - name: Migrations are up to date
         env:
-          DJANGO_SETTINGS_MODULE: pet.settings.test
+          DJANGO_SETTINGS_MODULE: dial.settings.test
         run: python manage.py makemigrations --check --dry-run
 
-      - name: Unit tests (sqlite, pet.settings.test)
+      - name: Unit tests (sqlite, dial.settings.test)
         run: python -m pytest -p no:cacheprovider
 
       - name: Migrations apply on PostgreSQL
         env:
-          DJANGO_SETTINGS_MODULE: pet.settings.dev
-          DATABASE_URL: postgres://pet:pet@localhost:5432/pet
+          DJANGO_SETTINGS_MODULE: dial.settings.dev
+          DATABASE_URL: postgres://dial:dial@localhost:5432/dial
           SECRET_KEY: ci
         run: |
           python manage.py migrate --noinput
           python manage.py seed_demo
-          python manage.py check --deploy --settings=pet.settings.prod --fail-level ERROR
+          python manage.py check --deploy --settings=dial.settings.prod --fail-level ERROR
 
       - name: OpenAPI schema
         env:
-          DJANGO_SETTINGS_MODULE: pet.settings.test
+          DJANGO_SETTINGS_MODULE: dial.settings.test
         run: python manage.py spectacular --file openapi.yaml --validate
 
       - uses: actions/upload-artifact@v4
@@ -83,13 +83,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
 
-      - name: Build PET image
+      - name: Build DIAL image
         uses: docker/build-push-action@v6
         with:
           context: .
           push: false
           load: true
-          tags: pet:ci
+          tags: dial:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -98,12 +98,12 @@ jobs:
         with:
           context: deploy/asterisk
           push: false
-          tags: pet-asterisk:ci
+          tags: dial-asterisk:ci
           cache-from: type=gha,scope=asterisk
           cache-to: type=gha,mode=max,scope=asterisk
 
       - name: Smoke test image
-        run: docker run --rm -e SECRET_KEY=ci -e DATABASE_URL=sqlite:////tmp/ci.sqlite3 pet:ci python manage.py check
+        run: docker run --rm -e SECRET_KEY=ci -e DATABASE_URL=sqlite:////tmp/ci.sqlite3 dial:ci python manage.py check
 
   integration:
     name: integration (live Asterisk)
@@ -130,15 +130,15 @@ jobs:
             curl -fsS http://localhost:8000/ >/dev/null && break
             sleep 5
           done
-          curl -fsS -u pet:pet http://localhost:8088/ari/asterisk/info
+          curl -fsS -u dial:dial http://localhost:8088/ari/asterisk/info
           docker compose exec -T web python manage.py migrate --check
 
       - name: Integration tests
         env:
-          PET_INTEGRATION: "1"
+          DIAL_INTEGRATION: "1"
           ASTERISK_ARI_URL: http://127.0.0.1:8088/ari
-          ASTERISK_ARI_USER: pet
-          ASTERISK_ARI_PASSWORD: pet
+          ASTERISK_ARI_USER: dial
+          ASTERISK_ARI_PASSWORD: dial
         run: python -m pytest tests/integration -p no:cacheprovider -v
 
       - name: Logs on failure

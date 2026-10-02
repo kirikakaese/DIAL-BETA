@@ -24,7 +24,7 @@ from apps.pbx.models import VoicemailUser
 
 from .models import Mailbox, Message, MessageDelivery, default_from_email
 
-log = logging.getLogger("pet.voicemail")
+log = logging.getLogger("dial.voicemail")
 
 MAILBOX_TYPES = tuple(ENDPOINT_TYPES) + (ExtensionType.VOICEMAIL, ExtensionType.GROUP)
 
@@ -72,7 +72,7 @@ def update_mailbox(mailbox: Mailbox, actor=None, request=None, **fields) -> Mail
 
 
 def sync_realtime(mailbox: Mailbox) -> None:
-    """Write/refresh the ``voicemail_users`` row Asterisk's ``VoiceMail()`` reads (context ``pet-<slug>``).
+    """Write/refresh the ``voicemail_users`` row Asterisk's ``VoiceMail()`` reads (context ``dial-<slug>``).
 
     Also mirrors PIN/e-mail into ``Extension.config`` so a PBX resync
     (``AsteriskPBX._sync_voicemail_user``) produces the same row.
@@ -143,10 +143,10 @@ def _import_audio(message: Message, file_path: str) -> bool:
 
 
 def _delete_spool() -> bool:
-    """``settings.PET_VOICEMAIL = {"delete_spool": True}`` removes the Asterisk spool file after import."""
+    """``settings.DIAL_VOICEMAIL = {"delete_spool": True}`` removes the Asterisk spool file after import."""
     from django.conf import settings
 
-    return bool((getattr(settings, "PET_VOICEMAIL", None) or {}).get("delete_spool", False))
+    return bool((getattr(settings, "DIAL_VOICEMAIL", None) or {}).get("delete_spool", False))
 
 
 @transaction.atomic

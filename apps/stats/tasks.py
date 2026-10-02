@@ -3,7 +3,7 @@ import logging
 
 from celery import shared_task
 
-log = logging.getLogger("pet.stats")
+log = logging.getLogger("dial.stats")
 
 
 @shared_task

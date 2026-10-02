@@ -40,7 +40,7 @@
         <td class="actions"><form method="post" action="{% url 'breakout:rule_delete' event.slug r.pk %}" class="inline">{% csrf_token %}<button class="btn btn-sm btn-danger" aria-label="{% trans 'Delete rule' %}">×</button></form></td></tr>
       {% empty %}<tr><td colspan="7" class="empty">{% trans "No rules - everything not on the blocklist is allowed." %}</td></tr>{% endfor %}
       </tbody></table></div>
-    <p class="small muted">{% trans "Blocklist (settings.PET_BREAKOUT_BLOCKLIST):" %} {% for b in blocklist %}<code>{{ b }}</code> {% endfor %}</p>
+    <p class="small muted">{% trans "Blocklist (settings.DIAL_BREAKOUT_BLOCKLIST):" %} {% for b in blocklist %}<code>{{ b }}</code> {% endfor %}</p>
     <h3>{% trans "New rule" %}</h3>
     <form method="post" action="{% url 'breakout:rule_new' event.slug %}">{% csrf_token %}
       {% include "portal/_form.html" with form=rule_form %}

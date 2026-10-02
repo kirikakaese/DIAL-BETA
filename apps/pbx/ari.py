@@ -1,6 +1,6 @@
 """Minimal Asterisk REST Interface (ARI) client built on ``requests``.
 
-Only the handful of resources PET needs: channels, endpoints, device states,
+Only the handful of resources DIAL needs: channels, endpoints, device states,
 mailboxes and ``/asterisk/info``. All transport failures and HTTP errors are
 turned into :class:`ARIError` (a :class:`~apps.pbx.base.PBXError`).
 """
@@ -13,7 +13,7 @@ import requests
 
 from apps.pbx.base import PBXError
 
-log = logging.getLogger("pet.pbx.ari")
+log = logging.getLogger("dial.pbx.ari")
 
 
 class ARIError(PBXError):
@@ -23,7 +23,7 @@ class ARIError(PBXError):
 
 
 class ARIClient:
-    def __init__(self, base_url: str, user: str, password: str, *, app: str = "pet", timeout: float = 5.0):
+    def __init__(self, base_url: str, user: str, password: str, *, app: str = "dial", timeout: float = 5.0):
         self.base_url = base_url.rstrip("/")
         self.app = app
         self.timeout = timeout

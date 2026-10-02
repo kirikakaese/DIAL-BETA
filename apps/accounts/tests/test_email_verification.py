@@ -66,13 +66,13 @@ def test_purge_command(capsys):
 
     tok, _ = RegistrationEmailToken.issue("x@example.org", "verify")
     RegistrationEmailToken.objects.filter(pk=tok.pk).update(expires_at=timezone.now() - dt.timedelta(days=1))
-    call_command("pet_purge_tokens")
+    call_command("dial_purge_tokens")
     assert "Purged 1" in capsys.readouterr().out
     assert not RegistrationEmailToken.objects.exists()
 
 
 # --- e-mail-first registration (setting on) -----------------------------------
-@override_settings(PET_REQUIRE_EMAIL_VERIFICATION=True, PET_PUBLIC_URL="https://pet.example.org/")
+@override_settings(DIAL_REQUIRE_EMAIL_VERIFICATION=True, DIAL_PUBLIC_URL="https://dial.example.org/")
 def test_email_first_registration_flow(client):
     r = client.get(reverse("accounts:register"))
     assert r.status_code == 200
@@ -83,8 +83,8 @@ def test_email_first_registration_flow(client):
     assert not User.objects.filter(email__iexact="new@example.org").exists()
     assert len(mail.outbox) == 1
     msg = mail.outbox[0]
-    assert msg.to == ["new@example.org"] and msg.subject.startswith("[PET] ")
-    assert "https://pet.example.org/accounts/register/confirm/" in msg.body
+    assert msg.to == ["new@example.org"] and msg.subject.startswith("[DIAL] ")
+    assert "https://dial.example.org/accounts/register/confirm/" in msg.body
     raw = _link(msg, "accounts:register_confirm")
     tok = RegistrationEmailToken.objects.get(email="new@example.org", purpose="register")
     assert tok.token_hash == RegistrationEmailToken.hash_token(raw) and tok.ip == "127.0.0.1"
@@ -109,7 +109,7 @@ def test_email_first_registration_flow(client):
     assert r.status_code == 400 and b"already been used" in r.content
 
 
-@override_settings(PET_REQUIRE_EMAIL_VERIFICATION=True)
+@override_settings(DIAL_REQUIRE_EMAIL_VERIFICATION=True)
 def test_expired_register_token_rejected(client):
     tok, raw = RegistrationEmailToken.issue("late@example.org", "register")
     RegistrationEmailToken.objects.filter(pk=tok.pk).update(expires_at=timezone.now() - dt.timedelta(hours=1))
@@ -121,7 +121,7 @@ def test_expired_register_token_rejected(client):
     assert client.get(reverse("accounts:register_confirm", args=["garbage"])).status_code == 400
 
 
-@override_settings(PET_REQUIRE_EMAIL_VERIFICATION=True)
+@override_settings(DIAL_REQUIRE_EMAIL_VERIFICATION=True)
 def test_register_existing_email_reveals_nothing(client, user):
     r1 = client.post(reverse("accounts:register"), {"email": "alice@example.org"})
     r2 = client.post(reverse("accounts:register"), {"email": "fresh@example.org"})
@@ -141,7 +141,7 @@ def test_register_existing_email_reveals_nothing(client, user):
     assert RegistrationEmailToken.objects.filter(email="fresh@example.org", purpose="register").exists()
 
 
-@override_settings(PET_REQUIRE_EMAIL_VERIFICATION=True)
+@override_settings(DIAL_REQUIRE_EMAIL_VERIFICATION=True)
 def test_register_confirm_rejects_if_account_created_meanwhile(client):
     _, raw = RegistrationEmailToken.issue("race@example.org", "register")
     User.objects.create_user(email="race@example.org", username="racer", password=PW)
@@ -150,7 +150,7 @@ def test_register_confirm_rejects_if_account_created_meanwhile(client):
 
 
 # --- one-step registration + verify mail (setting off) ------------------------
-@override_settings(PET_REQUIRE_EMAIL_VERIFICATION=False)
+@override_settings(DIAL_REQUIRE_EMAIL_VERIFICATION=False)
 def test_one_step_registration_sends_verify_mail(client):
     r = client.post(reverse("accounts:register"), {
         "email": "quick@example.org", "username": "quick", "password1": PW, "password2": PW})
@@ -234,7 +234,7 @@ def test_change_email_confirm_checks_uniqueness_at_redeem(client, user):
 
 
 # --- rate limiting ----------------------------------------------------------------
-@override_settings(PET_REQUIRE_EMAIL_VERIFICATION=True)
+@override_settings(DIAL_REQUIRE_EMAIL_VERIFICATION=True)
 def test_token_mail_rate_limit_per_email(client):
     for _ in range(token_mails.TOKEN_MAILS_PER_EMAIL + 2):
         r = client.post(reverse("accounts:register"), {"email": "spam@example.org"})

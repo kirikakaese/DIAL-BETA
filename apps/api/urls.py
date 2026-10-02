@@ -1,6 +1,6 @@
 """REST API v1 root.
 
-Each PET app may expose an ``api.py`` module with::
+Each DIAL app may expose an ``api.py`` module with::
 
     def register(router):           # add DRF viewsets
         router.register("things", ThingViewSet, basename="thing")

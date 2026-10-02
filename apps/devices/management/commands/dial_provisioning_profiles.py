@@ -1,6 +1,6 @@
-"""``manage.py pet_provisioning_profiles`` - create the global built-in autoprovisioning profiles
+"""``manage.py dial_provisioning_profiles`` - create the global built-in autoprovisioning profiles
 (Snom, Yealink, Grandstream, Cisco SPA). Idempotent: profiles whose name already exists are skipped unless
-``--update`` is given, which rewrites them to the shipped version (e.g. after PET added new settings).
+``--update`` is given, which rewrites them to the shipped version (e.g. after DIAL added new settings).
 """
 from __future__ import annotations
 

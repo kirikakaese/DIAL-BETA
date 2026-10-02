@@ -32,15 +32,15 @@ def demo(django_db_setup, django_db_blocker):
     with django_db_blocker.unblock():
         call_command("seed_demo", "--no-cdr", verbosity=0)
         event = Event.objects.get(slug="demo")
-        alice = User.objects.get(email="alice@pet.local")
+        alice = User.objects.get(email="alice@dial.local")
         ext = Extension.objects.filter(event=event, owner=alice, state="active").first()
         dev = Device.objects.filter(event=event, owner=alice).first()
         ctx = {
             "users": {
                 "anon": None,
                 "user": alice,
-                "orga": User.objects.get(email="orga@pet.local"),
-                "admin": User.objects.get(email="admin@pet.local"),
+                "orga": User.objects.get(email="orga@dial.local"),
+                "admin": User.objects.get(email="admin@dial.local"),
             },
             "fmt": dict(ext_pk=ext.pk, ext_number=ext.number, dev_pk=dev.pk,
                         pb_token=pb_services.get_settings(event).directory_token),
@@ -51,7 +51,7 @@ def demo(django_db_setup, django_db_blocker):
         from apps.pbx.models import PBXJob, VoicemailUser
 
         Event.objects.filter(slug="demo").delete()
-        User.objects.filter(email__endswith="@pet.local").delete()
+        User.objects.filter(email__endswith="@dial.local").delete()
         # not cascaded from Event: audit log entries and PBX realtime/outbox rows
         AuditLog.objects.all().delete()
         PBXJob.objects.all().delete()

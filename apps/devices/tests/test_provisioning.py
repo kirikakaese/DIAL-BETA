@@ -40,19 +40,19 @@ def test_builtin_profiles_idempotent():
         "snom", "yealink", "grandstream", "cisco"}
 
 
-def test_management_command_pet_provisioning_profiles():
+def test_management_command_dial_provisioning_profiles():
     from django.core.management import call_command
 
-    call_command("pet_provisioning_profiles")
-    call_command("pet_provisioning_profiles")
+    call_command("dial_provisioning_profiles")
+    call_command("dial_provisioning_profiles")
     assert ProvisioningProfile.objects.filter(event=None).count() == 4
 
 
 def test_provisioning_url_and_filename(phone, settings):
-    settings.PET_PUBLIC_URL = "https://pet.example.org/"
+    settings.DIAL_PUBLIC_URL = "https://dial.example.org/"
     assert phone.mac_plain == "001122aabbcc"
     assert phone.provisioning_filename == "001122aabbcc.cfg"
-    assert phone.provisioning_url == f"https://pet.example.org/prov/{phone.provisioning_token}/001122aabbcc.cfg"
+    assert phone.provisioning_url == f"https://dial.example.org/prov/{phone.provisioning_token}/001122aabbcc.cfg"
     assert Device(type="sip").provisioning_url == ""
 
 
@@ -65,7 +65,7 @@ def test_prov_by_token_serves_yealink_config(client, phone):
     assert f"account.1.user_name = {phone.sip_username}" in body
     assert f"account.1.auth_name = {phone.sip_username}" in body
     assert f"account.1.password = {phone.sip_password}" in body
-    assert "account.1.sip_server.1.address = demo.pet.local" in body
+    assert "account.1.sip_server.1.address = demo.dial.local" in body
     assert "account.1.display_name = Alice & Co" in body  # not HTML-escaped in a plain cfg
     assert "account.1.sip_server.1.transport_type = 0" in body
     phone.refresh_from_db()
@@ -110,10 +110,10 @@ def test_other_vendor_templates_render_credentials(phone, profiles):
         phone.provisioning_profile = profiles[vendor]
         body = profiles[vendor].render(phone)
         assert needle in body and phone.sip_password in body and phone.sip_username in body
-        assert "demo.pet.local" in body
+        assert "demo.dial.local" in body
     assert profiles["snom"].render(phone).count("Alice &amp; Co") == 1  # XML-escaped
     assert "<P270>Alice &amp; Co</P270>" in profiles["grandstream"].render(phone)
-    assert "<P35>" in profiles["grandstream"].render(phone) and "<P47>demo.pet.local:5060</P47>" in (
+    assert "<P35>" in profiles["grandstream"].render(phone) and "<P47>demo.dial.local:5060</P47>" in (
         profiles["grandstream"].render(phone))
     assert profiles["grandstream"].filename_pattern == "cfg{mac}.xml"
     assert profiles["cisco"].filename_pattern == "spa{mac}.cfg"

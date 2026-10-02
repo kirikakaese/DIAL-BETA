@@ -1,4 +1,4 @@
-"""``/prov/`` URL tree (mounted from ``pet.urls``; deliberately *not* ``PORTAL_MOUNT``).
+"""``/prov/`` URL tree (mounted from ``dial.urls``; deliberately *not* ``PORTAL_MOUNT``).
 
 Order matters: the vendor/MAC route is restricted to known vendor keys so it can never shadow a
 token URL (tokens are 32 url-safe chars, vendors are short words). The softphone documents

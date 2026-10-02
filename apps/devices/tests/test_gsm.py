@@ -22,8 +22,8 @@ def gsm_event(event):
 
 @pytest.fixture
 def hdr(settings):
-    settings.PET_PBX_HOOK_SECRET = "hook-secret"
-    return {"HTTP_X_PET_PBX_SECRET": "hook-secret"}
+    settings.DIAL_PBX_HOOK_SECRET = "hook-secret"
+    return {"HTTP_X_DIAL_PBX_SECRET": "hook-secret"}
 
 
 def test_enabled_for_gsm_depends_on_event_flag(event):
@@ -81,7 +81,7 @@ def test_gsm_register_hook_requires_secret(client, gsm_event, user, hdr):
     payload = {"event": "demo", "token": token, "imsi": "262420000000001", "msisdn": "1234"}
     r = client.post(HOOK, payload)
     assert r.status_code == 401 and r.json()["registered"] is False
-    r = client.post(HOOK, payload, HTTP_X_PET_PBX_SECRET="wrong")
+    r = client.post(HOOK, payload, HTTP_X_DIAL_PBX_SECRET="wrong")
     assert r.status_code == 401
     d.refresh_from_db()
     assert d.imsi == "" and d.gsm_register_token == token
@@ -101,12 +101,12 @@ def test_gsm_register_hook_requires_secret(client, gsm_event, user, hdr):
 
 
 def test_gsm_register_hook_falls_back_to_ari_password(client, gsm_event, user, settings):
-    if hasattr(settings, "PET_PBX_HOOK_SECRET"):
-        del settings.PET_PBX_HOOK_SECRET
+    if hasattr(settings, "DIAL_PBX_HOOK_SECRET"):
+        del settings.DIAL_PBX_HOOK_SECRET
     d = Device.objects.create(event=gsm_event, owner=user, type="gsm")
     token = d.issue_gsm_register_token()
     r = client.post(HOOK, {"event": "demo", "token": token, "imsi": "262420000000001"},
-                    HTTP_X_PET_PBX_SECRET=settings.ASTERISK["ARI_PASSWORD"])
+                    HTTP_X_DIAL_PBX_SECRET=settings.ASTERISK["ARI_PASSWORD"])
     assert r.status_code == 200
 
 

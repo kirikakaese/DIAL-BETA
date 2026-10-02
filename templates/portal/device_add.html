@@ -29,7 +29,7 @@
     <p class="small muted">{{ t.description }}</p>
     {% if t.onboarding == 'ipei_pin' %}
     <ul class="small">
-      <li>{% trans "PET issues a 6-digit subscription PIN valid for 30 minutes." %}</li>
+      <li>{% trans "DIAL issues a 6-digit subscription PIN valid for 30 minutes." %}</li>
       <li>{% trans "Subscribe on the handset: Menu → Registration → new base, then enter the PIN." %}</li>
       <li>{% trans "Already subscribed a handset in this event? Attach the existing device instead of entering the IPEI again." %}</li>
       <li>{% trans "Vendor is auto-detected from the IPEI (its first 5 digits identify the manufacturer)." %}</li>
@@ -37,7 +37,7 @@
     </ul>
     {% elif t.onboarding == 'sip_credentials' %}
     <ul class="small">
-      <li>{% trans "PET generates a random SIP username and password for this device." %}</li>
+      <li>{% trans "DIAL generates a random SIP username and password for this device." %}</li>
       <li>{% trans "Scan the QR code with your softphone or copy the credentials manually." %}</li>
       <li>{% trans "For hard phones, enter the MAC address to use autoprovisioning." %}</li>
     </ul>

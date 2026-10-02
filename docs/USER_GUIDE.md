@@ -1,13 +1,13 @@
-# PET User Guide
+# DIAL User Guide
 
-Welcome! This guide explains how to get a phone number at an event that runs PET, connect a DECT handset
+Welcome! This guide explains how to get a phone number at an event that runs DIAL, connect a DECT handset
 or a softphone, and use the services on the network. Numbers and codes below are the defaults
 (`9000`, `*66`, ...) - your event's dashboard shows the actual ones.
 
 ## 1. Account & login
 
 - **Register** at `/accounts/register/` with e-mail, a public nickname and a password. Your account is
-  global: one login for every event that uses this PET server.
+  global: one login for every event that uses this DIAL server.
   - Depending on how the server is configured you either sign up in one step and then receive a
     **verification mail**, or you enter your e-mail address first, click the link in the mail
     (valid for 48 hours by default) and then choose nickname and password. If the address already
@@ -21,7 +21,7 @@ or a softphone, and use the services on the network. Numbers and codes below are
   password works regardless.
 - **Logging in with SSO.** If the server offers single sign-on, the login page shows an extra button
   (usually *Log in with SSO*) that takes you to your organisation's identity provider and back. Coming
-  back the first time, PET links you to your existing account when the e-mail address matches and is
+  back the first time, DIAL links you to your existing account when the e-mail address matches and is
   verified - otherwise it creates a new account for you. On some servers SSO is the *only* way in and
   the password form is hidden. You can **link** or **unlink** SSO yourself on your profile page; to
   unlink you need a password set, so you are never locked out.
@@ -90,7 +90,7 @@ number like `9004 123456` (the event's claim number followed by your personal **
 1. Subscribe **any** handset to the event's DECT network. Pool handsets from the DECT desk are already
    subscribed; for your own handset ask the desk for the pool PIN (or the OMM accepts the event-wide code).
    Until claimed the handset shows a hint like *Dial 9004+code* and a temporary number.
-2. Dial the number from the claim box from that handset. PET answers, binds the handset to your
+2. Dial the number from the claim box from that handset. DIAL answers, binds the handset to your
    extension, renumbers it on the DECT system and reads your number back to you. Done - no IPEI typing.
 3. Dialing the code from a different handset **moves** your number to that handset. Anyone who knows the
    code can do this, so keep it private; **New claim code** on the extension page invalidates the old one.
@@ -102,32 +102,32 @@ You can also dial just the claim number and enter the code when prompted.
 1. Open your extension and **add a device → DECT**. Enter the **IPEI** of your handset - a 13-digit code
    printed under the battery / on the label of the handset, or shown in the handset menu (usually
    *Settings → Status* or by typing `*#06#`). On Mitel/Aastra handsets: *Menu → System → IPEI*.
-   PET recognises the manufacturer from the first digits of the IPEI; if it shows *unknown vendor* you
+   DIAL recognises the manufacturer from the first digits of the IPEI; if it shows *unknown vendor* you
    can suggest the right one on the device page (the list is crowdsourced and curated by the orga).
    Used a handset at an earlier event on this server? **My handsets** (`/e/<slug>/devices/history/`)
    lists them by IPEI with a **Reuse in this event** button that copies IPEI, model and label.
-2. PET creates the subscription on the DECT system and shows you a **PIN** (access code). The PIN is valid
+2. DIAL creates the subscription on the DECT system and shows you a **PIN** (access code). The PIN is valid
    for **30 minutes**; if it expires, click *New PIN* (or ask the helpdesk).
 3. On the handset open the subscription menu (*Menu → Settings → System → Subscription* or similar),
    pick a free system slot, choose the event's DECT network when found, and enter the PIN.
 4. After a few seconds the handset shows your number. The device page changes from *Pending subscription*
-   to **Subscribed** once PET has seen the handset on a base station (up to 30 s).
+   to **Subscribed** once DIAL has seen the handset on a base station (up to 30 s).
 
 "Subscribed" means the DECT system knows your handset and it is registered to the phone system - you can
 make and receive calls. The device page also shows the last base station (RFP) you were seen on.
 
 ## 5. Softphone setup via QR
 
-1. Add a device → **SIP**. PET generates a username and a long random password.
+1. Add a device → **SIP**. DIAL generates a username and a long random password.
 2. Install a softphone. The device page (**Set up your softphone**) offers one QR code per app family -
    scan the one for yours and the account is created without typing anything:
 
    | Your app | What to do |
    |---|---|
-   | **Linphone** | Assistant → *Fetch remote configuration* → scan. (The code is a `linphone-config:` link to a configuration PET serves for your device.) |
+   | **Linphone** | Assistant → *Fetch remote configuration* → scan. (The code is a `linphone-config:` link to a configuration DIAL serves for your device.) |
    | **Groundwire / Cloud Softphone / Acrobits Softphone** | Settings → *Scan QR code*. |
    | **Other softphone (SIP URI)** | Grandstream Wave and other clients that accept a `sip:` URI with credentials. |
-   | **Zoiper, desk phones, anything else** | Use the **Manual settings** card: server, port, username, password (reveal button), transport, display name. Zoiper's QR setup needs Zoiper's paid service, so PET does not offer it. |
+   | **Zoiper, desk phones, anything else** | Use the **Manual settings** card: server, port, username, password (reveal button), transport, display name. Zoiper's QR setup needs Zoiper's paid service, so DIAL does not offer it. |
 
    Every code contains your SIP password (or a link that serves it) - don't post screenshots.
 3. Transport UDP/TCP (5060) or TLS (5061, accept the event's certificate).
@@ -135,7 +135,7 @@ make and receive calls. The device page also shows the last base station (RFP) y
 
 Desk phones (Snom/Yealink/Grandstream/Cisco) can be autoprovisioned: when the orga has attached a
 provisioning profile to your device, the device page shows a **provisioning URL**
-(`https://<pet>/prov/<token>/<filename>`) to enter in the phone's web interface. Treat that URL like a
+(`https://<dial>/prov/<token>/<filename>`) to enter in the phone's web interface. Treat that URL like a
 password - it contains your SIP credentials. Phones that only know their MAC address can fetch
 `/prov/<vendor>/<mac>.cfg` (or `.xml`) instead, but must authenticate with the SIP username and
 password (HTTP Basic) or the `?token=` query parameter.
@@ -144,7 +144,7 @@ password (HTTP Basic) or the `?token=` query parameter.
 
 Some events operate their own small GSM network. If the orga enabled it, **GSM** appears as a device
 type: add one at `/e/<slug>/devices/gsm/` with the SIM's IMSI (and optionally its MSISDN) and tick the
-network generations (2G-5G) the SIM may use. PET shows a **6-digit one-time registration code**;
+network generations (2G-5G) the SIM may use. DIAL shows a **6-digit one-time registration code**;
 register on the cell network as instructed on site (dial or text the code) and the SIM is linked to
 your device. From then on your extension rings on the phone.
 
@@ -166,7 +166,7 @@ Every extension can forward to another extension of the same event (extension **
 | When busy | forward only when you are on another call |
 | When unanswered | forward after your ring timeout |
 
-Pick the target from your own active extensions or type any active number of the event. PET refuses
+Pick the target from your own active extensions or type any active number of the event. DIAL refuses
 forwarding to yourself, to numbers that aren't active and to loops (A → B → A). If the target is later
 deleted, expires or gets rejected, your forwarding is switched off automatically and you can see that
 in the audit trail. The target's page lists who forwards to it under **Forwarded from**.
@@ -180,7 +180,7 @@ are audited.
 ### Custom ringback tone
 
 Instead of the standard ring, callers can hear your own sound while your devices ring. On the
-extension's Edit page upload a **WAV, MP3, OGG or FLAC** file (max. 5 MB). PET checks the file and
+extension's Edit page upload a **WAV, MP3, OGG or FLAC** file (max. 5 MB). DIAL checks the file and
 converts it in the background to telephone format (8 kHz mono); the *Ringback tone* row on the extension
 page shows **Processing**, **Ready** (with a player) or **Failed** with the reason. Tick **Clear** to go
 back to the normal ring. Only you (the owner) and the orga can change it.
@@ -201,7 +201,7 @@ back to the normal ring. Only you (the owner) and the orga can change it.
 search. Exports: PDF (classic printed phonebook), CSV, vCard, LDIF. Your entry is your choice - untick
 the box any time. Each row has a small vCard link to save that one contact. Depending on how the orga set
 up the venue, desk phones and DECT handsets can show the same phonebook **directly on the device** -
-look for a *Directory* key or menu and type the first letters of a name; the phone asks PET and lists
+look for a *Directory* key or menu and type the first letters of a name; the phone asks DIAL and lists
 the matching entries to dial.
 
 **Your business card.** The extension page has a **Business card** card: a QR code that *contains* your
@@ -213,13 +213,13 @@ If your extension is hidden from the phonebook, only you and the orga can open t
 
 | Dial | What happens |
 |---|---|
-| `9000` | **Test ringback** - hang up, PET calls you back after ~10 s. Great for testing coverage and audio. |
+| `9000` | **Test ringback** - hang up, DIAL calls you back after ~10 s. Great for testing coverage and audio. |
 | `9001` | **Wake-up service** - follow the prompt (enter `HHMM`), or schedule at `/e/<slug>/callback/wakeup/new/` with retries, repeat and a custom announcement. Snooze from the web. |
 | `9003` | Echo test. |
 | `9004<code>` | **Claim a DECT handset** for the extension whose claim code you dial (section 4). |
 | `9005<code>` | **Record an announcement** by phone (if the event set a recording number): the code is on your announcement's page; speak after the beep, `#` to finish, the recording is played back and replaces the current audio. |
 | `9999` | Voicemail - listen to your messages with your mailbox PIN. |
-| `*66<number>` | **Callback** (CCBS/CCNR): the target was busy or didn't answer - PET calls you back when it becomes free and connects you. Requests expire after 30 minutes. |
+| `*66<number>` | **Callback** (CCBS/CCNR): the target was busy or didn't answer - DIAL calls you back when it becomes free and connects you. Requests expire after 30 minutes. |
 | `*86` | Cancel your pending callbacks. |
 | `*71` / `*72` | **Log in / out** of your call groups (helpdesk, medics, security...) from your own handset. |
 | `*21<number>` / `*22<number>` / `*23<number>` / `*20` | **Call forwarding** always / busy / unanswered / off (section 6). |
@@ -265,7 +265,7 @@ the transfer is recorded in the audit log.
 
 **Numbers belong to an event, never to a person.** Every event starts empty: you register again, the
 new event's number plan decides, and nobody - not even orga - can reserve a number permanently across
-events. What PET offers is convenience, not a right: when the next event opens registration, its
+events. What DIAL offers is convenience, not a right: when the next event opens registration, its
 dashboard shows **Port your numbers** listing extensions you held before. One click *re-requests* the
 same number through the normal rules (a number that became reserved needs approval; one somebody else
 registered first is simply gone). Orga can pre-reserve a number for a specific person *within* one
@@ -281,21 +281,21 @@ browsable so you can look things up.
   - extensions are released, your data is erased after the event's retention period.
 - Helpdesk staff can look up your extensions to help you; every such lookup is audit-logged.
 
-## 14. Install PET on your phone
+## 14. Install DIAL on your phone
 
-PET works as an installable web app, so the event dashboard and the phonebook are one tap away - and
+DIAL works as an installable web app, so the event dashboard and the phonebook are one tap away - and
 still open when the venue Wi-Fi drops.
 
-- **Android / Chrome, Edge:** open PET and tap **Install PET on this device** at the bottom of the page
+- **Android / Chrome, Edge:** open DIAL and tap **Install DIAL on this device** at the bottom of the page
   (or browser menu → *Install app* / *Add to Home screen*).
 - **iPhone / iPad (Safari):** *Share* → **Add to Home Screen**.
 - **Desktop (Chrome, Edge):** click the install icon in the address bar.
 
-Once installed, PET opens full-screen with its own icon. Pages you have visited - your event dashboard,
+Once installed, DIAL opens full-screen with its own icon. Pages you have visited - your event dashboard,
 the phonebook list and the docs - are kept for offline use; a bar at the bottom tells you when you are
 offline. Anything that changes data (registering a number, editing a device) needs a connection. Login,
-QR codes, SIP passwords and orga pages are never stored on the device. When a new PET version is
-deployed, a small "PET was updated" toast appears - tap **Reload**.
+QR codes, SIP passwords and orga pages are never stored on the device. When a new DIAL version is
+deployed, a small "DIAL was updated" toast appears - tap **Reload**.
 
 ## 15. Accessibility
 
@@ -303,7 +303,7 @@ deployed, a small "PET was updated" toast appears - tap **Reload**.
   event sidebar. The first Tab on every page reveals a *Skip to main content* link.
 - **Screen readers:** pages have landmarks (navigation, main, footer), one heading per page, labelled
   form fields with errors announced, and status messages that are read out when they appear.
-- **Motion & contrast:** PET follows your operating system - *reduce motion* switches off animations,
+- **Motion & contrast:** DIAL follows your operating system - *reduce motion* switches off animations,
   *increase contrast* thickens borders and focus rings. Dark and light theme both meet WCAG AA contrast.
 - **Zoom:** the layout reflows up to 200 % zoom and on 320 px wide screens; tables scroll sideways
   instead of overflowing.

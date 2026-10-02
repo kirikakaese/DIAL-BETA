@@ -33,9 +33,9 @@ def test_seed_demo_creates_event_and_extensions():
     event = Event.objects.get(slug="demo")
     assert event.state == Event.State.LIVE
     assert event.allow_guest_extensions
-    admin = User.objects.get(email="admin@pet.local")
+    admin = User.objects.get(email="admin@dial.local")
     assert admin.is_superuser and admin.check_password("admin")
-    assert User.objects.get(email="alice@pet.local").check_password("demo1234!")
+    assert User.objects.get(email="alice@dial.local").check_password("demo1234!")
     assert set(UserGroup.objects.filter(event=event).values_list("slug", flat=True)) == {
         "angels",
         "medics",

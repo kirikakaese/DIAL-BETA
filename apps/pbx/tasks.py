@@ -3,7 +3,7 @@ import logging
 
 from celery import shared_task
 
-log = logging.getLogger("pet.pbx")
+log = logging.getLogger("dial.pbx")
 
 
 # --------------------------------------------------------------------------- outbox
@@ -108,7 +108,7 @@ def ingest_cdrs(limit: int = 500) -> int:
     events = {e.slug[:20]: e for e in Event.objects.all()}
     for row in Cdr.objects.filter(ingested_at__isnull=True).order_by("id")[:limit]:
         event = events.get(row.accountcode or "")
-        if event is None and row.dcontext and row.dcontext.startswith("pet-"):
+        if event is None and row.dcontext and row.dcontext.startswith("dial-"):
             event = Event.objects.filter(slug=row.dcontext[4:]).first()
         if event is not None:
             call_service("apps.stats.services", "ingest_cdr", event, row.as_record())

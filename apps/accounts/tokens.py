@@ -1,7 +1,7 @@
 """E-mail confirmation tokens: mail delivery helpers and a small abuse limiter.
 
 All mails are plain text, rendered from ``templates/registration/*.txt`` and link back to
-``PET_PUBLIC_URL``. Nothing here reveals whether an address already has an account.
+``DIAL_PUBLIC_URL``. Nothing here reveals whether an address already has an account.
 """
 from __future__ import annotations
 
@@ -19,14 +19,14 @@ from apps.core.middleware import client_ip
 
 from .models import RegistrationEmailToken, User
 
-log = logging.getLogger("pet.accounts.tokens")
+log = logging.getLogger("dial.accounts.tokens")
 
 # Token mails per hour, per e-mail address and per client IP.
 TOKEN_MAILS_PER_EMAIL = 5
 TOKEN_MAILS_PER_IP = 20
 RATE_WINDOW = 3600
 
-SUBJECT_PREFIX = "[PET] "
+SUBJECT_PREFIX = "[DIAL] "
 
 
 # --- rate limiting ----------------------------------------------------------
@@ -51,12 +51,12 @@ def token_mail_allowed(email: str, request=None) -> bool:
 
 # --- mail helpers -----------------------------------------------------------
 def public_url(url_name: str, raw_token: str) -> str:
-    return settings.PET_PUBLIC_URL.rstrip("/") + reverse(url_name, args=[raw_token])
+    return settings.DIAL_PUBLIC_URL.rstrip("/") + reverse(url_name, args=[raw_token])
 
 
 def _send(template: str, subject: str, to: str, context: dict) -> bool:
-    ctx = {"public_url": settings.PET_PUBLIC_URL.rstrip("/"),
-           "ttl_hours": getattr(settings, "PET_EMAIL_TOKEN_TTL_HOURS", 48), **context}
+    ctx = {"public_url": settings.DIAL_PUBLIC_URL.rstrip("/"),
+           "ttl_hours": getattr(settings, "DIAL_EMAIL_TOKEN_TTL_HOURS", 48), **context}
     body = render_to_string(f"registration/{template}", ctx)
     full_subject = SUBJECT_PREFIX + str(subject)
     try:
@@ -77,8 +77,8 @@ def send_registration_mail(email: str, request=None) -> bool:
     if User.objects.filter(email__iexact=email).exists():
         return _send("account_exists_email.txt", _("You already have an account"), email, {
             "email": email,
-            "reset_url": settings.PET_PUBLIC_URL.rstrip("/") + reverse("accounts:password_reset"),
-            "login_url": settings.PET_PUBLIC_URL.rstrip("/") + reverse("accounts:login"),
+            "reset_url": settings.DIAL_PUBLIC_URL.rstrip("/") + reverse("accounts:password_reset"),
+            "login_url": settings.DIAL_PUBLIC_URL.rstrip("/") + reverse("accounts:login"),
         })
     _tok, raw = RegistrationEmailToken.issue(email, RegistrationEmailToken.Purpose.REGISTER, ip=_ip(request))
     return _send("register_confirm_email.txt", _("Confirm your e-mail address"), email, {
@@ -120,8 +120,8 @@ def send_invitation_mail(user, event=None, request=None) -> bool:
 
     uid = urlsafe_base64_encode(force_bytes(user.pk))
     token = default_token_generator.make_token(user)
-    url = settings.PET_PUBLIC_URL.rstrip("/") + reverse("accounts:password_reset_confirm", args=[uid, token])
-    return _send("invitation_email.txt", _("Your PET account"), user.email, {
+    url = settings.DIAL_PUBLIC_URL.rstrip("/") + reverse("accounts:password_reset_confirm", args=[uid, token])
+    return _send("invitation_email.txt", _("Your DIAL account"), user.email, {
         "user": user, "event": event, "set_password_url": url,
-        "login_url": settings.PET_PUBLIC_URL.rstrip("/") + reverse("accounts:login"),
+        "login_url": settings.DIAL_PUBLIC_URL.rstrip("/") + reverse("accounts:login"),
     })

@@ -41,7 +41,7 @@
 
 <section class="card">
   <div class="card-header"><h2>{% trans "Your data" %}</h2></div>
-  <p>{% blocktrans %}You can download everything PET's statistics module stores about you (your extensions and call records across all events), or anonymize your call records now. Anonymizing replaces your numbers with "anon" and removes the link to your account; aggregate counters are not affected.{% endblocktrans %}</p>
+  <p>{% blocktrans %}You can download everything DIAL's statistics module stores about you (your extensions and call records across all events), or anonymize your call records now. Anonymizing replaces your numbers with "anon" and removes the link to your account; aggregate counters are not affected.{% endblocktrans %}</p>
   <form method="post" action="{% url 'stats:gdpr_delete' event.slug %}" data-confirm="{% trans 'Anonymize all of your call records now? This cannot be undone.' %}">
     {% csrf_token %}
     <div class="field"><label class="checkbox"><input type="checkbox" name="confirm" value="yes" required> {% trans "I understand that this cannot be undone." %}</label></div>

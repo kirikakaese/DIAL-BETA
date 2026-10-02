@@ -21,7 +21,7 @@ from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.utils.translation import gettext_lazy as _
 
-log = logging.getLogger("pet.extensions.audio")
+log = logging.getLogger("dial.extensions.audio")
 
 MAX_RINGBACK_BYTES = 5 * 1024 * 1024
 ALLOWED_EXTENSIONS = {"wav", "mp3", "ogg", "flac"}
@@ -79,7 +79,7 @@ def validate_ringback_upload(f) -> str:
 
 def _ffmpeg_convert(data: bytes, suffix: str) -> bytes:
     ffmpeg = shutil.which("ffmpeg")
-    with tempfile.TemporaryDirectory(prefix="pet-ringback-") as tmp:
+    with tempfile.TemporaryDirectory(prefix="dial-ringback-") as tmp:
         src = os.path.join(tmp, f"in.{suffix}")
         dst = os.path.join(tmp, "tone.wav")
         with open(src, "wb") as fh:

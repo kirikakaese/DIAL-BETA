@@ -1,6 +1,6 @@
-/* PET service worker.
+/* DIAL service worker.
  *
- * Served by apps.core.views.service_worker at /sw.js; the two __PET_*__ placeholders are filled in there
+ * Served by apps.core.views.service_worker at /sw.js; the two __DIAL_*__ placeholders are filled in there
  * (the raw file under /static/js/ is not meant to be registered directly).
  *
  * Strategy
@@ -12,10 +12,10 @@
  */
 "use strict";
 
-const VERSION = "__PET_ASSET_VERSION__";
-const STATIC_CACHE = "pet-static-" + VERSION;
-const PAGES_CACHE = "pet-pages-" + VERSION;
-const PRECACHE = __PET_PRECACHE__;
+const VERSION = "__DIAL_ASSET_VERSION__";
+const STATIC_CACHE = "dial-static-" + VERSION;
+const PAGES_CACHE = "dial-pages-" + VERSION;
+const PRECACHE = __DIAL_PRECACHE__;
 const OFFLINE_URL = "/offline/";
 const NAV_TIMEOUT_MS = 4000;
 
@@ -72,7 +72,7 @@ self.addEventListener("activate", function (event) {
   event.waitUntil(
     caches.keys().then(function (keys) {
       return Promise.all(keys.filter(function (k) {
-        return k.startsWith("pet-") && k !== STATIC_CACHE && k !== PAGES_CACHE;
+        return k.startsWith("dial-") && k !== STATIC_CACHE && k !== PAGES_CACHE;
       }).map(function (k) { return caches.delete(k); }));
     }).then(function () { return self.clients.claim(); })
   );

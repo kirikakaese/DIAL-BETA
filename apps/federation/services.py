@@ -17,7 +17,7 @@ from apps.core.features import enabled
 
 from .models import FederationDirectoryEntry, FederationPeer
 
-logger = logging.getLogger("pet.federation")
+logger = logging.getLogger("dial.federation")
 
 
 class FederationError(Exception):
@@ -79,7 +79,7 @@ def mark_seen(peer: FederationPeer) -> None:
 
 def publish_directory_entry(event) -> dict:
     """What this instance publishes about ``event`` at ``/api/v1/federation/directory/``."""
-    base = getattr(settings, "PET_PUBLIC_URL", "") or ""
+    base = getattr(settings, "DIAL_PUBLIC_URL", "") or ""
     asterisk = getattr(settings, "ASTERISK", {}) or {}
     return {
         "instance_url": base,
@@ -87,10 +87,10 @@ def publish_directory_entry(event) -> dict:
         "event_slug": event.slug,
         "dial_prefix": event.dial_prefix,
         "sip_host": event.sip_domain or asterisk.get("SIP_DOMAIN", ""),
-        "sip_port": int(getattr(settings, "PET_FEDERATION_SIP_PORT", 5061)),
+        "sip_port": int(getattr(settings, "DIAL_FEDERATION_SIP_PORT", 5061)),
         "transport": "tls",
         "srtp": True,
-        "contact": getattr(settings, "PET_FEDERATION_CONTACT", ""),
+        "contact": getattr(settings, "DIAL_FEDERATION_CONTACT", ""),
         "start_date": event.start_date.isoformat() if event.start_date else None,
         "end_date": event.end_date.isoformat() if event.end_date else None,
     }
@@ -131,11 +131,11 @@ def pjsip_trunk_config(peer: FederationPeer) -> str:
     if peer.transport == FederationPeer.Transport.WSS:
         encryption = "dtls" if peer.srtp else "no"
     lines = [
-        f"; PET federation peer: {peer.name} (prefix {peer.remote_prefix})",
+        f"; DIAL federation peer: {peer.name} (prefix {peer.remote_prefix})",
         f"[{name}]",
         "type=endpoint",
         f"transport=transport-{peer.transport}",
-        "context=pet-federation-in",
+        "context=dial-federation-in",
         "disallow=all",
         "allow=opus,g722,alaw,ulaw",
         f"aors={name}",

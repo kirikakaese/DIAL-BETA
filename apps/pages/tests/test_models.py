@@ -25,11 +25,11 @@ def draft(event):
 # --------------------------------------------------------------------------- rendering
 
 def test_markdown_renders_headings_lists_tables_links():
-    html = str(render_markdown("## Hi\n\n- a\n- **b**\n\n| x | y |\n|---|---|\n| 1 | 2 |\n\n[PET](https://pet.example)"))
+    html = str(render_markdown("## Hi\n\n- a\n- **b**\n\n| x | y |\n|---|---|\n| 1 | 2 |\n\n[DIAL](https://dial.example)"))
     assert '<h2 id="hi">Hi</h2>' in html
     assert "<li>a</li>" in html and "<strong>b</strong>" in html
     assert '<div class="table-wrap"><table>' in html and "<td>2</td>" in html
-    assert '<a href="https://pet.example" rel="noopener" target="_blank">PET</a>' in html
+    assert '<a href="https://dial.example" rel="noopener" target="_blank">DIAL</a>' in html
 
 
 def test_markdown_escapes_raw_html_and_javascript_links():

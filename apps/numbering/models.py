@@ -52,7 +52,7 @@ class NumberPlan(TimeStampedModel):
         help_text=_("Variable-length numbers: no extension may be a prefix of another one "
                     "(23 blocks 2323 and vice versa), so every number is dialable without a timeout."),
     )
-    # Service extensions that PET itself provides (dialable by everyone)
+    # Service extensions that DIAL itself provides (dialable by everyone)
     test_ringback_number = models.CharField(max_length=16, blank=True, default="", validators=[digits])
     wakeup_service_number = models.CharField(max_length=16, blank=True, default="", validators=[digits])
     site_survey_number = models.CharField(max_length=16, blank=True, default="", validators=[digits])
@@ -148,7 +148,7 @@ class NumberPlan(TimeStampedModel):
         return self
 
     def service_numbers(self) -> list[str]:
-        """PET-provided service extensions that are configured (dialable by everyone)."""
+        """DIAL-provided service extensions that are configured (dialable by everyone)."""
         return [svc for svc in (self.test_ringback_number, self.wakeup_service_number, self.site_survey_number,
                                 self.echo_test_number, self.voicemail_number, self.dect_claim_number,
                                 self.announcement_record_number) if svc]

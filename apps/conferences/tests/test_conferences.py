@@ -30,7 +30,7 @@ def test_create_room_registers_conference_extension(event, user, member):
 def test_pin_validation_and_flag(event, user, member, settings):
     with pytest.raises(services.ConferenceError):
         services.create_room(event, user, "4500", "12")
-    settings.PET_FEATURES = {**settings.PET_FEATURES, "conferences": False}
+    settings.DIAL_FEATURES = {**settings.DIAL_FEATURES, "conferences": False}
     with pytest.raises(services.ConferenceError):
         services.create_room(event, user, "4500", "")
 
@@ -39,7 +39,8 @@ def test_refresh_participants_and_kick(event, user, member, pbx):
     room = services.create_room(event, user, "4500")
     pbx.channels = [
         ChannelState(id="c1", caller="4242", callee="4500", state="up", extra={"event": "demo"}),
-        ChannelState(id="c2", caller="4300", callee="", state="up", extra={"event": "demo", "bridge": "pet-demo-4500"}),
+        ChannelState(id="c2", caller="4300", callee="", state="up",
+                     extra={"event": "demo", "bridge": "dial-demo-4500"}),
         ChannelState(id="c3", caller="4301", callee="4700", state="up", extra={"event": "demo"}),
     ]
     ps = services.refresh_participants(room)
@@ -53,9 +54,9 @@ def test_refresh_participants_and_kick(event, user, member, pbx):
 
 def test_pbx_route_reads_pin(client, event, user, member, settings):
     services.create_room(event, user, "4500", "4321")
-    settings.PET_PBX_HOOK_SECRET = "s3cret"
-    d = client.get("/api/v1/pbx/route/?event=demo&number=4500", HTTP_X_PET_PBX_SECRET="s3cret").json()
-    assert d["conference"] == {"name": "pet-demo-4500", "pin": "4321"}
+    settings.DIAL_PBX_HOOK_SECRET = "s3cret"
+    d = client.get("/api/v1/pbx/route/?event=demo&number=4500", HTTP_X_DIAL_PBX_SECRET="s3cret").json()
+    assert d["conference"] == {"name": "dial-demo-4500", "pin": "4321"}
 
 
 def test_views(client, event, user, other_user, orga, member, pbx):

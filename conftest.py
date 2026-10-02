@@ -28,7 +28,7 @@ def event(db):
     today = dt.date.today()
     ev = Event.objects.create(
         name="Demo Camp", slug="demo", state=Event.State.REGISTRATION,
-        start_date=today, end_date=today + dt.timedelta(days=5), sip_domain="demo.pet.local",
+        start_date=today, end_date=today + dt.timedelta(days=5), sip_domain="demo.dial.local",
         allow_guest_extensions=True,
     )
     plan = NumberPlan.objects.create(event=ev, min_length=4, max_length=4, test_ringback_number="9000",

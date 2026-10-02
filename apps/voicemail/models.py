@@ -1,6 +1,6 @@
-"""Voicemail: PET-side mailboxes and messages mirrored from Asterisk's app_voicemail.
+"""Voicemail: DIAL-side mailboxes and messages mirrored from Asterisk's app_voicemail.
 
-Asterisk records the message and calls the ``voicemail`` PBX hook (``externnotify``); PET copies the
+Asterisk records the message and calls the ``voicemail`` PBX hook (``externnotify``); DIAL copies the
 audio into ``MEDIA_ROOT``, updates MWI on PBX + DECT and optionally e-mails the message.
 """
 from django.conf import settings
@@ -25,7 +25,7 @@ class Mailbox(TimeStampedModel):
 
     ``pin`` is stored in plain text on purpose: Asterisk's ``voicemail_users`` realtime table needs the
     clear-text PIN (``password`` column) and the boxes only live for the duration of an event. Treat the
-    PET database as sensitive accordingly.
+    DIAL database as sensitive accordingly.
     """
 
     event = models.ForeignKey("events.Event", on_delete=models.CASCADE, related_name="mailboxes")
@@ -114,4 +114,4 @@ class MessageDelivery(models.Model):
 
 
 def default_from_email() -> str:
-    return getattr(settings, "PET_VOICEMAIL_FROM_EMAIL", None) or settings.DEFAULT_FROM_EMAIL
+    return getattr(settings, "DIAL_VOICEMAIL_FROM_EMAIL", None) or settings.DEFAULT_FROM_EMAIL

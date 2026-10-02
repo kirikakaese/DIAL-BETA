@@ -21,8 +21,8 @@ from apps.core.models import AuditLog
 
 pytestmark = pytest.mark.django_db
 
-ISSUER = "https://id.example.org/realms/pet"
-CLIENT_ID = "pet-client"
+ISSUER = "https://id.example.org/realms/dial"
+CLIENT_ID = "dial-client"
 DISCOVERY = {
     "issuer": ISSUER,
     "authorization_endpoint": ISSUER + "/protocol/openid-connect/auth",
@@ -33,11 +33,11 @@ DISCOVERY = {
     "code_challenge_methods_supported": ["S256"],
     "claims_supported": ["sub", "email", "email_verified", "preferred_username", "name"],
 }
-OIDC_ON = dict(PET_OIDC_ENABLED=True, PET_OIDC_ISSUER=ISSUER, PET_OIDC_CLIENT_ID=CLIENT_ID,
-               PET_OIDC_CLIENT_SECRET="s3cret", PET_OIDC_SCOPES="openid email profile",
-               PET_OIDC_AUTO_CREATE=True, PET_OIDC_TRUST_EMAIL_VERIFIED=True, PET_OIDC_ALLOW_PASSWORD_LOGIN=True,
-               PET_OIDC_USERNAME_CLAIM="preferred_username", PET_OIDC_LOGOUT_AT_IDP=False,
-               PET_OIDC_BUTTON_LABEL="Log in with SSO")
+OIDC_ON = dict(DIAL_OIDC_ENABLED=True, DIAL_OIDC_ISSUER=ISSUER, DIAL_OIDC_CLIENT_ID=CLIENT_ID,
+               DIAL_OIDC_CLIENT_SECRET="s3cret", DIAL_OIDC_SCOPES="openid email profile",
+               DIAL_OIDC_AUTO_CREATE=True, DIAL_OIDC_TRUST_EMAIL_VERIFIED=True, DIAL_OIDC_ALLOW_PASSWORD_LOGIN=True,
+               DIAL_OIDC_USERNAME_CLAIM="preferred_username", DIAL_OIDC_LOGOUT_AT_IDP=False,
+               DIAL_OIDC_BUTTON_LABEL="Log in with SSO")
 
 
 def oidc_settings(**overrides):
@@ -101,7 +101,7 @@ class FakeRequests:
     def post(self, url, data=None, **kw):
         self.calls.append(("POST", url, {"data": data, **kw}))
         assert url == DISCOVERY["token_endpoint"]
-        # nonce must be the one PET issued: the test passes it via ``id_token_overrides``
+        # nonce must be the one DIAL issued: the test passes it via ``id_token_overrides``
         nonce = self.id_token_overrides.pop("nonce", None) or self._nonce
         if self.token_status != 200:
             return FakeResponse({"error": "invalid_grant"}, status=self.token_status)
@@ -216,7 +216,7 @@ def test_happy_path_creates_user_and_logs_in(client, fake):
     assert client.get(reverse("portal:dashboard")).status_code == 200
 
 
-@oidc_settings(PET_OIDC_CLIENT_SECRET="")
+@oidc_settings(DIAL_OIDC_CLIENT_SECRET="")
 def test_public_client_sends_no_basic_auth(client, fake):
     _url, q = start(client, fake)
     assert callback(client, q["state"]).status_code == 302
@@ -224,7 +224,7 @@ def test_public_client_sends_no_basic_auth(client, fake):
     assert post["auth"] is None and post["data"]["client_id"] == CLIENT_ID
 
 
-@oidc_settings(PET_OIDC_TRUST_EMAIL_VERIFIED=False)
+@oidc_settings(DIAL_OIDC_TRUST_EMAIL_VERIFIED=False)
 def test_untrusted_email_verified_claim_leaves_user_unverified(client, fake):
     _url, q = start(client, fake)
     assert callback(client, q["state"]).status_code == 302
@@ -310,7 +310,7 @@ def test_malformed_id_token():
         oidc.decode_jwt_payload("a.!!!.c")
 
 
-@oidc_settings(PET_LOGIN_IP_MAX_FAILURES=2, PET_LOGIN_LOCKOUT_MINUTES=5)
+@oidc_settings(DIAL_LOGIN_IP_MAX_FAILURES=2, DIAL_LOGIN_LOCKOUT_MINUTES=5)
 def test_failed_callbacks_count_towards_ip_lockout(client, fake):
     fake.id_token_overrides = {"aud": "nope"}
     for _ in range(2):
@@ -335,7 +335,7 @@ def test_existing_subject_logs_in_without_creating(client, fake, user):
 
 
 @oidc_settings()
-def test_link_by_verified_pet_email(client, fake, user):
+def test_link_by_verified_dial_email(client, fake, user):
     user.email_verified = True
     user.save()
     fake.id_token_overrides = {"email": "Alice@Example.org", "email_verified": False}
@@ -347,7 +347,7 @@ def test_link_by_verified_pet_email(client, fake, user):
 
 
 @oidc_settings()
-def test_link_by_idp_verified_email_marks_pet_email_verified(client, fake, user):
+def test_link_by_idp_verified_email_marks_dial_email_verified(client, fake, user):
     assert user.email_verified is False
     fake.id_token_overrides = {"email": "alice@example.org", "email_verified": True}
     _url, q = start(client, fake)
@@ -386,7 +386,7 @@ def test_disabled_user_cannot_log_in(client, fake, user):
     assert r.status_code == 403 and b"disabled" in r.content
 
 
-@oidc_settings(PET_OIDC_AUTO_CREATE=False)
+@oidc_settings(DIAL_OIDC_AUTO_CREATE=False)
 def test_no_auto_create(client, fake):
     _url, q = start(client, fake)
     r = callback(client, q["state"])
@@ -394,7 +394,7 @@ def test_no_auto_create(client, fake):
     assert not User.objects.filter(email="sso@example.org").exists()
 
 
-@oidc_settings(PET_SIGNUP_BLOCKED_DOMAINS=["example.org"])
+@oidc_settings(DIAL_SIGNUP_BLOCKED_DOMAINS=["example.org"])
 def test_auto_create_honours_domain_policy(client, fake):
     _url, q = start(client, fake)
     assert callback(client, q["state"]).status_code == 403
@@ -466,7 +466,7 @@ def test_login_page_shows_sso_button_and_password_form(client, fake):
     assert b"oidc-register" in r.content and b'name="email"' in r.content
 
 
-@oidc_settings(PET_OIDC_ALLOW_PASSWORD_LOGIN=False)
+@oidc_settings(DIAL_OIDC_ALLOW_PASSWORD_LOGIN=False)
 def test_sso_only_hides_password_form(client, fake, user):
     r = client.get(reverse("accounts:login"))
     assert r.status_code == 200 and b"oidc-login" in r.content
@@ -483,7 +483,7 @@ def test_sso_only_hides_password_form(client, fake, user):
 
 
 # --- logout at IdP -----------------------------------------------------------------------
-@oidc_settings(PET_OIDC_LOGOUT_AT_IDP=True)
+@oidc_settings(DIAL_OIDC_LOGOUT_AT_IDP=True)
 def test_logout_redirects_to_end_session_endpoint(client, fake):
     _url, q = start(client, fake)
     assert callback(client, q["state"]).status_code == 302
@@ -505,21 +505,21 @@ def test_logout_stays_local_by_default(client, fake, user):
 
 # --- management command ---------------------------------------------------------------------
 @oidc_settings()
-def test_pet_oidc_check(fake, capsys):
-    call_command("pet_oidc_check")
+def test_dial_oidc_check(fake, capsys):
+    call_command("dial_oidc_check")
     out = capsys.readouterr().out
     assert "Discovery OK" in out and DISCOVERY["token_endpoint"] in out
     assert "/accounts/oidc/callback/" in out
 
 
-@oidc_settings(PET_OIDC_ISSUER="")
-def test_pet_oidc_check_incomplete(fake):
+@oidc_settings(DIAL_OIDC_ISSUER="")
+def test_dial_oidc_check_incomplete(fake):
     with pytest.raises(CommandError):
-        call_command("pet_oidc_check")
+        call_command("dial_oidc_check")
 
 
 @oidc_settings()
-def test_pet_oidc_check_unreachable(fake):
+def test_dial_oidc_check_unreachable(fake):
     fake.fail_discovery = True
     with pytest.raises(CommandError, match="Discovery failed"):
-        call_command("pet_oidc_check")
+        call_command("dial_oidc_check")

@@ -34,7 +34,7 @@ def _future(hours=1):
 
 SETTINGS_POST = {
     "name": "Demo Camp", "description": "", "location": "Field", "timezone": "Europe/Berlin", "is_public": "on",
-    "primary_color": "#112233", "accent_color": "#445566", "announcement": "", "sip_domain": "demo.pet.local",
+    "primary_color": "#112233", "accent_color": "#445566", "announcement": "", "sip_domain": "demo.dial.local",
     "dial_prefix": "", "default_language": "en", "max_extensions_per_user": 3, "allow_guest_extensions": "on",
     "gsm_trunk": "gsm-gateway", "cdr_retention_days": "",
 }

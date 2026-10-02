@@ -20,10 +20,10 @@ CONF = ROOT / "deploy" / "asterisk" / "conf" / "extensions.conf"
 
 # every static context the generator / API layer / entrypoint refers to
 REQUIRED_CONTEXTS = {
-    "pet-internal", "pet-services", "pet-group", "pet-ivr", "pet-app", "pet-route", "pet-feature",
-    "pet-hangup", "pet-emergency", "pet-hook", "pet-lookup", "pet-dial", "pet-after-dial",
+    "dial-internal", "dial-services", "dial-group", "dial-ivr", "dial-app", "dial-route", "dial-feature",
+    "dial-hangup", "dial-emergency", "dial-hook", "dial-lookup", "dial-dial", "dial-after-dial",
 }
-# ``PET_SERVICE`` values other apps pass to ``originate()`` (+ the default ``announce``)
+# ``DIAL_SERVICE`` values other apps pass to ``originate()`` (+ the default ``announce``)
 ORIGINATE_TARGETS = {"announce", "callback", "ringback", "wakeup-call"}
 
 
@@ -51,9 +51,9 @@ def test_static_contexts_exist(conf_text):
 def test_service_numbers_map_to_static_extens(event, conf_text):
     services = extens_in(conf_text, dp.SERVICES_CONTEXT)
     for _field, svc in dp.SERVICE_NUMBERS:
-        assert svc in services, f"[pet-services] has no exten {svc}"
+        assert svc in services, f"[dial-services] has no exten {svc}"
     for target in ORIGINATE_TARGETS:
-        assert target in services, f"[pet-services] has no originate target {target}"
+        assert target in services, f"[dial-services] has no originate target {target}"
     # what rows_for_plan actually emits for the demo plan
     for row in dp.rows_for_plan(event, get_plan(event)):
         if row.app == "Goto" and row.appdata.startswith(f"{dp.SERVICES_CONTEXT},"):
@@ -85,19 +85,19 @@ def test_gosub_targets_exist(event, user, conf_text):
 def test_hangup_handler_and_hook_urls(conf_text):
     ctx, exten, prio = dp.HANGUP_HANDLER.split(",")
     assert exten in extens_in(conf_text, ctx) and prio == "1"
-    # the static dialplan must call exactly the hook kinds / route URL PET exposes
+    # the static dialplan must call exactly the hook kinds / route URL DIAL exposes
     for kind in ("feature-code", "extension-idle", "cdr", "site-survey", "dect-claim"):
-        assert f"/api/v1/pbx/hooks/{kind}/" in conf_text or f"(pet-hook,s,1({kind}," in conf_text
-    assert "/api/v1/pbx/route/?event=${PET_EVENT}&number=" in conf_text
-    assert "X-PET-PBX-Secret" in conf_text
+        assert f"/api/v1/pbx/hooks/{kind}/" in conf_text or f"(dial-hook,s,1({kind}," in conf_text
+    assert "/api/v1/pbx/route/?event=${DIAL_EVENT}&number=" in conf_text
+    assert "X-DIAL-PBX-Secret" in conf_text
     # the app_voicemail notify script posts to the voicemail hook
     vm = (ROOT / "deploy" / "asterisk" / "scripts" / "vm_notify.sh").read_text()
-    assert "/api/v1/pbx/hooks/voicemail/" in vm and "X-PET-PBX-Secret" in vm
+    assert "/api/v1/pbx/hooks/voicemail/" in vm and "X-DIAL-PBX-Secret" in vm
 
 
 def test_confbridge_profiles_exist():
     text = (ROOT / "deploy" / "asterisk" / "conf" / "confbridge.conf").read_text()
-    assert "[pet_bridge]" in text and "[pet_user]" in text
+    assert "[dial_bridge]" in text and "[dial_user]" in text
 
 
 def test_realtime_tables_match_models():

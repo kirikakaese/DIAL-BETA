@@ -2,12 +2,12 @@
 from django import forms
 from django.utils.translation import gettext_lazy as _
 
-from apps.portal.forms import PetModelForm
+from apps.portal.forms import DialModelForm
 
 from .models import InfoPage
 
 
-class InfoPageForm(PetModelForm):
+class InfoPageForm(DialModelForm):
     class Meta:
         model = InfoPage
         fields = ["title", "slug", "body", "order", "published", "show_on_dashboard"]

@@ -1,11 +1,11 @@
 {% extends "base.html" %}{% load i18n %}
-{% block title %}{% trans "Federation (PET-VPN)" %}{% endblock %}
+{% block title %}{% trans "Federation (DIAL-VPN)" %}{% endblock %}
 {% block content %}
 <div class="page-header">
   <div class="page-title">
     <p class="eyebrow eyebrow-orga">{% trans "Orga" %} · {% trans "Services" %}</p>
-    <h1>{% trans "Federation (PET-VPN)" %}</h1>
-    <p class="subtitle">{% trans "Dial into other PET events over SIP: each peer gets a prefix in front of its extension numbers." %}</p>
+    <h1>{% trans "Federation (DIAL-VPN)" %}</h1>
+    <p class="subtitle">{% trans "Dial into other DIAL events over SIP: each peer gets a prefix in front of its extension numbers." %}</p>
   </div>
   <div class="actions"><a class="btn btn-primary" href="{% url 'federation:peer_new' event.slug %}">{% trans "Add peer" %}</a></div>
 </div>
@@ -38,7 +38,7 @@
     <form method="post" action="{% url 'federation:directory_fetch' event.slug %}" class="form-row">{% csrf_token %}
       <div class="field">
         <label for="directory_url">{% trans "Directory URL" %}</label>
-        <input id="directory_url" type="url" name="url" placeholder="https://other-pet.example/api/v1/federation/directory/" required>
+        <input id="directory_url" type="url" name="url" placeholder="https://other-dial.example/api/v1/federation/directory/" required>
       </div>
       <div class="field field-submit"><button class="btn">{% trans "Fetch" %}</button></div>
     </form>
