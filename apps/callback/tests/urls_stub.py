@@ -4,9 +4,9 @@ stubbed, so this keeps working as the other work packages land."""
 from django.http import HttpResponse
 from django.urls import get_resolver, include, path
 
-from pet.urls import urlpatterns as project_patterns
+from dial.urls import urlpatterns as project_patterns
 
-_existing = set(get_resolver("pet.urls").namespace_dict)
+_existing = set(get_resolver("dial.urls").namespace_dict)
 
 
 def _stub(request, slug):

@@ -1,6 +1,6 @@
 {% load i18n %}{% autoescape off %}{% blocktrans with u=user.username %}Hello {{ u }},
 
-an account was created for you in PET, the event telephone system{% endblocktrans %}{% if event %}{% blocktrans with e=event.name %} for {{ e }}{% endblocktrans %}{% endif %}.
+an account was created for you in DIAL, the event telephone system{% endblocktrans %}{% if event %}{% blocktrans with e=event.name %} for {{ e }}{% endblocktrans %}{% endif %}.
 
 {% trans "Open this link to choose your password:" %}
 
@@ -8,5 +8,5 @@ an account was created for you in PET, the event telephone system{% endblocktran
 
 {% blocktrans %}Afterwards you can sign in at {{ login_url }} and manage your extensions.{% endblocktrans %}
 
--- PET · Portable Event Telephone
+-- DIAL · DECT & IP Administration Layer
 {% endautoescape %}

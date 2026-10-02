@@ -78,7 +78,7 @@ def render_linphone(device: Device) -> str:
 def render_acrobits(device: Device) -> str:
     """``<account>`` XML consumed by Groundwire / Cloud Softphone / Acrobits Softphone after a QR scan."""
     ext = device.primary_extension
-    title = f"PET {ext.number}" if ext else f"PET {device.event.name}"
+    title = f"DIAL {ext.number}" if ext else f"DIAL {device.event.name}"
     fields = {
         "title": title,
         "username": device.sip_username,

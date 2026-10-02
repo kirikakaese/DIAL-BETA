@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-header">
   <div class="page-title">
-    <h1>{% trans "Create your PET account" %}</h1>
+    <h1>{% trans "Create your DIAL account" %}</h1>
     <p class="subtitle">{% trans "Already registered?" %} <a href="{% url 'accounts:login' %}">{% trans "Log in" %}</a></p>
   </div>
 </div>
@@ -13,7 +13,7 @@
   <div class="form-actions">
     <a class="btn{% if not oidc_password_login %} btn-primary{% endif %}" href="{% url 'accounts:oidc_login' %}" data-testid="oidc-register">{% trans "Sign up with SSO" %} ({{ oidc_button_label }})</a>
   </div>
-  {% if not oidc_password_login %}<p class="small">{% trans "Accounts on this server are created through single sign-on. Log in once and your PET account is ready." %}</p>
+  {% if not oidc_password_login %}<p class="small">{% trans "Accounts on this server are created through single sign-on. Log in once and your DIAL account is ready." %}</p>
   {% else %}<hr><p class="muted small">{% trans "Or sign up with an e-mail address and password:" %}</p>{% endif %}
   {% endif %}
   {% if form %}

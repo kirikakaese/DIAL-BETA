@@ -23,7 +23,7 @@ class TestRingbackForm(forms.Form):
     def __init__(self, *args, extensions, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["extension"].queryset = extensions
-        self.fields["delay"].initial = getattr(settings, "PET_TEST_RINGBACK_DELAY_SECONDS", 10)
+        self.fields["delay"].initial = getattr(settings, "DIAL_TEST_RINGBACK_DELAY_SECONDS", 10)
 
 
 class CallbackRequestForm(forms.Form):

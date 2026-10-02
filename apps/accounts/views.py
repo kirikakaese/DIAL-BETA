@@ -40,7 +40,7 @@ from .forms import (
 )
 from .models import RegistrationEmailToken, ServiceAccount, TokenError, User
 
-seclog = logging.getLogger("pet.security")
+seclog = logging.getLogger("dial.security")
 
 # Failed logins are counted per client IP and per account over this window (seconds).
 LOGIN_FAIL_WINDOW = 15 * 60
@@ -52,9 +52,9 @@ def _login_keys(request, email: str) -> tuple[str, str]:
 
 
 class LoginView(auth_views.LoginView):
-    """Login with brute-force protection: after ``PET_LOGIN_MAX_FAILURES`` wrong passwords for one account
-    (or ``PET_LOGIN_IP_MAX_FAILURES`` from one IP) within 15 minutes, further attempts are refused for
-    ``PET_LOGIN_LOCKOUT_MINUTES`` - without revealing whether the account exists."""
+    """Login with brute-force protection: after ``DIAL_LOGIN_MAX_FAILURES`` wrong passwords for one account
+    (or ``DIAL_LOGIN_IP_MAX_FAILURES`` from one IP) within 15 minutes, further attempts are refused for
+    ``DIAL_LOGIN_LOCKOUT_MINUTES`` - without revealing whether the account exists."""
 
     template_name = "accounts/login.html"
     form_class = LoginForm
@@ -83,17 +83,17 @@ class LoginView(auth_views.LoginView):
     def form_invalid(self, form):
         email = self._email()
         ip_key, acct_key = _login_keys(self.request, email)
-        lock_seconds = int(getattr(settings, "PET_LOGIN_LOCKOUT_MINUTES", 15)) * 60
+        lock_seconds = int(getattr(settings, "DIAL_LOGIN_LOCKOUT_MINUTES", 15)) * 60
         n_ip = antispam.hit(ip_key, LOGIN_FAIL_WINDOW)
         n_acct = antispam.hit(acct_key, LOGIN_FAIL_WINDOW) if acct_key else 0
-        if acct_key and n_acct >= int(getattr(settings, "PET_LOGIN_MAX_FAILURES", 5)):
+        if acct_key and n_acct >= int(getattr(settings, "DIAL_LOGIN_MAX_FAILURES", 5)):
             antispam.lock(acct_key, lock_seconds)
             seclog.warning("login locked for account after %s failures ip=%s", n_acct, client_ip(self.request))
             user = User.objects.filter(email__iexact=email).first()
             if user is not None:
                 audit(action="login", actor=None, target=user, request=self.request,
                       message=f"Login locked for {lock_seconds // 60} min after {n_acct} failed attempts")
-        if n_ip >= int(getattr(settings, "PET_LOGIN_IP_MAX_FAILURES", 30)):
+        if n_ip >= int(getattr(settings, "DIAL_LOGIN_IP_MAX_FAILURES", 30)):
             antispam.lock(ip_key, lock_seconds)
             seclog.warning("login locked for ip=%s after %s failures", client_ip(self.request), n_ip)
         return super().form_invalid(form)
@@ -118,14 +118,14 @@ def register(request):
         # SSO only: accounts are created on first OIDC login, the signup form is not offered.
         ctx = {"form": None, "email_only": False, **oidc.template_context()}
         return render(request, "accounts/register.html", ctx, status=403 if request.method == "POST" else 200)
-    if settings.PET_REQUIRE_EMAIL_VERIFICATION:
+    if settings.DIAL_REQUIRE_EMAIL_VERIFICATION:
         return _register_email_first(request)
     form = RegisterForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         user = form.save()
         login(request, user)
         audit(action="login", actor=user, target=user, request=request, message="Account created")
-        messages.success(request, _("Welcome to PET, %(n)s! Pick an event to register your first extension.")
+        messages.success(request, _("Welcome to DIAL, %(n)s! Pick an event to register your first extension.")
                          % {"n": user.username})
         if token_mails.token_mail_allowed(user.email, request) and token_mails.send_verification_mail(user, request):
             messages.info(request, _("We sent a verification link to %(e)s.") % {"e": user.email})
@@ -167,7 +167,7 @@ def register_confirm(request, token):
         tok.save(update_fields=["user"])
         login(request, user)
         audit(action="create", actor=user, target=user, request=request, message="Account created (e-mail confirmed)")
-        messages.success(request, _("Welcome to PET, %(n)s! Pick an event to register your first extension.")
+        messages.success(request, _("Welcome to DIAL, %(n)s! Pick an event to register your first extension.")
                          % {"n": user.username})
         return redirect("portal:dashboard")
     return render(request, "accounts/register_confirm.html", {"form": form, "email": tok.email})
@@ -337,7 +337,7 @@ def gdpr_export(request):
     body = json.dumps(_gdpr_payload(request.user), cls=DjangoJSONEncoder, indent=2, ensure_ascii=False)
     audit(action="other", actor=request.user, target=request.user, request=request, message="GDPR export")
     resp = HttpResponse(body, content_type="application/json")
-    resp["Content-Disposition"] = f'attachment; filename="pet-export-{request.user.username}.json"'
+    resp["Content-Disposition"] = f'attachment; filename="dial-export-{request.user.username}.json"'
     return resp
 
 

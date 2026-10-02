@@ -1,4 +1,4 @@
-"""Federation (PET-VPN): SIP/TLS trunks between PET instances and a public directory cache."""
+"""Federation (DIAL-VPN): SIP/TLS trunks between DIAL instances and a public directory cache."""
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 

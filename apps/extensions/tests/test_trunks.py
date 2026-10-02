@@ -19,7 +19,7 @@ from apps.numbering.models import NumberRange
 pytestmark = pytest.mark.django_db
 
 SECRET = "hook-secret-123"
-HDR = {"HTTP_X_PET_PBX_SECRET": SECRET}
+HDR = {"HTTP_X_DIAL_PBX_SECRET": SECRET}
 
 
 def make_trunk(event, owner, number="4700", digits=2, state=Extension.State.ACTIVE, **fields):
@@ -332,16 +332,16 @@ def test_cli_block_digits(capsys):
     from unittest import mock
 
     with mock.patch("requests.Session.request", return_value=resp) as req:
-        rc = cli.main(["--url", "http://pet.test", "extensions", "create", "--event", "demo", "--number", "4700",
+        rc = cli.main(["--url", "http://dial.test", "extensions", "create", "--event", "demo", "--number", "4700",
                        "--type", "trunk", "--block-digits", "2"])
     assert rc == 0
-    assert req.call_args.args == ("POST", "http://pet.test/api/v1/extensions/")
+    assert req.call_args.args == ("POST", "http://dial.test/api/v1/extensions/")
     assert req.call_args.kwargs["json"] == {"event": "demo", "number": "4700", "type": "trunk", "block_digits": 2}
     assert "4700-4799 (trunk) -> requested" in capsys.readouterr().out
     # without the flag the payload has no block
     with mock.patch("requests.Session.request", return_value=FakeResponse(
             {"id": "x", "number": "4242", "type": "sip", "state": "active"})) as req:
-        cli.main(["--url", "http://pet.test", "extensions", "create", "--event", "demo", "--number", "4242",
+        cli.main(["--url", "http://dial.test", "extensions", "create", "--event", "demo", "--number", "4242",
                   "--type", "sip"])
     assert "block_digits" not in req.call_args.kwargs["json"]
 
@@ -349,7 +349,7 @@ def test_cli_block_digits(capsys):
 # --------------------------------------------------------------------------- PBX route API
 
 def test_route_api_for_number_inside_block(event, user, settings):
-    settings.PET_PBX_HOOK_SECRET = SECRET
+    settings.DIAL_PBX_HOOK_SECRET = SECRET
     trunk = make_trunk(event, user, "4700", 2, ring_timeout=25, priority=2)
     c = APIClient()
     # without a SIP account nothing can be dialled
@@ -387,7 +387,7 @@ def test_extension_detail_renders_trunk_instructions(client, event, user, member
     dev = make_sip_device(event, user, "demo-pbx")
     DeviceBinding.objects.create(extension=trunk, device=dev)
     html = client.get(url).content.decode()
-    assert "demo-pbx@demo.pet.local" in html and "Create SIP account" not in html
+    assert "demo-pbx@demo.dial.local" in html and "Create SIP account" not in html
     # normal extensions are unchanged
     plain = services.register(event, user, "4242", ExtensionType.SIP)
     html = client.get(reverse("portal:extension_detail", args=[event.slug, plain.pk])).content.decode()

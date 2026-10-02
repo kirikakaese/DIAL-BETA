@@ -73,7 +73,7 @@ register(EndpointType(
 ))
 register(EndpointType(
     key=DeviceType.SIP, label="SIP endpoint",
-    description="Softphone or hardphone. PET generates credentials; scan a QR code or use autoprovisioning.",
+    description="Softphone or hardphone. DIAL generates credentials; scan a QR code or use autoprovisioning.",
     onboarding="sip_credentials", user_fields=["name", "sip_transport", "mac_address"],
     supports_provisioning=True,
 ))

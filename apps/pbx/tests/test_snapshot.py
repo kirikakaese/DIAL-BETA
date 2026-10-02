@@ -35,7 +35,7 @@ ALL_TABLES = ("ps_endpoints", "ps_auths", "ps_aors", "ps_contacts", "ps_endpoint
 
 @pytest.fixture(autouse=True)
 def _defaults(settings):
-    settings.PET_PBX_HOOK_SECRET = SERVER_SECRET
+    settings.DIAL_PBX_HOOK_SECRET = SERVER_SECRET
     cache.clear()
     reset_pbx_cache()
     yield
@@ -53,7 +53,7 @@ def agent_conn(event):
 def other_event(db):
     today = dt.date.today()
     return Event.objects.create(name="Other Camp", slug="other", state=Event.State.REGISTRATION,
-                                start_date=today, end_date=today + dt.timedelta(days=2), sip_domain="other.pet.local")
+                                start_date=today, end_date=today + dt.timedelta(days=2), sip_domain="other.dial.local")
 
 
 @pytest.fixture
@@ -76,17 +76,17 @@ def test_rows_are_scoped_to_the_event(event, other_event, populated):
     assert [r["id"] for r in data["tables"]["ps_endpoints"]["rows"]] == ["demo-aaaa"]
     assert [r["id"] for r in data["tables"]["ps_auths"]["rows"]] == ["demo-aaaa"]
     assert [r["id"] for r in data["tables"]["ps_aors"]["rows"]] == ["demo-aaaa"]
-    assert {r["context"] for r in data["tables"]["extensions"]["rows"]} == {"pet-demo"}
+    assert {r["context"] for r in data["tables"]["extensions"]["rows"]} == {"dial-demo"}
     assert {r["exten"] for r in data["tables"]["extensions"]["rows"]} >= {"4242"}
     assert data["tables"]["voicemail_users"]["key"] == "uniqueid"
     assert [r["mailbox"] for r in data["tables"]["voicemail_users"]["rows"]] == ["4242"]
     # rows carry the DB column names and plain JSON values
     ep = data["tables"]["ps_endpoints"]["rows"][0]
-    assert ep["accountcode"] == "demo" and ep["context"] == "pet-demo" and ep["device_state_busy_at"] is None
+    assert ep["accountcode"] == "demo" and ep["context"] == "dial-demo" and ep["device_state_busy_at"] is None
     assert isinstance(data["tables"]["voicemail_users"]["rows"][0]["stamp"], str)
     other = snap.build_snapshot(other_event)
     assert [r["id"] for r in other["tables"]["ps_endpoints"]["rows"]] == ["other-zzzz"]
-    assert {r["context"] for r in other["tables"]["extensions"]["rows"]} == {"pet-other"}
+    assert {r["context"] for r in other["tables"]["extensions"]["rows"]} == {"dial-other"}
 
 
 def test_version_is_stable_and_changes_with_content(pbx, event, other_event, populated, user):
@@ -151,13 +151,13 @@ def test_apply_heartbeat_without_connection_still_replaces_contacts(event, popul
 def test_snapshot_requires_secret_or_scoped_token(event, agent_conn, orga, user, member, populated):
     c = APIClient()
     assert c.get(SNAPSHOT, {"event": "demo"}).status_code == 401
-    assert c.get(SNAPSHOT, {"event": "demo"}, HTTP_X_PET_PBX_SECRET="wrong").status_code == 401
-    assert c.get(SNAPSHOT, {"event": "demo"}, HTTP_X_PET_PBX_SECRET=SERVER_SECRET).status_code == 401
-    r = c.get(SNAPSHOT, {"event": "demo"}, HTTP_X_PET_PBX_SECRET=EVENT_SECRET)
+    assert c.get(SNAPSHOT, {"event": "demo"}, HTTP_X_DIAL_PBX_SECRET="wrong").status_code == 401
+    assert c.get(SNAPSHOT, {"event": "demo"}, HTTP_X_DIAL_PBX_SECRET=SERVER_SECRET).status_code == 401
+    r = c.get(SNAPSHOT, {"event": "demo"}, HTTP_X_DIAL_PBX_SECRET=EVENT_SECRET)
     assert r.status_code == 200 and r.json()["event"] == "demo" and r.json()["poll_interval"] == 10
     assert r["ETag"] == f'"{r.json()["version"]}"'
-    assert c.get(SNAPSHOT, {"event": "nope"}, HTTP_X_PET_PBX_SECRET=SERVER_SECRET).status_code == 404
-    assert c.get(SNAPSHOT, {"event": "nope"}, HTTP_X_PET_PBX_SECRET="wrong").status_code == 401
+    assert c.get(SNAPSHOT, {"event": "nope"}, HTTP_X_DIAL_PBX_SECRET=SERVER_SECRET).status_code == 404
+    assert c.get(SNAPSHOT, {"event": "nope"}, HTTP_X_DIAL_PBX_SECRET="wrong").status_code == 401
 
     _, scoped = ServiceAccount.issue(name="agent", owner=orga, event=event, scopes=["pbx:sync"])
     _, unscoped = ServiceAccount.issue(name="badge", owner=orga, event=event, scopes=["extensions:read"])
@@ -175,26 +175,26 @@ def test_snapshot_requires_secret_or_scoped_token(event, agent_conn, orga, user,
 
 def test_snapshot_etag_304_and_change(pbx, event, agent_conn, populated, user):
     c = APIClient()
-    r = c.get(SNAPSHOT, {"event": "demo"}, HTTP_X_PET_PBX_SECRET=EVENT_SECRET)
+    r = c.get(SNAPSHOT, {"event": "demo"}, HTTP_X_DIAL_PBX_SECRET=EVENT_SECRET)
     etag = r["ETag"]
-    r2 = c.get(SNAPSHOT, {"event": "demo"}, HTTP_X_PET_PBX_SECRET=EVENT_SECRET, HTTP_IF_NONE_MATCH=etag)
+    r2 = c.get(SNAPSHOT, {"event": "demo"}, HTTP_X_DIAL_PBX_SECRET=EVENT_SECRET, HTTP_IF_NONE_MATCH=etag)
     assert r2.status_code == 304 and not r2.content and r2["ETag"] == etag
-    weak = c.get(SNAPSHOT, {"event": "demo"}, HTTP_X_PET_PBX_SECRET=EVENT_SECRET, HTTP_IF_NONE_MATCH=f"W/{etag}")
+    weak = c.get(SNAPSHOT, {"event": "demo"}, HTTP_X_DIAL_PBX_SECRET=EVENT_SECRET, HTTP_IF_NONE_MATCH=f"W/{etag}")
     assert weak.status_code == 304
     pbx.sync_extension(make_extension(event, "4243", owner=user))
-    r3 = c.get(SNAPSHOT, {"event": "demo"}, HTTP_X_PET_PBX_SECRET=EVENT_SECRET, HTTP_IF_NONE_MATCH=etag)
+    r3 = c.get(SNAPSHOT, {"event": "demo"}, HTTP_X_DIAL_PBX_SECRET=EVENT_SECRET, HTTP_IF_NONE_MATCH=etag)
     assert r3.status_code == 200 and r3["ETag"] != etag
     assert {row["exten"] for row in r3.json()["tables"]["extensions"]["rows"]} >= {"4242", "4243"}
 
 
 def test_schema_endpoint(event, agent_conn):
-    r = APIClient().get(SCHEMA, {"event": "demo"}, HTTP_X_PET_PBX_SECRET=EVENT_SECRET)
+    r = APIClient().get(SCHEMA, {"event": "demo"}, HTTP_X_DIAL_PBX_SECRET=EVENT_SECRET)
     assert r.status_code == 200
     d = r.json()
     assert d["dialect"] == "postgresql" and set(d["tables"]) == set(ALL_TABLES)
     for table in ALL_TABLES:
         assert f'CREATE TABLE IF NOT EXISTS "{table}"' in d["sql"]
-    assert APIClient().get(SCHEMA, {"event": "demo"}, HTTP_X_PET_PBX_SECRET="wrong").status_code == 401
+    assert APIClient().get(SCHEMA, {"event": "demo"}, HTTP_X_DIAL_PBX_SECRET="wrong").status_code == 401
 
 
 # --------------------------------------------------------------------------- heartbeat
@@ -211,8 +211,8 @@ def test_heartbeat_updates_fields_and_replaces_contacts(event, other_event, agen
                  "expiration_time": 1_900_000_000, "user_agent": "Test/1", "via_port": 5060, "bogus": "x"},
                 {"id": "sneaky;@1", "endpoint": "other-zzzz", "uri": "sip:evil"},  # not this event's endpoint
             ]}
-    assert c.post(HEARTBEAT, body, format="json", HTTP_X_PET_PBX_SECRET="wrong").status_code == 401
-    r = c.post(HEARTBEAT, body, format="json", HTTP_X_PET_PBX_SECRET=EVENT_SECRET)
+    assert c.post(HEARTBEAT, body, format="json", HTTP_X_DIAL_PBX_SECRET="wrong").status_code == 401
+    r = c.post(HEARTBEAT, body, format="json", HTTP_X_DIAL_PBX_SECRET=EVENT_SECRET)
     assert r.status_code == 200, r.content
     d = r.json()
     assert d["ok"] is True and d["poll_interval"] == 10 and d["behind"] is True and d["connection"] is True
@@ -231,7 +231,7 @@ def test_heartbeat_updates_fields_and_replaces_contacts(event, other_event, agen
 
     # up to date once the agent reports the current version; contacts omitted -> kept
     r = c.post(HEARTBEAT, {"event": "demo", "version": d["current_version"], "asterisk_ok": False,
-                           "message": "asterisk down"}, format="json", HTTP_X_PET_PBX_SECRET=EVENT_SECRET)
+                           "message": "asterisk down"}, format="json", HTTP_X_DIAL_PBX_SECRET=EVENT_SECRET)
     assert r.json()["behind"] is False
     agent_conn.refresh_from_db()
     assert agent_conn.agent_asterisk_ok is False and not agent_conn.agent_behind
@@ -255,7 +255,7 @@ def _agent_pbx(event, **over):
 
 
 def test_agent_mode_reload_is_a_noop_and_never_raises(event, monkeypatch, settings):
-    settings.PET_PBX_USE_AMI = True
+    settings.DIAL_PBX_USE_AMI = True
     p = _agent_pbx(event)
     assert p.agent_mode and not p.use_ami
     p._reload_dialplan()  # no AMI host -> nothing to do
@@ -282,8 +282,8 @@ def test_agent_mode_sync_event_writes_rows_without_pbx(event, user):
     assert p.sync_event(event) == 1
     assert PsEndpoint.objects.filter(id="demo-aaaa").exists() and PsAuth.objects.filter(id="demo-aaaa").exists()
     assert PsAor.objects.filter(id="demo-aaaa").exists()
-    assert DialplanEntry.objects.filter(context="pet-demo", exten="4242").exists()
-    assert VoicemailUser.objects.filter(context="pet-demo", mailbox="4242").exists()
+    assert DialplanEntry.objects.filter(context="dial-demo", exten="4242").exists()
+    assert VoicemailUser.objects.filter(context="dial-demo", mailbox="4242").exists()
 
 
 def test_agent_mode_status_and_health_from_heartbeats(event, agent_conn, user):
@@ -305,7 +305,7 @@ def test_agent_mode_status_and_health_from_heartbeats(event, agent_conn, user):
         p.active_channels(event)
     p.set_mwi(ext, 1)  # no ARI -> logged no-op
     with pytest.raises(PBXError):
-        p.originate(event=event, destination="4242", caller_id="PET <9000>")
+        p.originate(event=event, destination="4242", caller_id="DIAL <9000>")
 
 
 def test_config_in_agent_mode_does_not_fall_back_to_server_ari(event, agent_conn, settings):
@@ -318,7 +318,7 @@ def test_config_in_agent_mode_does_not_fall_back_to_server_ari(event, agent_conn
 # --------------------------------------------------------------------------- webhook
 
 def test_snapshot_changed_webhook_from_outbox(event, agent_conn, user, settings):
-    settings.PET_PBX_OUTBOX_SYNC = True
+    settings.DIAL_PBX_OUTBOX_SYNC = True
     Webhook.objects.create(event=event, name="nudge", url="http://agent.example/hook",
                            event_types=["pbx.snapshot.changed"])
     ext = make_extension(event, "4242", owner=user)
@@ -347,8 +347,8 @@ def test_portal_page_renders_agent_card(client: Client, event, orga, agent_conn,
     client.force_login(orga)
     body = client.get("/e/demo/pbx/").content.decode()
     assert 'id="venue-agent"' in body and "Venue agent" in body
-    assert "PET_EVENT=demo" in body and f"PET_PBX_HOOK_SECRET={EVENT_SECRET}" in body
-    assert "PET_URL=" in body and SNAPSHOT in body and HEARTBEAT in body
+    assert "DIAL_EVENT=demo" in body and f"DIAL_PBX_HOOK_SECRET={EVENT_SECRET}" in body
+    assert "DIAL_URL=" in body and SNAPSHOT in body and HEARTBEAT in body
     assert "stale" in body and "never" in body  # no heartbeat yet
     snap.apply_heartbeat(event, {"version": snap.snapshot_version(event), "hostname": "venue-pbx",
                                  "agent_version": "1.2", "asterisk_ok": True})
@@ -363,14 +363,14 @@ def test_portal_page_renders_agent_card(client: Client, event, orga, agent_conn,
 def test_portal_form_saves_agent_mode_without_ari_url(client: Client, event, orga):
     client.force_login(orga)
     r = client.post("/e/demo/pbx/", {"action": "save-pbx", "pbx-backend": "asterisk", "pbx-provisioning": "agent",
-                                     "pbx-agent_poll_interval": "20", "pbx-ari_app": "pet", "pbx-ami_port": "5038",
+                                     "pbx-agent_poll_interval": "20", "pbx-ari_app": "dial", "pbx-ami_port": "5038",
                                      "pbx-hook_secret": EVENT_SECRET})
     assert r.status_code == 302, r.content.decode()[:500]
     conn = PBXConnection.objects.get(event=event)
     assert conn.provisioning == "agent" and conn.agent_poll_interval == 20 and conn.ari_url == ""
     assert isinstance(get_pbx(event), AsteriskPBX) and get_pbx(event).agent_mode
     r = client.post("/e/demo/pbx/", {"action": "save-pbx", "pbx-backend": "asterisk", "pbx-provisioning": "shared_db",
-                                     "pbx-ari_app": "pet", "pbx-ami_port": "5038"})
+                                     "pbx-ari_app": "dial", "pbx-ami_port": "5038"})
     assert r.status_code == 200 and "ARI URL is required" in r.content.decode()
 
 
@@ -429,10 +429,10 @@ def test_cli_connection_set_provisioning(capsys):
     state = {"event": "demo", "pbx": {"backend": "asterisk", "backend_label": "Asterisk", "provisioning": "agent",
                                        "ari_url": ""}, "dect": None, "effective": {"pbx": "asterisk", "dect": "dummy"}}
     with mock.patch("requests.Session.request", return_value=FakeResponse(state)) as req:
-        rc = cli.main(["--url", "http://pet.test", "pbx", "connection", "set", "--event", "demo",
+        rc = cli.main(["--url", "http://dial.test", "pbx", "connection", "set", "--event", "demo",
                        "--provisioning", "agent", "--agent-poll-interval", "20"])
     assert rc == 0
-    assert req.call_args.args == ("PATCH", "http://pet.test/api/v1/pbx/connection/")
+    assert req.call_args.args == ("PATCH", "http://dial.test/api/v1/pbx/connection/")
     assert req.call_args.kwargs["json"] == {"pbx": {"provisioning": "agent", "agent_poll_interval": 20}}
     assert "provisioning agent" in capsys.readouterr().out
     with pytest.raises(SystemExit):
@@ -447,12 +447,12 @@ def test_cli_agent_status(capsys):
                                        "agent_is_stale": False, "agent_behind": True},
              "dect": None, "effective": {"pbx": "asterisk", "dect": "dummy"}}
     with mock.patch("requests.Session.request", return_value=FakeResponse(state)) as req:
-        assert cli.main(["--url", "http://pet.test", "pbx", "agent", "status", "--event", "demo"]) == 0
-    assert req.call_args.args == ("GET", "http://pet.test/api/v1/pbx/connection/")
+        assert cli.main(["--url", "http://dial.test", "pbx", "agent", "status", "--event", "demo"]) == 0
+    assert req.call_args.args == ("GET", "http://dial.test/api/v1/pbx/connection/")
     out = capsys.readouterr().out
     assert "venue agent behind" in out and "venue-pbx" in out and "aaa" in out and "bbb" in out
     with mock.patch("requests.Session.request", return_value=FakeResponse({**state, "pbx": None})):
-        assert cli.main(["--url", "http://pet.test", "pbx", "agent", "status", "--event", "demo"]) == 0
+        assert cli.main(["--url", "http://dial.test", "pbx", "agent", "status", "--event", "demo"]) == 0
     assert "server default" in capsys.readouterr().out
 
 
@@ -461,12 +461,12 @@ def test_cli_snapshot_dump(capsys, tmp_path):
                "poll_interval": 15, "tables": {"ps_endpoints": {"key": "id", "rows": [{"id": "demo-aaaa"}]},
                                                "extensions": {"key": "id", "rows": [{"id": 1}, {"id": 2}]}}}
     with mock.patch("requests.Session.request", return_value=FakeResponse(payload)) as req:
-        assert cli.main(["--url", "http://pet.test", "pbx", "snapshot", "--event", "demo"]) == 0
-    assert req.call_args.args == ("GET", "http://pet.test/api/v1/pbx/snapshot/")
+        assert cli.main(["--url", "http://dial.test", "pbx", "snapshot", "--event", "demo"]) == 0
+    assert req.call_args.args == ("GET", "http://dial.test/api/v1/pbx/snapshot/")
     assert req.call_args.kwargs["params"] == {"event": "demo"}
     assert json.loads(capsys.readouterr().out) == payload
     out = tmp_path / "snap.json"
     with mock.patch("requests.Session.request", return_value=FakeResponse(payload)):
-        assert cli.main(["--url", "http://pet.test", "pbx", "snapshot", "--event", "demo", "--out", str(out)]) == 0
+        assert cli.main(["--url", "http://dial.test", "pbx", "snapshot", "--event", "demo", "--out", str(out)]) == 0
     assert json.loads(out.read_text()) == payload
     assert "3 rows" in capsys.readouterr().out and "abc123def456" in out.read_text()

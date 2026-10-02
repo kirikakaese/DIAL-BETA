@@ -52,7 +52,7 @@ def test_validate_options():
 
 def test_flag_off_returns_empty(event, user, member, settings):
     ann = services.create_announcement(event, user, "4801", "hi")
-    settings.PET_FEATURES = {**settings.PET_FEATURES, "ivr": False}
+    settings.DIAL_FEATURES = {**settings.DIAL_FEATURES, "ivr": False}
     assert services.dialplan_for(ann.extension) == {}
     with pytest.raises(services.IVRError):
         services.create_announcement(event, user, "4803", "hi")
@@ -66,15 +66,15 @@ def test_dialplan_for_unrelated_extension(event, user, member):
 
 
 def test_tts_render_without_command_is_none(settings):
-    settings.PET_TTS_COMMAND = None
+    settings.DIAL_TTS_COMMAND = None
     assert services.tts_render("hello") is None
 
 
 def test_pbx_route_uses_dialplan(client, event, user, member, settings):
     services.create_menu(event, user, "4800", [{"digit": "1", "action": "dial", "target": "4242"}],
                          prompt_tts="menu")
-    settings.PET_PBX_HOOK_SECRET = "s3cret"
-    d = client.get("/api/v1/pbx/route/?event=demo&number=4800", HTTP_X_PET_PBX_SECRET="s3cret").json()
+    settings.DIAL_PBX_HOOK_SECRET = "s3cret"
+    d = client.get("/api/v1/pbx/route/?event=demo&number=4800", HTTP_X_DIAL_PBX_SECRET="s3cret").json()
     assert d["type"] == "ivr" and d["ivr_greeting"] == "tts:menu" and d["ivr_options"] == {"1": "4242"}
 
 

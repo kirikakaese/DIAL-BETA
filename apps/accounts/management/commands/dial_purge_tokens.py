@@ -1,7 +1,7 @@
-"""``manage.py pet_purge_tokens`` - delete expired registration / e-mail confirmation tokens.
+"""``manage.py dial_purge_tokens`` - delete expired registration / e-mail confirmation tokens.
 
 Run it from cron or a Celery beat job, e.g. once a day. Used tokens are kept until they
-expire (``PET_EMAIL_TOKEN_TTL_HOURS``) so the admin list shows recent activity.
+expire (``DIAL_EMAIL_TOKEN_TTL_HOURS``) so the admin list shows recent activity.
 """
 from __future__ import annotations
 

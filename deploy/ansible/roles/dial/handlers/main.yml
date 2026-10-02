@@ -1,6 +1,6 @@
 ---
-- name: Restart pet stack
+- name: Restart dial stack
   ansible.builtin.command:
     cmd: docker compose up -d --build --remove-orphans
-    chdir: "{{ pet_src_dir }}"
+    chdir: "{{ dial_src_dir }}"
   changed_when: true

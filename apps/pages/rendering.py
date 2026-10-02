@@ -35,7 +35,7 @@ class _SafeLinks(Treeprocessor):
 
 class _PagesExtension(Extension):
     def extendMarkdown(self, md):  # noqa: N802 - markdown API
-        md.treeprocessors.register(_SafeLinks(md), "pet_pages_links", 5)
+        md.treeprocessors.register(_SafeLinks(md), "dial_pages_links", 5)
 
 
 def _make_md() -> markdown.Markdown:

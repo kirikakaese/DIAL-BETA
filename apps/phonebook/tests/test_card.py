@@ -36,13 +36,13 @@ def test_vcard_one_content(client, event, ext_alice):
     assert "TEL;TYPE=WORK,VOICE:4242" in lines
     assert "ORG:Demo Camp" in lines
     assert "NOTE:Hackcenter\\, table 12 - Ask me about DECT" in lines
-    assert "X-PET-EVENT:demo" in lines
+    assert "X-DIAL-EVENT:demo" in lines
     assert body.count("BEGIN:VCARD") == 1 and body.endswith("END:VCARD\r\n")
 
 
 def test_bulk_export_still_one_card_per_entry(event, ext_alice, ext_bob):
     body = services.render_vcf(event).decode()
-    assert body.count("BEGIN:VCARD") == 2 and body.count("X-PET-EVENT:demo") == 2
+    assert body.count("BEGIN:VCARD") == 2 and body.count("X-DIAL-EVENT:demo") == 2
 
 
 def test_card_qr_is_png_with_compact_vcard(client, event, ext_alice):
@@ -53,7 +53,7 @@ def test_card_qr_is_png_with_compact_vcard(client, event, ext_alice):
     compact = services.render_vcard(event, ext_alice, compact=True)
     assert "FN:alice" in compact and "TEL;TYPE=WORK,VOICE:4242" in compact and "ORG:Demo Camp" in compact
     assert "NOTE:Hackcenter\\, table 12" in compact
-    assert "UID:" not in compact and "CATEGORIES:" not in compact and "X-PET-EVENT" not in compact
+    assert "UID:" not in compact and "CATEGORIES:" not in compact and "X-DIAL-EVENT" not in compact
 
 
 def test_unknown_or_inactive_number_404(client, event, user, member, ext_alice):
@@ -98,7 +98,7 @@ def test_print_page_renders_branding_and_qr(client, event, ext_bob):
 
 
 def test_feature_flag_off_hides_card_routes(client, event, settings, ext_alice):
-    settings.PET_FEATURES = dict(settings.PET_FEATURES, phonebook=False)
+    settings.DIAL_FEATURES = dict(settings.DIAL_FEATURES, phonebook=False)
     assert client.get(_url("vcard_one", event, "4242")).status_code == 404
     assert client.get(_url("card_qr", event, "4242")).status_code == 404
 
@@ -127,9 +127,9 @@ def test_phonebook_index_links_vcard_per_row(client, event, ext_alice, ext_bob):
 
 
 def test_api_exposes_card_urls(event, settings, ext_alice):
-    settings.PET_PUBLIC_URL = "https://pet.example.org/"
+    settings.DIAL_PUBLIC_URL = "https://dial.example.org/"
     r = APIClient().get("/api/v1/phonebook/?event=demo")
     assert r.status_code == 200
     entry = r.json()["results"][0]
-    assert entry["vcard_url"] == "https://pet.example.org/e/demo/phonebook/4242.vcf"
-    assert entry["card_qr_url"] == "https://pet.example.org/e/demo/phonebook/4242/qr.png"
+    assert entry["vcard_url"] == "https://dial.example.org/e/demo/phonebook/4242.vcf"
+    assert entry["card_qr_url"] == "https://dial.example.org/e/demo/phonebook/4242/qr.png"

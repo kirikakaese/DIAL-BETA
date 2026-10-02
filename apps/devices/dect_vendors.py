@@ -7,7 +7,7 @@ register. The table is meant to be **crowdsourced** - users who know their hands
 vendor for an unknown EMC in the portal (``DECTManufacturer.source == "user"``), orga can curate the
 list at ``/e/<slug>/devices/manufacturers/``. Corrections to this file are welcome.
 
-Load with ``manage.py pet_dect_vendors`` (idempotent; never overwrites user-contributed rows).
+Load with ``manage.py dial_dect_vendors`` (idempotent; never overwrites user-contributed rows).
 """
 from __future__ import annotations
 

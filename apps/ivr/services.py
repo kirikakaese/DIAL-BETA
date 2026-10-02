@@ -32,7 +32,7 @@ from apps.extensions.services import register
 
 from .models import IVR_ACTIONS, Announcement, IVRMenu
 
-logger = logging.getLogger("pet.ivr")
+logger = logging.getLogger("dial.ivr")
 
 # ``Extension.config`` key holding the last phone recording (path reference when the wav could not be imported)
 PHONE_RECORDING_KEY = "phone_recording"
@@ -57,12 +57,12 @@ def media_ref(filefield) -> str:
 def tts_render(text: str, lang: str = "en") -> str | None:
     """Render ``text`` to a wav under ``MEDIA_ROOT/ivr/tts/`` using an external TTS command.
 
-    Pluggable via ``PET_TTS_COMMAND`` (e.g. ``"espeak-ng -v {lang} -w {out} {text}"`` or
+    Pluggable via ``DIAL_TTS_COMMAND`` (e.g. ``"espeak-ng -v {lang} -w {out} {text}"`` or
     ``"piper --model {lang} --output_file {out}"`` reading text from stdin when ``{text}`` is absent).
     Returns the wav path, or ``None`` when no command is configured or rendering failed - the PBX
     then falls back to its own TTS / the ``tts:`` greeting marker.
     """
-    cmd = getattr(settings, "PET_TTS_COMMAND", None)
+    cmd = getattr(settings, "DIAL_TTS_COMMAND", None)
     text = (text or "").strip()
     if not cmd or not text:
         return None
@@ -82,7 +82,7 @@ def tts_render(text: str, lang: str = "en") -> str | None:
 
 
 def _greeting(audio, tts_text: str, lang: str, reference: str = "") -> str:
-    """Audio file wins, then a phone recording PET could not import (played by Asterisk from its own disk),
+    """Audio file wins, then a phone recording DIAL could not import (played by Asterisk from its own disk),
     then rendered TTS, then the ``tts:`` marker."""
     if audio:
         return media_ref(audio)
@@ -238,7 +238,7 @@ def begin_phone_recording(event, caller: str, code: str, callerid: str = "") -> 
     """``announcement-record-start`` hook: validate ``code`` and tell Asterisk where to record.
 
     Returns ``{"handled": True, "number", "name", "file"}`` (``file`` = absolute path without extension under
-    ``settings.PET_RECORDING_DIR``, ``name`` = its basename) or ``None`` when the code is unknown, the caller is
+    ``settings.DIAL_RECORDING_DIR``, ``name`` = its basename) or ``None`` when the code is unknown, the caller is
     not an endpoint of the event or may not record this announcement.
     """
     from apps.extensions.services import get_plan
@@ -255,7 +255,7 @@ def begin_phone_recording(event, caller: str, code: str, callerid: str = "") -> 
         return None
     name = f"{event.slug}-{ext.number}-{timezone.now():%Y%m%d-%H%M%S}"
     return {"handled": True, "number": ext.number, "name": name,
-            "file": os.path.join(settings.PET_RECORDING_DIR, name)}
+            "file": os.path.join(settings.DIAL_RECORDING_DIR, name)}
 
 
 def _wav_duration(path: str) -> int | None:
@@ -271,9 +271,9 @@ def _import_recording(ext, file_path: str) -> str:
     """Copy the PBX file into ``MEDIA_ROOT/ivr/<slug>/<number>/``; returns the stored name or ``""``."""
     if not file_path or not os.path.isfile(file_path):
         return ""
-    allowed = os.path.realpath(settings.PET_RECORDING_DIR)
+    allowed = os.path.realpath(settings.DIAL_RECORDING_DIR)
     if os.path.commonpath([allowed, os.path.realpath(file_path)]) != allowed:
-        logger.warning("record-announcement: refusing to import %r (outside PET_RECORDING_DIR)", file_path)
+        logger.warning("record-announcement: refusing to import %r (outside DIAL_RECORDING_DIR)", file_path)
         return ""
     base = os.path.basename(file_path)
     name = f"ivr/{ext.event.slug}/{ext.number}/phone-{base}"
@@ -288,7 +288,7 @@ def _import_recording(ext, file_path: str) -> str:
 def finish_phone_recording(event, code: str, file_path: str, duration: int = 0) -> Announcement | None:
     """``announcement-recorded`` hook: attach the recording to the announcement identified by ``code``.
 
-    The wav is copied into media storage when PET can read ``file_path`` (shared ``recordings`` volume); otherwise
+    The wav is copied into media storage when DIAL can read ``file_path`` (shared ``recordings`` volume); otherwise
     the path is kept as a playback reference in ``Extension.config["phone_recording"]`` and used as greeting
     until a file is uploaded/imported. ``tts_text`` stays untouched - audio always takes precedence.
     Returns the announcement, or ``None`` for an unknown code.

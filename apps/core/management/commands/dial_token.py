@@ -1,9 +1,9 @@
-"""``manage.py pet_token`` - mint a service-account token for the REST API / ``pet`` CLI.
+"""``manage.py dial_token`` - mint a service-account token for the REST API / ``dial`` CLI.
 
-    manage.py pet_token --user admin@pet.local --name badge-printer --event demo \
+    manage.py dial_token --user admin@dial.local --name badge-printer --event demo \
         --scopes extensions:read phonebook:read --expires-days 14
 
-The raw token (``pet_...``) is printed exactly once; PET only stores its SHA-256 hash.
+The raw token (``dial_...``) is printed exactly once; DIAL only stores its SHA-256 hash.
 """
 
 from __future__ import annotations
@@ -34,7 +34,7 @@ class Command(BaseCommand):
         parser.add_argument(
             "--export",
             action="store_true",
-            help="Print 'export PET_TOKEN=...' instead of a human-readable message.",
+            help="Print 'export DIAL_TOKEN=...' instead of a human-readable message.",
         )
 
     def handle(self, *args, **opts):
@@ -65,7 +65,7 @@ class Command(BaseCommand):
             description=opts["description"],
         )
         if opts["export"]:
-            self.stdout.write(f"export PET_TOKEN={raw}")
+            self.stdout.write(f"export DIAL_TOKEN={raw}")
             return
         self.stdout.write(
             self.style.SUCCESS(f"Service account '{acct.name}' created for {user.email}")
@@ -81,4 +81,4 @@ class Command(BaseCommand):
         self.stdout.write("  Token (shown once - store it now):")
         self.stdout.write(f"  {raw}")
         self.stdout.write("")
-        self.stdout.write('  Usage: curl -H "Authorization: Bearer <token>" $PET_URL/api/v1/me/')
+        self.stdout.write('  Usage: curl -H "Authorization: Bearer <token>" $DIAL_URL/api/v1/me/')

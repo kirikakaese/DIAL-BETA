@@ -45,7 +45,7 @@ def test_request_ringback_and_wakeup_forms(client, event, user, member, ext_alic
 
     r = client.post(_url("ringback", event), {"extension": str(ext_alice.pk), "delay": 3})
     assert r.status_code == 302
-    assert pbx.originated[-1]["destination"] == "4242" and pbx.originated[-1]["variables"]["PET_SERVICE"] == "ringback"
+    assert pbx.originated[-1]["destination"] == "4242" and pbx.originated[-1]["variables"]["DIAL_SERVICE"] == "ringback"
 
     tomorrow = (timezone.now() + dt.timedelta(days=1)).strftime("%Y-%m-%dT07:30")
     r = client.post(_url("wakeup_new", event), {
@@ -111,7 +111,7 @@ def test_orga_all_and_fire_now(client, event, user, orga, ext_alice, ext_bob, pb
     assert req.state == "completed" and pbx.originated[-1]["destination"] == "4242"
     assert client.post(_url("fire_now", event, "wakeup", call.pk)).status_code == 302
     call.refresh_from_db()
-    assert call.state == "dialing" and pbx.originated[-1]["variables"]["PET_SERVICE"] == "wakeup-call"
+    assert call.state == "dialing" and pbx.originated[-1]["variables"]["DIAL_SERVICE"] == "wakeup-call"
     assert client.post(_url("fire_now", event, "ringback", rb.pk)).status_code == 302
-    assert pbx.originated[-1]["variables"]["PET_SERVICE"] == "ringback"
+    assert pbx.originated[-1]["variables"]["DIAL_SERVICE"] == "ringback"
     assert len(pbx.originated) == 3

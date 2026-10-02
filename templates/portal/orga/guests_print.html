@@ -2,7 +2,7 @@
 <html lang="{{ LANGUAGE_CODE }}" data-theme="light">
 <head>
   <meta charset="utf-8"><title>{% trans "Guest extensions" %} · {{ event.name }}</title>
-  <link rel="stylesheet" href="{% static 'css/pet.css' %}">
+  <link rel="stylesheet" href="{% static 'css/dial.css' %}">
   <style>
     body { background: #fff; color: #111; }
     .sheet { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8mm; padding: 10mm; }
@@ -27,6 +27,6 @@
   </div>
   {% endif %}{% empty %}<p class="muted">{% trans "No unclaimed guest extensions." %}</p>{% endfor %}
 </main>
-<script src="{% static 'js/pet.js' %}" defer></script>
+<script src="{% static 'js/dial.js' %}" defer></script>
 </body>
 </html>

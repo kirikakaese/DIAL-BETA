@@ -5,7 +5,7 @@
   <div class="page-title">
     <p class="eyebrow eyebrow-orga">{% trans "Orga" %} · {% trans "Infrastructure" %}</p>
     <h1>{% trans "PBX & DECT connection" %}</h1>
-    <p class="subtitle">{% trans "PET is one central service; every event brings its own phone system. Tell PET how to reach the Asterisk and the DECT controller (OMM) at your venue." %}</p>
+    <p class="subtitle">{% trans "DIAL is one central service; every event brings its own phone system. Tell DIAL how to reach the Asterisk and the DECT controller (OMM) at your venue." %}</p>
   </div>
   <div class="actions">
     <form method="post" class="inline">{% csrf_token %}<input type="hidden" name="action" value="test">
@@ -29,16 +29,16 @@
       <dt>{% trans "SIP domain" %}</dt><dd><code>{{ sip_domain }}</code> <span class="muted small">({% trans "event settings" %})</span></dd>
     </dl>
     {% if not pbx_conn or not dect_conn %}
-    <div class="alert alert-warning">{% trans "Without its own connection this event uses whatever the server was started with - on a shared PET server that is usually a simulator or another event's box. Configure both before opening registration." %}</div>
+    <div class="alert alert-warning">{% trans "Without its own connection this event uses whatever the server was started with - on a shared DIAL server that is usually a simulator or another event's box. Configure both before opening registration." %}</div>
     {% endif %}
   </div>
 
   <div class="card">
     <div class="card-header"><h2>{% trans "For the venue Asterisk" %}</h2></div>
-    <p class="small muted">{% trans "Put these into the Asterisk container's environment (deploy/asterisk). The venue box must reach PET over HTTPS and PET's PostgreSQL (realtime tables) - typically through a VPN." %}</p>
-    <pre class="mono small">PET_API_URL={{ public_url }}
-PET_EVENTS={{ event.slug }}
-PET_PBX_HOOK_SECRET=&lt;{% trans "hook secret from the PBX form" %}&gt;
+    <p class="small muted">{% trans "Put these into the Asterisk container's environment (deploy/asterisk). The venue box must reach DIAL over HTTPS and DIAL's PostgreSQL (realtime tables) - typically through a VPN." %}</p>
+    <pre class="mono small">DIAL_API_URL={{ public_url }}
+DIAL_EVENTS={{ event.slug }}
+DIAL_PBX_HOOK_SECRET=&lt;{% trans "hook secret from the PBX form" %}&gt;
 SIP_DOMAIN={{ sip_domain }}
 ARI_USER / ARI_PASSWORD, AMI_USER / AMI_PASSWORD = {% trans "same as below" %}</pre>
     <dl class="kv small">
@@ -70,9 +70,9 @@ ARI_USER / ARI_PASSWORD, AMI_USER / AMI_PASSWORD = {% trans "same as below" %}</
     </dl>
     <div>
       <p class="small muted">{% trans "Environment for the agent next to the venue Asterisk. It pulls snapshots into its local PostgreSQL; Asterisk keeps using realtime against localhost." %}</p>
-<pre class="mono small" id="venue-agent-env">PET_URL={{ public_url }}
-PET_EVENT={{ event.slug }}
-PET_PBX_HOOK_SECRET={% if agent.secret %}{{ agent.secret }}{% else %}&lt;{% trans "…set one above…" %}&gt;{% endif %}</pre>
+<pre class="mono small" id="venue-agent-env">DIAL_URL={{ public_url }}
+DIAL_EVENT={{ event.slug }}
+DIAL_PBX_HOOK_SECRET={% if agent.secret %}{{ agent.secret }}{% else %}&lt;{% trans "…set one above…" %}&gt;{% endif %}</pre>
       <button type="button" class="btn btn-sm" data-action="copy" data-target="#venue-agent-env" data-copied="{% trans 'Copied' %}">{% trans "Copy" %}</button>
       <dl class="kv small">
         <dt>{% trans "Snapshot" %}</dt><dd><code>{{ snapshot_url }}?event={{ event.slug }}</code></dd>
@@ -89,7 +89,7 @@ PET_PBX_HOOK_SECRET={% if agent.secret %}{{ agent.secret }}{% else %}&lt;{% tran
     <div class="card-header"><h2>{% trans "PBX (Asterisk)" %}</h2>
       {% if pbx_conn %}<form method="post" class="inline" data-confirm="{% trans 'Remove this connection and fall back to the server default?' %}">{% csrf_token %}<input type="hidden" name="action" value="reset-pbx"><button class="btn btn-sm btn-danger">{% trans "Remove" %}</button></form>{% endif %}
     </div>
-    <p class="small muted">{% trans "ARI is used to originate calls and read channels, AMI (optional) for dialplan reloads and as originate fallback. Both must be reachable from the PET server." %}</p>
+    <p class="small muted">{% trans "ARI is used to originate calls and read channels, AMI (optional) for dialplan reloads and as originate fallback. Both must be reachable from the DIAL server." %}</p>
     <form method="post">{% csrf_token %}<input type="hidden" name="action" value="save-pbx">
       {% include "portal/_form.html" with form=pbx_form %}
       <div class="form-actions"><button class="btn btn-primary">{% trans "Save PBX connection" %}</button></div>
@@ -100,7 +100,7 @@ PET_PBX_HOOK_SECRET={% if agent.secret %}{{ agent.secret }}{% else %}&lt;{% tran
     <div class="card-header"><h2>{% trans "DECT (OMM)" %}</h2>
       {% if dect_conn %}<form method="post" class="inline" data-confirm="{% trans 'Remove this connection and fall back to the server default?' %}">{% csrf_token %}<input type="hidden" name="action" value="reset-dect"><button class="btn btn-sm btn-danger">{% trans "Remove" %}</button></form>{% endif %}
     </div>
-    <p class="small muted">{% trans "AXI access to the Mitel SIP-DECT OpenMobility Manager. PET polls RFP and handset state every 30 s while the event is in registration or live." %}</p>
+    <p class="small muted">{% trans "AXI access to the Mitel SIP-DECT OpenMobility Manager. DIAL polls RFP and handset state every 30 s while the event is in registration or live." %}</p>
     <form method="post">{% csrf_token %}<input type="hidden" name="action" value="save-dect">
       {% include "portal/_form.html" with form=dect_form %}
       <div class="form-actions"><button class="btn btn-primary">{% trans "Save DECT connection" %}</button></div>

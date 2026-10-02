@@ -52,7 +52,7 @@ def test_authorize_denials(bo_event, trunk, ext, allowed, settings):
     assert services.authorize(bo_event, ext, "5555") == (False, "no trunk for this prefix")
     assert services.authorize(bo_event, ext, "00900123")[1].startswith("destination blocked")
     assert services.authorize(bo_event, ext, "000441234")[1].startswith("destination blocked")  # "00" international
-    settings.PET_BREAKOUT_BLOCKLIST = []
+    settings.DIAL_BREAKOUT_BLOCKLIST = []
     assert services.authorize(bo_event, ext, "000441234")[0] is True
     trunk.enabled = False
     trunk.save()
@@ -65,7 +65,7 @@ def test_flag_and_event_switch(bo_event, trunk, ext, allowed, settings):
     assert services.authorize(bo_event, ext, "0030123") == (False, "breakout not allowed for this event")
     bo_event.allow_breakout = True
     bo_event.save()
-    settings.PET_FEATURES = {**settings.PET_FEATURES, "breakout": False}
+    settings.DIAL_FEATURES = {**settings.DIAL_FEATURES, "breakout": False}
     assert services.authorize(bo_event, ext, "0030123") == (False, "breakout disabled")
 
 
@@ -96,7 +96,7 @@ def test_quota_and_usage(bo_event, trunk, ext, allowed):
 
 
 def test_rate_limit(bo_event, trunk, ext, allowed, settings):
-    settings.PET_BREAKOUT_RATE_LIMIT = 2
+    settings.DIAL_BREAKOUT_RATE_LIMIT = 2
     assert services.authorize(bo_event, ext, "0030123")[0]
     assert services.authorize(bo_event, ext, "0030123")[0]
     assert services.authorize(bo_event, ext, "0030123") == (False, "rate limit: too many breakout calls")
@@ -105,16 +105,16 @@ def test_rate_limit(bo_event, trunk, ext, allowed, settings):
 def test_pjsip_config(trunk):
     conf = services.pjsip_trunk_config(trunk)
     assert f"[trunk-{trunk.pk}]" in conf and "type=registration" in conf and "username=u" in conf
-    assert "callerid=\"PET\" <+4930123456>" in conf
+    assert "callerid=\"DIAL\" <+4930123456>" in conf
 
 
 def test_pbx_route_breakout_extension(client, bo_event, trunk, orga, settings):
     bo = Extension.objects.create(event=bo_event, owner=orga, number="0800", type="breakout", state="active",
                                   config={"trunk": trunk.endpoint_name})
     BreakoutPermission.objects.create(event=bo_event, extension=bo, daily_minutes_limit=0)
-    settings.PET_PBX_HOOK_SECRET = "s3cret"
+    settings.DIAL_PBX_HOOK_SECRET = "s3cret"
     d = client.get("/api/v1/pbx/route/?event=demo&number=0800&destination=0030123",
-                   HTTP_X_PET_PBX_SECRET="s3cret").json()
+                   HTTP_X_DIAL_PBX_SECRET="s3cret").json()
     assert d["breakout"]["allowed"] is True and d["targets"] == [f"PJSIP/0030123@trunk-{trunk.pk}"]
 
 

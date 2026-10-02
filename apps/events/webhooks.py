@@ -11,7 +11,7 @@ from django.utils import timezone
 
 from .models import Webhook
 
-log = logging.getLogger("pet.webhooks")
+log = logging.getLogger("dial.webhooks")
 
 
 def emit(event_type: str, payload: dict, event=None) -> None:
@@ -42,10 +42,10 @@ def deliver(self, hook_id: int, event_type: str, payload: dict):
         {"type": event_type, "sent_at": timezone.now().isoformat(), "data": payload},
         default=str,
     ).encode()
-    headers = {"Content-Type": "application/json", "X-PET-Event": event_type}
+    headers = {"Content-Type": "application/json", "X-DIAL-Event": event_type}
     if hook.secret:
         sig = hmac.new(hook.secret.encode(), body, hashlib.sha256).hexdigest()
-        headers["X-PET-Signature"] = f"sha256={sig}"
+        headers["X-DIAL-Signature"] = f"sha256={sig}"
     try:
         resp = requests.post(hook.url, data=body, headers=headers, timeout=10)
         hook.last_status = str(resp.status_code)

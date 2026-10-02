@@ -1,5 +1,5 @@
 """Emergency REST API (orga): ``emergency/targets/``, ``emergency/incidents/`` (+ ``resolve``),
-``POST emergency/broadcast/``; PBX hook ``POST emergency/incident-log/`` (``X-PET-PBX-Secret``)."""
+``POST emergency/broadcast/``; PBX hook ``POST emergency/incident-log/`` (``X-DIAL-PBX-Secret``)."""
 from django.shortcuts import get_object_or_404
 from django.urls import path
 from rest_framework import serializers, status, viewsets
@@ -128,7 +128,7 @@ broadcast.cls.required_scopes = {"default": ["emergency:write"]}
 @permission_classes([AllowAny])
 @throttle_classes([])
 def incident_log(request):
-    """PBX hook: ``{event, number, caller}`` -> log an EmergencyIncident (header ``X-PET-PBX-Secret``)."""
+    """PBX hook: ``{event, number, caller}`` -> log an EmergencyIncident (header ``X-DIAL-PBX-Secret``)."""
     from apps.pbx.api import _authorized
 
     if not _authorized(request):

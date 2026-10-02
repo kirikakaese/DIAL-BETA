@@ -1,4 +1,4 @@
-"""Celery application for PET.
+"""Celery application for DIAL.
 
 Used for provisioning jobs (OMM/PBX push), callback/ringback scheduling,
 wake-up calls, CDR aggregation and alerting.
@@ -7,9 +7,9 @@ import os
 
 from celery import Celery
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "pet.settings.dev")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "dial.settings.dev")
 
-app = Celery("pet")
+app = Celery("dial")
 app.config_from_object("django.conf:settings", namespace="CELERY")
 app.autodiscover_tasks()
 

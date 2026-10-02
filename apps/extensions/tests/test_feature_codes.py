@@ -9,13 +9,13 @@ from apps.extensions.models import Extension
 pytestmark = pytest.mark.django_db
 
 SECRET = "hook-secret-123"
-HDR = {"HTTP_X_PET_PBX_SECRET": SECRET}
+HDR = {"HTTP_X_DIAL_PBX_SECRET": SECRET}
 URL = "/api/v1/pbx/hooks/feature-code/"
 
 
 @pytest.fixture(autouse=True)
 def _secret(settings):
-    settings.PET_PBX_HOOK_SECRET = SECRET
+    settings.DIAL_PBX_HOOK_SECRET = SECRET
 
 
 @pytest.fixture

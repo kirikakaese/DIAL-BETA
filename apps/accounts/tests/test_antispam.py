@@ -31,13 +31,13 @@ def _clean_cache():
 
 def _fresh_ts(age_seconds=0):
     """A validly signed ``form_ts`` issued ``age_seconds`` ago."""
-    signer = signing.TimestampSigner(salt="pet.spamguard")
+    signer = signing.TimestampSigner(salt="dial.spamguard")
     with mock.patch("django.core.signing.time.time", return_value=signing.time.time() - age_seconds):
         return signer.sign("t")
 
 
 # --- spam guard on the signup form -------------------------------------------------------------
-@override_settings(PET_SPAM_GUARD=True, PET_SPAM_GUARD_MIN_SECONDS=3, PET_REQUIRE_EMAIL_VERIFICATION=False)
+@override_settings(DIAL_SPAM_GUARD=True, DIAL_SPAM_GUARD_MIN_SECONDS=3, DIAL_REQUIRE_EMAIL_VERIFICATION=False)
 def test_register_form_renders_honeypot_and_timestamp(client):
     r = client.get(reverse("accounts:register"))
     assert r.status_code == 200
@@ -46,7 +46,7 @@ def test_register_form_renders_honeypot_and_timestamp(client):
     assert b'aria-hidden="true"' in r.content
 
 
-@override_settings(PET_SPAM_GUARD=True, PET_SPAM_GUARD_MIN_SECONDS=3, PET_REQUIRE_EMAIL_VERIFICATION=False)
+@override_settings(DIAL_SPAM_GUARD=True, DIAL_SPAM_GUARD_MIN_SECONDS=3, DIAL_REQUIRE_EMAIL_VERIFICATION=False)
 def test_register_honeypot_filled_rejected(client):
     r = client.post(reverse("accounts:register"), {**SIGNUP, "website": "http://spam.example",
                                                     "form_ts": _fresh_ts(10)})
@@ -54,7 +54,7 @@ def test_register_honeypot_filled_rejected(client):
     assert not User.objects.filter(email="new@example.org").exists()
 
 
-@override_settings(PET_SPAM_GUARD=True, PET_SPAM_GUARD_MIN_SECONDS=3, PET_REQUIRE_EMAIL_VERIFICATION=False)
+@override_settings(DIAL_SPAM_GUARD=True, DIAL_SPAM_GUARD_MIN_SECONDS=3, DIAL_REQUIRE_EMAIL_VERIFICATION=False)
 def test_register_missing_or_forged_timestamp_rejected(client):
     r = client.post(reverse("accounts:register"), SIGNUP)
     assert r.status_code == 200 and b"Spam protection triggered" in r.content
@@ -63,21 +63,21 @@ def test_register_missing_or_forged_timestamp_rejected(client):
     assert not User.objects.filter(email="new@example.org").exists()
 
 
-@override_settings(PET_SPAM_GUARD=True, PET_SPAM_GUARD_MIN_SECONDS=3, PET_REQUIRE_EMAIL_VERIFICATION=False)
+@override_settings(DIAL_SPAM_GUARD=True, DIAL_SPAM_GUARD_MIN_SECONDS=3, DIAL_REQUIRE_EMAIL_VERIFICATION=False)
 def test_register_too_fast_rejected(client):
     r = client.post(reverse("accounts:register"), {**SIGNUP, "form_ts": _fresh_ts(0)})
     assert r.status_code == 200 and b"That was quick" in r.content
     assert not User.objects.filter(email="new@example.org").exists()
 
 
-@override_settings(PET_SPAM_GUARD=True, PET_SPAM_GUARD_MIN_SECONDS=3, PET_REQUIRE_EMAIL_VERIFICATION=False)
+@override_settings(DIAL_SPAM_GUARD=True, DIAL_SPAM_GUARD_MIN_SECONDS=3, DIAL_REQUIRE_EMAIL_VERIFICATION=False)
 def test_register_human_pace_accepted(client):
     r = client.post(reverse("accounts:register"), {**SIGNUP, "form_ts": _fresh_ts(10), "website": ""})
     assert r.status_code == 302
     assert User.objects.filter(email="new@example.org").exists()
 
 
-@override_settings(PET_SPAM_GUARD=True, PET_SPAM_GUARD_MIN_SECONDS=3, PET_REQUIRE_EMAIL_VERIFICATION=True)
+@override_settings(DIAL_SPAM_GUARD=True, DIAL_SPAM_GUARD_MIN_SECONDS=3, DIAL_REQUIRE_EMAIL_VERIFICATION=True)
 def test_email_first_signup_guarded_too(client):
     r = client.post(reverse("accounts:register"), {"email": "x@example.org", "website": "bot"})
     assert r.status_code == 200 and b"Spam protection triggered" in r.content
@@ -85,13 +85,13 @@ def test_email_first_signup_guarded_too(client):
     assert r.status_code == 200 and b"Check your inbox" in r.content
 
 
-@override_settings(PET_SPAM_GUARD=False)
+@override_settings(DIAL_SPAM_GUARD=False)
 def test_guard_disabled_adds_no_fields():
     assert "website" not in RegisterForm().fields and "form_ts" not in RegisterEmailForm().fields
 
 
 # --- login: honeypot only + lockout ------------------------------------------------------------
-@override_settings(PET_SPAM_GUARD=True)
+@override_settings(DIAL_SPAM_GUARD=True)
 def test_login_has_honeypot_but_no_time_trap(client, user):
     r = client.get(reverse("accounts:login"))
     assert b'name="website"' in r.content and b'name="form_ts"' not in r.content
@@ -103,7 +103,7 @@ def test_login_has_honeypot_but_no_time_trap(client, user):
     assert r.status_code == 200 and b"Spam protection triggered" in r.content
 
 
-@override_settings(PET_LOGIN_MAX_FAILURES=5, PET_LOGIN_LOCKOUT_MINUTES=15)
+@override_settings(DIAL_LOGIN_MAX_FAILURES=5, DIAL_LOGIN_LOCKOUT_MINUTES=15)
 def test_login_lockout_after_repeated_failures(client, user):
     url = reverse("accounts:login")
     for _ in range(4):
@@ -129,7 +129,7 @@ def test_login_lockout_after_repeated_failures(client, user):
     assert cache.get(f"login:fail:acct:{hashlib.sha256(user.email.encode()).hexdigest()[:32]}") is None
 
 
-@override_settings(PET_LOGIN_MAX_FAILURES=5)
+@override_settings(DIAL_LOGIN_MAX_FAILURES=5)
 def test_login_lockout_does_not_reveal_unknown_accounts(client):
     url = reverse("accounts:login")
     for _ in range(5):
@@ -138,7 +138,7 @@ def test_login_lockout_does_not_reveal_unknown_accounts(client):
     assert r.status_code == 429
 
 
-@override_settings(PET_LOGIN_IP_MAX_FAILURES=3, PET_LOGIN_MAX_FAILURES=50)
+@override_settings(DIAL_LOGIN_IP_MAX_FAILURES=3, DIAL_LOGIN_MAX_FAILURES=50)
 def test_login_ip_lockout(client):
     url = reverse("accounts:login")
     for i in range(3):
@@ -158,7 +158,7 @@ def test_counter_lock_clear():
 
 
 # --- domain allow / block lists --------------------------------------------------------------
-@override_settings(PET_SIGNUP_BLOCKED_DOMAINS=["mailinator.com", "@Trash.example"])
+@override_settings(DIAL_SIGNUP_BLOCKED_DOMAINS=["mailinator.com", "@Trash.example"])
 def test_blocked_domains_including_subdomains():
     assert validate_signup_email("ok@example.org") == "ok@example.org"
     for bad in ("a@mailinator.com", "a@MAILINATOR.COM", "a@sub.mailinator.com", "a@trash.example"):
@@ -166,7 +166,7 @@ def test_blocked_domains_including_subdomains():
             validate_signup_email(bad)
 
 
-@override_settings(PET_SIGNUP_ALLOWED_DOMAINS=["example.org"])
+@override_settings(DIAL_SIGNUP_ALLOWED_DOMAINS=["example.org"])
 def test_allowed_domains(client):
     assert validate_signup_email("a@example.org") and validate_signup_email("a@mail.example.org")
     with pytest.raises(forms.ValidationError, match="limited to these e-mail domains: example.org"):
@@ -176,7 +176,7 @@ def test_allowed_domains(client):
 
 
 # --- forced verification: extension gate + banner -------------------------------------------
-@override_settings(PET_REQUIRE_EMAIL_VERIFICATION=True)
+@override_settings(DIAL_REQUIRE_EMAIL_VERIFICATION=True)
 def test_unverified_user_cannot_register_extension(event, user, orga):
     assert not user.email_verified
     with pytest.raises(services.ExtensionError, match="verify your e-mail"):
@@ -191,7 +191,7 @@ def test_unverified_user_cannot_register_extension(event, user, orga):
     assert services.register(event, user, "4343", ExtensionType.DECT, force_active=True).number == "4343"
 
 
-@override_settings(PET_REQUIRE_EMAIL_VERIFICATION=False)
+@override_settings(DIAL_REQUIRE_EMAIL_VERIFICATION=False)
 def test_gate_off_when_verification_not_required(event, user):
     assert services.register(event, user, "4242", ExtensionType.DECT).number == "4242"
 

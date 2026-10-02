@@ -27,8 +27,8 @@ def get_settings(event) -> PhonebookSettings:
 
 
 def base_dn(event) -> str:
-    """LDAP base DN used by the LDIF export: ``ou=phonebook,dc=<slug>,dc=pet``."""
-    return f"ou=phonebook,dc={event.slug},dc=pet"
+    """LDAP base DN used by the LDIF export: ``ou=phonebook,dc=<slug>,dc=dial``."""
+    return f"ou=phonebook,dc={event.slug},dc=dial"
 
 
 def entries(event, q: str | None = None, type: str | None = None):
@@ -55,8 +55,8 @@ def entry_name(ext: Extension) -> str:
 
 
 def card_urls(ext: Extension) -> dict:
-    """Absolute ``vcard_url`` / ``card_qr_url`` (business card, feature #20) rooted at ``PET_PUBLIC_URL``."""
-    base = (getattr(dj_settings, "PET_PUBLIC_URL", "") or "").rstrip("/")
+    """Absolute ``vcard_url`` / ``card_qr_url`` (business card, feature #20) rooted at ``DIAL_PUBLIC_URL``."""
+    base = (getattr(dj_settings, "DIAL_PUBLIC_URL", "") or "").rstrip("/")
     slug = ext.event.slug
     return {
         "vcard_url": base + reverse("phonebook:vcard_one", args=[slug, ext.number]),
@@ -122,8 +122,8 @@ def _vcard_lines(event, e: Extension, settings: PhonebookSettings, *, compact: b
     if not compact:
         card += [
             f"CATEGORIES:{_vcf_escape(e.get_type_display())}",
-            f"UID:pet-{event.slug}-{e.number}",
-            f"X-PET-EVENT:{event.slug}",
+            f"UID:dial-{event.slug}-{e.number}",
+            f"X-DIAL-EVENT:{event.slug}",
         ]
     notes = []
     if settings.show_location and e.location_hint:
@@ -162,7 +162,7 @@ def _ldif_attr(name: str, value) -> str:
 def render_ldif(event, exts=None) -> bytes:
     """LDIF for hardphone LDAP directories (Snom/Yealink/Gigaset ``inetOrgPerson`` lookups).
 
-    Import into an LDAP server (e.g. ``slapadd`` / ``ldapadd``) below ``dc=<slug>,dc=pet``; configure the
+    Import into an LDAP server (e.g. ``slapadd`` / ``ldapadd``) below ``dc=<slug>,dc=dial``; configure the
     phones with base DN :func:`base_dn` and a name filter on ``cn``/``sn``, number attribute
     ``telephoneNumber``.
     """
@@ -245,7 +245,7 @@ def render_pdf(event, exts=None) -> bytes:
                                  _("Page %(n)d") % {"n": doc.page} + f" · {len(exts)} " + _("entries"))
         canvas.restoreState()
 
-    doc = BaseDocTemplate(io.BytesIO(), pagesize=A4, title=title, author="PET",
+    doc = BaseDocTemplate(io.BytesIO(), pagesize=A4, title=title, author="DIAL",
                           leftMargin=margin, rightMargin=margin, topMargin=top, bottomMargin=bottom)
     doc.addPageTemplates([PageTemplate(id="cols", frames=frames, onPage=decorate)])
 

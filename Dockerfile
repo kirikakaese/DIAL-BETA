@@ -1,4 +1,4 @@
-# PET - Portable Event Telephone
+# DIAL - DECT & IP Administration Layer
 # Single image for web (gunicorn), celery worker and celery beat; the role is
 # selected by the entrypoint (deploy/entrypoint.sh): web | worker | beat | <cmd>.
 FROM python:3.12-slim
@@ -7,7 +7,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    DJANGO_SETTINGS_MODULE=pet.settings.prod
+    DJANGO_SETTINGS_MODULE=dial.settings.prod
 
 # libpq5: runtime lib for psycopg (binary wheels ship their own libpq, but keep
 # it for the pg_isready-free entrypoint and tooling).
@@ -19,7 +19,7 @@ WORKDIR /app
 
 # Install runtime dependencies straight from pyproject.toml (layer-cached).
 # `pip install .` is intentionally avoided: the repo is a flat layout with two
-# top-level packages (apps/, pet/) and no [tool.setuptools] config, so a wheel
+# top-level packages (apps/, dial/) and no [tool.setuptools] config, so a wheel
 # build would fail. The app runs from /app via manage.py anyway.
 COPY pyproject.toml ./
 RUN python -c "import tomllib; d = tomllib.load(open('pyproject.toml', 'rb'))['project']; print('\n'.join(d['dependencies']))" > /tmp/requirements.txt \
@@ -37,12 +37,12 @@ RUN SECRET_KEY=build DATABASE_URL=sqlite:///build.sqlite3 \
 # Non-root runtime user. /var/spool/asterisk/voicemail is the path the Asterisk
 # container writes voicemail files to (shared volume; apps.voicemail imports
 # messages by that absolute file_path).
-RUN groupadd --system pet && useradd --system --gid pet --home-dir /app --shell /usr/sbin/nologin pet \
+RUN groupadd --system dial && useradd --system --gid dial --home-dir /app --shell /usr/sbin/nologin dial \
     && mkdir -p /app/media /var/spool/asterisk/voicemail \
     && chmod +x /app/deploy/entrypoint.sh \
-    && chown -R pet:pet /app /var/spool/asterisk/voicemail
+    && chown -R dial:dial /app /var/spool/asterisk/voicemail
 
-USER pet
+USER dial
 
 EXPOSE 8000
 

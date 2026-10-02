@@ -34,28 +34,28 @@ def ari_request():
 
 
 def test_originate_posts_channel(pbx, event, ari_request):
-    ari_request.return_value = FakeResponse(200, {"id": "chan-1", "name": "Local/4242@pet-demo-0000;1"})
+    ari_request.return_value = FakeResponse(200, {"id": "chan-1", "name": "Local/4242@dial-demo-0000;1"})
     cid = pbx.originate(event=event, destination="4242", caller_id="Callback",
-                        variables={"PET_SERVICE": "callback", "PET_CALLBACK_TARGET": "4300"}, timeout=25)
+                        variables={"DIAL_SERVICE": "callback", "DIAL_CALLBACK_TARGET": "4300"}, timeout=25)
     assert cid == "chan-1"
     method, url = ari_request.call_args.args
     kw = ari_request.call_args.kwargs
     assert method == "POST" and url == "http://asterisk:8088/ari/channels"
-    assert kw["params"]["endpoint"] == "Local/4242@pet-demo"
-    assert kw["params"]["context"] == "pet-services"
+    assert kw["params"]["endpoint"] == "Local/4242@dial-demo"
+    assert kw["params"]["context"] == "dial-services"
     assert kw["params"]["extension"] == "callback"
     assert kw["params"]["callerId"] == "Callback" and kw["params"]["timeout"] == 25
     v = kw["json"]["variables"]
-    assert v["PET_EVENT"] == "demo" and v["PET_CALLBACK_TARGET"] == "4300" and v["PET_DESTINATION"] == "4242"
-    assert "PET_SERVICE" not in v
+    assert v["DIAL_EVENT"] == "demo" and v["DIAL_CALLBACK_TARGET"] == "4300" and v["DIAL_DESTINATION"] == "4242"
+    assert "DIAL_SERVICE" not in v
 
 
 def test_broadcast_uses_announce_service(pbx, event, ari_request):
     ari_request.return_value = FakeResponse(200, {"id": "x"})
-    ids = pbx.broadcast(event=event, numbers=["4242", "4243"], announcement="pet/evacuate")
+    ids = pbx.broadcast(event=event, numbers=["4242", "4243"], announcement="dial/evacuate")
     assert ids == ["x", "x"] and ari_request.call_count == 2
     assert ari_request.call_args.kwargs["params"]["extension"] == "announce"
-    assert ari_request.call_args.kwargs["json"]["variables"]["PET_ANNOUNCEMENT"] == "pet/evacuate"
+    assert ari_request.call_args.kwargs["json"]["variables"]["DIAL_ANNOUNCEMENT"] == "dial/evacuate"
 
 
 def test_hangup_deletes_channel(pbx, ari_request):
@@ -96,15 +96,15 @@ def test_active_channels_filtered_by_event(pbx, event, ari_request):
     ari_request.return_value = FakeResponse(200, [
         {"id": "1", "name": "PJSIP/demo-aaaa-0001", "state": "Up", "accountcode": "demo",
          "caller": {"number": "4242", "name": "Alice"}, "connected": {"number": "4243"},
-         "dialplan": {"context": "pet-demo", "exten": "4243"}, "creationtime": "2026-09-13T10:00:00"},
+         "dialplan": {"context": "dial-demo", "exten": "4243"}, "creationtime": "2026-09-13T10:00:00"},
         {"id": "2", "name": "PJSIP/x", "state": "Ringing", "accountcode": "other",
-         "caller": {"number": "1"}, "connected": {"number": ""}, "dialplan": {"context": "pet-other", "exten": "2"}},
+         "caller": {"number": "1"}, "connected": {"number": ""}, "dialplan": {"context": "dial-other", "exten": "2"}},
     ])
     chans = pbx.active_channels(event)
     assert len(chans) == 1
     c = chans[0]
     assert c.id == "1" and c.caller == "4242" and c.callee == "4243" and c.state == "up"
-    assert c.extra["context"] == "pet-demo"
+    assert c.extra["context"] == "dial-demo"
     assert len(pbx.active_channels()) == 2
     assert pbx.active_channels()[1].state == "ringing"
 
@@ -142,7 +142,7 @@ def test_set_mwi_via_mailboxes(pbx, event, user, ari_request):
     ari_request.return_value = FakeResponse(204)
     pbx.set_mwi(ext, 2, 1)
     method, url = ari_request.call_args.args
-    assert method == "PUT" and url == "http://asterisk:8088/ari/mailboxes/4242%40pet-demo"
+    assert method == "PUT" and url == "http://asterisk:8088/ari/mailboxes/4242%40dial-demo"
     assert ari_request.call_args.kwargs["params"] == {"newMessages": 2, "oldMessages": 1}
     # module not loaded -> warning, no exception
     ari_request.return_value = FakeResponse(404, {"message": "Resource not found"})
@@ -157,11 +157,11 @@ def test_originate_falls_back_to_ami(pbx, event, ari_request):
     pbx.use_ami = True
     fake_ami = mock.MagicMock()
     fake_ami.__enter__.return_value = fake_ami
-    fake_ami.originate.return_value = "pet-abc"
+    fake_ami.originate.return_value = "dial-abc"
     with mock.patch.object(pbx, "_ami", return_value=fake_ami):
-        assert pbx.originate(event=event, destination="4242", caller_id="x") == "pet-abc"
+        assert pbx.originate(event=event, destination="4242", caller_id="x") == "dial-abc"
     fake_ami.originate.assert_called_once()
-    assert fake_ami.originate.call_args.kwargs["channel"] == "Local/4242@pet-demo"
+    assert fake_ami.originate.call_args.kwargs["channel"] == "Local/4242@dial-demo"
 
 
 def test_ari_client_invalid_json():

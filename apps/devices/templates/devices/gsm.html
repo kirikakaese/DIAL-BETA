@@ -11,13 +11,13 @@
 <section class="card">
   <h2>{% trans "GSM is not enabled for this event" %}</h2>
   <p>{% trans "Enable it in the event settings (has GSM) once an on-site cell network (e.g. Osmocom) is connected to the PBX, and set the PJSIP trunk name of the GSM gateway (default" %} <code>gsm-gateway</code>).</p>
-  <p class="small muted">{% trans "A commented trunk template is in" %} <code>deploy/asterisk/conf/pjsip.conf</code>. {% trans "The GSM core registers SIMs by calling" %} <code>POST /prov/gsm/register/</code> {% trans "with the header" %} <code>X-PET-PBX-Secret</code>.</p>
+  <p class="small muted">{% trans "A commented trunk template is in" %} <code>deploy/asterisk/conf/pjsip.conf</code>. {% trans "The GSM core registers SIMs by calling" %} <code>POST /prov/gsm/register/</code> {% trans "with the header" %} <code>X-DIAL-PBX-Secret</code>.</p>
 </section>
 {% else %}
 <div class="grid grid-2">
   <section class="card">
     <h2>{% trans "Registered SIMs" %}</h2>
-    <p class="small muted">{% trans "Trunk:" %} <code>{{ event.gsm_trunk|default:"gsm-gateway" }}</code> · {% trans "users dial or text the registration code on the GSM network; the core posts it to PET, which stores the IMSI/MSISDN." %}</p>
+    <p class="small muted">{% trans "Trunk:" %} <code>{{ event.gsm_trunk|default:"gsm-gateway" }}</code> · {% trans "users dial or text the registration code on the GSM network; the core posts it to DIAL, which stores the IMSI/MSISDN." %}</p>
     <div class="table-wrap"><table>
       <thead><tr><th scope="col">{% trans "Device" %}</th><th scope="col">{% trans "Extension" %}</th><th scope="col">IMSI</th><th scope="col">MSISDN</th><th scope="col">{% trans "Radio" %}</th><th scope="col">{% trans "Status" %}</th><th scope="col"><span class="sr-only">{% trans "Actions" %}</span></th></tr></thead>
       <tbody>
@@ -43,7 +43,7 @@
     <h2>{% trans "Add a GSM handset" %}</h2>
     <form method="post">{% csrf_token %}
       {% include "portal/_form.html" with form=form %}
-      <p class="small muted">{% trans "PET issues a 6-digit registration code. Hand it to the user; once the SIM is linked the extension rings on the GSM phone via the gateway trunk." %}</p>
+      <p class="small muted">{% trans "DIAL issues a 6-digit registration code. Hand it to the user; once the SIM is linked the extension rings on the GSM phone via the gateway trunk." %}</p>
       <div class="form-actions"><button class="btn btn-primary">{% trans "Add" %}</button></div>
     </form>
   </section>

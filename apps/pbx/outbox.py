@@ -8,7 +8,7 @@ exponential backoff until ``max_attempts`` and then parked as ``dead`` for an op
 ``sync_*``/``remove_*`` jobs for the same target are coalesced while still open, so a burst of
 edits to one extension results in a single PBX push.
 
-Delivery mode: when ``settings.PET_PBX_OUTBOX_SYNC`` is true (default: follows
+Delivery mode: when ``settings.DIAL_PBX_OUTBOX_SYNC`` is true (default: follows
 ``CELERY_TASK_ALWAYS_EAGER``, i.e. dev/test/demo without a worker) the job is delivered
 synchronously inside :func:`enqueue`; the row is still written, so stats/retries work the same.
 """
@@ -26,7 +26,7 @@ from django.utils import timezone
 from apps.pbx import get_pbx
 from apps.pbx.models import PBXJob, PBXSyncLog
 
-log = logging.getLogger("pet.pbx.outbox")
+log = logging.getLogger("dial.pbx.outbox")
 
 Kind = PBXJob.Kind
 State = PBXJob.State
@@ -52,7 +52,7 @@ class TargetVanished(Exception):
 # --------------------------------------------------------------------------- helpers
 
 def sync_mode() -> bool:
-    explicit = getattr(settings, "PET_PBX_OUTBOX_SYNC", None)
+    explicit = getattr(settings, "DIAL_PBX_OUTBOX_SYNC", None)
     if explicit is not None:
         return bool(explicit)
     return bool(getattr(settings, "CELERY_TASK_ALWAYS_EAGER", False))

@@ -315,7 +315,7 @@ def register(event, user, number: str, extension_type: str, *, request=None, por
     """
     if not event.registration_open and not (user and user.is_orga(event)):
         raise ExtensionError(_("Registration is not open for this event."))
-    if (settings.PET_REQUIRE_EMAIL_VERIFICATION and user is not None and not force_active
+    if (settings.DIAL_REQUIRE_EMAIL_VERIFICATION and user is not None and not force_active
             and not user.email_verified and not user.is_orga(event)):
         raise ExtensionError(_("Please verify your e-mail address before registering an extension."))
     if extension_type not in ExtensionType.values:

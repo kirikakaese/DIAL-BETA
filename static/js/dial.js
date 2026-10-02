@@ -1,4 +1,4 @@
-// PET portal helpers: theme toggle, menus, delegated data-action handlers, live availability checker,
+// DIAL portal helpers: theme toggle, menus, delegated data-action handlers, live availability checker,
 // auto-refresh. No user-facing strings live here - templates pass text via data-* attributes.
 (function () {
   const root = document.documentElement;
@@ -7,7 +7,7 @@
     toggle.addEventListener("click", function () {
       const next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
       root.setAttribute("data-theme", next);
-      document.cookie = "pet_theme=" + next + ";path=/;max-age=31536000;SameSite=Lax";
+      document.cookie = "dial_theme=" + next + ";path=/;max-age=31536000;SameSite=Lax";
     });
   }
 

@@ -1,10 +1,10 @@
-// PET PWA shell: service-worker registration, update toast, offline banner, install prompt.
-// All user-facing text lives in the template (#pet-pwa); this file contains no strings to translate.
+// DIAL PWA shell: service-worker registration, update toast, offline banner, install prompt.
+// All user-facing text lives in the template (#dial-pwa); this file contains no strings to translate.
 (function () {
-  const root = document.getElementById("pet-pwa");
+  const root = document.getElementById("dial-pwa");
   if (!root) return;
   const html = document.documentElement;
-  const offline = document.getElementById("pet-offline");
+  const offline = document.getElementById("dial-offline");
   const pingUrl = root.getAttribute("data-ping");
   const hasSW = "serviceWorker" in navigator;
 
@@ -32,7 +32,7 @@
   probe();
 
   // --- install prompt (Chromium; iOS uses Share > Add to Home Screen) -----------
-  const installBtn = document.getElementById("pet-install");
+  const installBtn = document.getElementById("dial-install");
   let installEvent = null;
   window.addEventListener("beforeinstallprompt", function (e) {
     e.preventDefault();
@@ -55,9 +55,9 @@
   const secure = location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1";
   if (!swUrl || !hasSW || !secure) return;
 
-  const toast = document.getElementById("pet-update");
-  const reloadBtn = document.getElementById("pet-update-reload");
-  const dismissBtn = document.getElementById("pet-update-dismiss");
+  const toast = document.getElementById("dial-update");
+  const reloadBtn = document.getElementById("dial-update-reload");
+  const dismissBtn = document.getElementById("dial-update-dismiss");
   let reloadRequested = false;
 
   navigator.serviceWorker.addEventListener("controllerchange", function () {

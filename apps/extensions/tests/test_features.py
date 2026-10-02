@@ -144,7 +144,7 @@ def test_set_ringback_tone_processes_and_marks_ready(event, user):
     assert ext.ringback_tone_status == Extension.RingbackStatus.READY
     assert ext.has_ringback_tone and ext.ringback_tone_processed.name == f"ringback/processed/{ext.pk}/tone.wav"
     assert _wav_params(ext.ringback_tone_processed.read())[:3] == (1, 2, 8000)
-    assert ext.ringback_class == "pet-demo-4242"
+    assert ext.ringback_class == "dial-demo-4242"
     assert AuditLog.objects.filter(target_id=str(ext.pk), message="Ringback tone uploaded").exists()
 
     services.clear_ringback_tone(ext, user)

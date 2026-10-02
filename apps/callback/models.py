@@ -10,12 +10,12 @@ from django.utils.translation import gettext_lazy as _
 
 
 def default_expiry():
-    ttl = getattr(settings, "PET_CALLBACK_DEFAULT_TTL_MINUTES", 30)
+    ttl = getattr(settings, "DIAL_CALLBACK_DEFAULT_TTL_MINUTES", 30)
     return timezone.now() + dt.timedelta(minutes=ttl)
 
 
 def default_ringback_delay():
-    return getattr(settings, "PET_TEST_RINGBACK_DELAY_SECONDS", 10)
+    return getattr(settings, "DIAL_TEST_RINGBACK_DELAY_SECONDS", 10)
 
 
 def announcement_upload_to(instance, filename):
@@ -137,7 +137,7 @@ class ScheduledCall(models.Model):
 
     @property
     def announcement_value(self) -> str:
-        """What the dialplan gets as ``PET_ANNOUNCEMENT``: a sound file path, TTS text or ''."""
+        """What the dialplan gets as ``DIAL_ANNOUNCEMENT``: a sound file path, TTS text or ''."""
         if self.announcement != self.Announcement.CUSTOM:
             return ""
         if self.announcement_file:
@@ -148,7 +148,7 @@ class ScheduledCall(models.Model):
 
 
 class TestRingback(models.Model):
-    """User dials the ringback service; PET calls back after ``delay_seconds``."""
+    """User dials the ringback service; DIAL calls back after ``delay_seconds``."""
 
     class State(models.TextChoices):
         SCHEDULED = "scheduled", _("Scheduled")

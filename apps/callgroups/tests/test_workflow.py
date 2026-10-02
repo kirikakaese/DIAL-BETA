@@ -49,13 +49,13 @@ def test_export_includes_admins_shortcode_delay(group, user, other_user, ext_ali
 # --------------------------------------------------------------------------- invites
 
 def test_invite_accept_flow(group, ext_bob, user, other_user, event, settings, mailoutbox):
-    settings.PET_PUBLIC_URL = "https://pet.example.org/"
+    settings.DIAL_PUBLIC_URL = "https://dial.example.org/"
     inv = services.invite(group, ext_bob, user, "we need you at the desk")
     assert inv.is_open and inv.status == "open" and inv.token
     assert len(mailoutbox) == 1
     msg = mailoutbox[0]
     assert msg.to == ["bob@example.org"] and "4400" in msg.subject
-    assert f"https://pet.example.org/e/demo/callgroups/invites/{inv.token}/" in msg.body
+    assert f"https://dial.example.org/e/demo/callgroups/invites/{inv.token}/" in msg.body
     assert "we need you at the desk" in msg.body
     assert list(services.open_invites_for(event, other_user)) == [inv]
     assert not services.open_invites_for(event, user).exists()
@@ -224,13 +224,13 @@ def test_dial_waves_nested_offsets(nested, orga, user):
 
 def test_dial_waves_degrades(event, ext_alice, settings):
     assert services.dial_waves(ext_alice) == [] and services.dial_waves(None) == []
-    settings.PET_FEATURES = dict(settings.PET_FEATURES, callgroups=False)
+    settings.DIAL_FEATURES = dict(settings.DIAL_FEATURES, callgroups=False)
     assert services.dial_waves(ext_alice) == []
 
 
 def test_delayed_dial_target_encoding():
-    assert services.delayed_dial_target("4300", 5) == "Local/005*4300@pet-group"
-    assert services.delayed_dial_target("4300", 120) == "Local/120*4300@pet-group"
+    assert services.delayed_dial_target("4300", 5) == "Local/005*4300@dial-group"
+    assert services.delayed_dial_target("4300", 120) == "Local/120*4300@dial-group"
 
 
 # --------------------------------------------------------------------------- shortcode

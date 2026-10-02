@@ -1,7 +1,7 @@
 [project]
-name = "pet"
+name = "dial"
 version = "0.1.0"
-description = "PET - Portable Event Telephone: self-hostable event telephony management"
+description = "DIAL - DECT & IP Administration Layer: self-hostable event telephony management"
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "AGPL-3.0-or-later" }
@@ -37,20 +37,20 @@ dev = [
 ]
 
 [project.scripts]
-pet = "apps.api.cli:main"
+dial = "apps.api.cli:main"
 
 [build-system]
 requires = ["setuptools>=69", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["apps*", "pet*"]
+include = ["apps*", "dial*"]
 
 [tool.setuptools.package-data]
 "*" = ["templates/**/*.html", "static/**/*"]
 
 [tool.pytest.ini_options]
-DJANGO_SETTINGS_MODULE = "pet.settings.test"
+DJANGO_SETTINGS_MODULE = "dial.settings.test"
 python_files = ["test_*.py", "tests.py"]
 testpaths = ["apps", "tests"]
 addopts = "-q --reuse-db"

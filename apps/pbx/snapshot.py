@@ -1,14 +1,14 @@
 """Venue-agent config sync: snapshots of one event's Asterisk realtime rows.
 
-In ``PBXConnection.Provisioning.AGENT`` mode the venue Asterisk does not read PET's PostgreSQL. A small
+In ``PBXConnection.Provisioning.AGENT`` mode the venue Asterisk does not read DIAL's PostgreSQL. A small
 agent next to it polls :func:`build_snapshot` (``GET /api/v1/pbx/snapshot/``) and writes the rows into a
 local PostgreSQL with the same schema (:func:`venue_schema_sql`); Asterisk keeps using realtime against
 localhost and the venue survives WAN outages with the last snapshot. Heartbeats
 (:func:`apply_heartbeat`) carry the applied version and, optionally, the ``ps_contacts`` rows so
-registration status in PET keeps working.
+registration status in DIAL keeps working.
 
 Rows are attributed to an event the same way :class:`~apps.pbx.backends.asterisk.AsteriskPBX` writes
-them: endpoints by ``accountcode`` (= ``event.slug[:20]``) or ``context`` (= ``pet-<slug>``), auths/AORs by
+them: endpoints by ``accountcode`` (= ``event.slug[:20]``) or ``context`` (= ``dial-<slug>``), auths/AORs by
 sharing the endpoint id, IP identifies and contacts by their ``endpoint`` column, dialplan rows and
 mailboxes by ``context``.
 """
@@ -40,7 +40,7 @@ from apps.pbx.models import (
     VoicemailUser,
 )
 
-log = logging.getLogger("pet.pbx.snapshot")
+log = logging.getLogger("dial.pbx.snapshot")
 
 DEFAULT_POLL_INTERVAL = 15
 #: tables the agent pulls (``table -> (model, key column)``); ``ps_contacts`` flows the other way (heartbeat)
@@ -236,7 +236,7 @@ def _fallback_table_sql(model) -> str:
 
 def venue_schema_sql() -> str:
     """``CREATE TABLE IF NOT EXISTS`` (+ indexes) for every realtime table the venue Asterisk needs."""
-    lines = ["-- PET venue realtime schema (PostgreSQL) - generated from apps.pbx.models; safe to re-run.", ""]
+    lines = ["-- DIAL venue realtime schema (PostgreSQL) - generated from apps.pbx.models; safe to re-run.", ""]
     try:
         editor = _pg_schema_editor()
     except Exception as exc:  # noqa: BLE001 - psycopg missing on this host; derive DDL by hand
@@ -278,7 +278,7 @@ def _coerce_contact(row: dict, allowed: set[str]) -> dict | None:
 
 
 def replace_contacts(event, rows) -> int:
-    """Replace PET's ``ps_contacts`` rows for the event's endpoints with what the agent reports.
+    """Replace DIAL's ``ps_contacts`` rows for the event's endpoints with what the agent reports.
     Rows for endpoints of other events are ignored. Returns the number of rows written."""
     allowed = set(endpoint_ids(event))
     contacts = []

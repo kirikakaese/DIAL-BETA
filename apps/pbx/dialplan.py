@@ -1,30 +1,30 @@
 """Dialplan generation for the Asterisk backend.
 
-Everything here is pure: it turns PET models into ``(exten, priority, app,
+Everything here is pure: it turns DIAL models into ``(exten, priority, app,
 appdata)`` rows for the realtime ``extensions`` table (or a static
-``extensions.conf`` snippet). The per-event context is ``pet-<slug>``; the
-static contexts it refers to (``pet-services``, ``pet-group``, ``pet-ivr``,
-``pet-feature``, ``pet-hangup``, ...) live in ``deploy/asterisk/conf/extensions.conf``.
+``extensions.conf`` snippet). The per-event context is ``dial-<slug>``; the
+static contexts it refers to (``dial-services``, ``dial-group``, ``dial-ivr``,
+``dial-feature``, ``dial-hangup``, ...) live in ``deploy/asterisk/conf/extensions.conf``.
 
 How a call to ``4242`` flows (parallel ring, two devices)::
 
-    [pet-demo]                      <- endpoint context (set on ps_endpoints.context)
-    4242,1  Set(__PET_EVENT=demo)
-    4242,2  Set(PET_EXTEN=4242)
-    4242,3  Set(PET_ALLOW_CB=1)
-    4242,4  Set(PET_PRIORITY=0)
-    4242,5  Set(CHANNEL(hangup_handler_push)=pet-hangup,s,1)
+    [dial-demo]                      <- endpoint context (set on ps_endpoints.context)
+    4242,1  Set(__DIAL_EVENT=demo)
+    4242,2  Set(DIAL_EXTEN=4242)
+    4242,3  Set(DIAL_ALLOW_CB=1)
+    4242,4  Set(DIAL_PRIORITY=0)
+    4242,5  Set(CHANNEL(hangup_handler_push)=dial-hangup,s,1)
     4242,6  Dial(PJSIP/demo-aaaa&PJSIP/demo-bbbb,30,tT)
     4242,7  GotoIf($["${DIALSTATUS}" = "BUSY"]?10)
-    4242,8  VoiceMail(4242@pet-demo,u)         (or Goto(pet-demo,<forward_noanswer>,1))
+    4242,8  VoiceMail(4242@dial-demo,u)         (or Goto(dial-demo,<forward_noanswer>,1))
     4242,9  Hangup()
-    4242,10 VoiceMail(4242@pet-demo,b)         (or Goto(pet-demo,<forward_busy>,1) / Busy(10))
+    4242,10 VoiceMail(4242@dial-demo,b)         (or Goto(dial-demo,<forward_busy>,1) / Busy(10))
     4242,11 Hangup()
 
 Per-extension features change individual rows:
 
 - ``language`` set → an extra ``Set(CHANNEL(language)=de)`` in the preamble (else the event default).
-- ready ``ringback_tone`` → the Dial gets ``m(pet-<slug>-<number>)`` so the caller hears the custom
+- ready ``ringback_tone`` → the Dial gets ``m(dial-<slug>-<number>)`` so the caller hears the custom
   tone (a music-on-hold class rendered by ``AsteriskPBX.render_musiconhold``) instead of ringing.
 - ``forward_mode``/``forward_target`` (FK): ``always`` → ``Goto(ctx,<target>,1)`` instead of Dial;
   ``delayed`` → Dial with timeout ``forward_delay`` then ``Goto``; ``busy``/``noanswer`` → ``Goto``
@@ -40,12 +40,12 @@ from datetime import UTC, datetime
 
 from apps.extensions.models import ENDPOINT_TYPES, Extension, ExtensionType
 
-CONTEXT_PREFIX = "pet-"
-SERVICES_CONTEXT = "pet-services"
-INTERNAL_CONTEXT = "pet-internal"
-HANGUP_HANDLER = "pet-hangup,s,1"
+CONTEXT_PREFIX = "dial-"
+SERVICES_CONTEXT = "dial-services"
+INTERNAL_CONTEXT = "dial-internal"
+HANGUP_HANDLER = "dial-hangup,s,1"
 
-# Service number field on NumberPlan -> exten in [pet-services]
+# Service number field on NumberPlan -> exten in [dial-services]
 SERVICE_NUMBERS = [
     ("echo_test_number", "echo"),
     ("test_ringback_number", "ringback-request"),
@@ -56,7 +56,7 @@ SERVICE_NUMBERS = [
     ("announcement_record_number", "record-announcement"),
 ]
 # Service numbers that also accept trailing digits (``<number><code>``), passed on in the given channel variable
-SERVICE_WITH_SUFFIX = {"dect_claim_number": "PET_CLAIM_CODE", "announcement_record_number": "PET_RECORD_CODE"}
+SERVICE_WITH_SUFFIX = {"dect_claim_number": "DIAL_CLAIM_CODE", "announcement_record_number": "DIAL_RECORD_CODE"}
 FEATURE_CODES = ["callback_request_code", "callback_cancel_code", "group_login_code", "group_logout_code",
                  "forward_set_code", "forward_clear_code", "forward_busy_code", "forward_noanswer_code"]
 
@@ -180,10 +180,10 @@ class ExtenBuilder:
 # --------------------------------------------------------------------------- extensions
 
 def _preamble(b: ExtenBuilder, ext: Extension, ctx: str, exten: str | None = None):
-    b.add("Set", f"__PET_EVENT={ext.event.slug}")
-    b.add("Set", f"PET_EXTEN={exten or ext.number}")
-    b.add("Set", f"PET_ALLOW_CB={1 if ext.allow_callback else 0}")
-    b.add("Set", f"PET_PRIORITY={ext.priority}")
+    b.add("Set", f"__DIAL_EVENT={ext.event.slug}")
+    b.add("Set", f"DIAL_EXTEN={exten or ext.number}")
+    b.add("Set", f"DIAL_ALLOW_CB={1 if ext.allow_callback else 0}")
+    b.add("Set", f"DIAL_PRIORITY={ext.priority}")
     b.add("Set", f"CHANNEL(hangup_handler_push)={HANGUP_HANDLER}")
     lang = announcement_language(ext)
     if lang:
@@ -251,7 +251,7 @@ def _endpoint_rows(b: ExtenBuilder, ext: Extension, ctx: str):
     timeout = (ext.forward_delay or 10) if delayed else (ext.ring_timeout or 30)
     opts = dial_options(ext)
     if not targets:
-        b.add("NoOp", f"PET: no devices bound to {ext.number}")
+        b.add("NoOp", f"DIAL: no devices bound to {ext.number}")
         b.add("Goto", b.ref("noanswer"))
     elif ext.ring_strategy == Extension.RingStrategy.SERIAL and len(targets) > 1:
         for binding, ds in targets:
@@ -269,10 +269,10 @@ def _endpoint_rows(b: ExtenBuilder, ext: Extension, ctx: str):
 
 def _trunk_rows(b: ExtenBuilder, ext: Extension, ctx: str, number: str):
     """Hand ``number`` (a literal or ``${EXTEN}``) to the remote PBX registered on the trunk's SIP account."""
-    b.add("Set", f"PET_TRUNK={ext.number}")
+    b.add("Set", f"DIAL_TRUNK={ext.number}")
     ds = trunk_dial_string(ext, number)
     if not ds:
-        b.add("NoOp", f"PET: no SIP account bound to trunk {ext.number}")
+        b.add("NoOp", f"DIAL: no SIP account bound to trunk {ext.number}")
         b.add("Playback", "vm-nobodyavail")
         b.add("Hangup")
         return
@@ -313,27 +313,27 @@ def rows_for_extension(ext: Extension) -> list[Row]:
     if t in ENDPOINT_TYPES:
         _endpoint_rows(b, ext, ctx)
     elif t == ExtensionType.GROUP:
-        b.add("Gosub", f"pet-group,s,1({ext.number})")
+        b.add("Gosub", f"dial-group,s,1({ext.number})")
         b.add("Hangup")
     elif t in (ExtensionType.ANNOUNCEMENT, ExtensionType.IVR):
-        b.add("Gosub", f"pet-ivr,s,1({ext.number},{t})")
+        b.add("Gosub", f"dial-ivr,s,1({ext.number},{t})")
         b.add("Hangup")
     elif t == ExtensionType.CONFERENCE:
         b.add("Answer")
         pin = str(cfg.get("pin") or "").strip()
         if pin:
             b.add("Authenticate", pin)
-        b.add("ConfBridge", f"{conference_name(ext)},pet_bridge,pet_user")
+        b.add("ConfBridge", f"{conference_name(ext)},dial_bridge,dial_user")
         b.add("Hangup")
     elif t == ExtensionType.VOICEMAIL:
         b.add("Answer")
         b.add("VoiceMail", f"{mailbox(ext)},u")
         b.add("Hangup")
     elif t == ExtensionType.APP:
-        b.add("Gosub", f"pet-app,s,1({cfg.get('app', 'echo')})")
+        b.add("Gosub", f"dial-app,s,1({cfg.get('app', 'echo')})")
         b.add("Hangup")
     elif t in (ExtensionType.FEDERATION, ExtensionType.BREAKOUT):
-        b.add("Gosub", f"pet-route,s,1({ext.number})")
+        b.add("Gosub", f"dial-route,s,1({ext.number})")
         b.add("Hangup")
     else:
         b.add("Playback", "pbx-invalid")
@@ -350,7 +350,7 @@ def rows_for_plan(event, plan) -> list[Row]:
     seen: set[str] = set()
 
     def pre(b):
-        b.add("Set", f"__PET_EVENT={slug}")
+        b.add("Set", f"__DIAL_EVENT={slug}")
 
     for field, svc in SERVICE_NUMBERS:
         number = (getattr(plan, field, "") or "").strip()
@@ -376,12 +376,12 @@ def rows_for_plan(event, plan) -> list[Row]:
         seen.add(code)
         b = ExtenBuilder(code)  # bare code, e.g. *86 = cancel all
         pre(b)
-        b.add("Gosub", f"pet-feature,s,1({code},)")
+        b.add("Gosub", f"dial-feature,s,1({code},)")
         b.add("Hangup")
         rows += b.build()
         b = ExtenBuilder(f"_{code}.")  # code + target, e.g. *664242
         pre(b)
-        b.add("Gosub", f"pet-feature,s,1({code},${{EXTEN:{len(code)}}})")
+        b.add("Gosub", f"dial-feature,s,1({code},${{EXTEN:{len(code)}}})")
         b.add("Hangup")
         rows += b.build()
 
@@ -392,8 +392,8 @@ def rows_for_plan(event, plan) -> list[Row]:
         seen.add(number)
         b = ExtenBuilder(number)
         pre(b)
-        b.add("Set", "PET_PRIORITY=100")
-        b.add("Goto", f"pet-emergency,{number},1")
+        b.add("Set", "DIAL_PRIORITY=100")
+        b.add("Goto", f"dial-emergency,{number},1")
         rows += b.build()
     return rows
 
@@ -430,7 +430,7 @@ def render_context(event, rows: list[Row], *, header=True) -> str:
     ctx = event_context(event)
     lines = []
     if header:
-        lines.append(f"; PET dialplan for event '{event.slug}' - generated "
+        lines.append(f"; DIAL dialplan for event '{event.slug}' - generated "
                      f"{datetime.now(UTC):%Y-%m-%d %H:%M:%S} UTC")
         lines.append("; static equivalent of the realtime rows in table 'extensions'")
     lines.append(f"[{ctx}]")

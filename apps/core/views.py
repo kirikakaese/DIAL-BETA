@@ -1,7 +1,7 @@
 """Core views: the PWA shell - web app manifest, service worker and offline page.
 
 The service worker source lives in ``static/js/sw.js`` but must be served from the site root so its scope
-can be ``/``. The view substitutes two placeholders (``__PET_ASSET_VERSION__`` and ``__PET_PRECACHE__``),
+can be ``/``. The view substitutes two placeholders (``__DIAL_ASSET_VERSION__`` and ``__DIAL_PRECACHE__``),
 so the cache name changes whenever the static bundle changes (see ``context_processors.ASSET_VERSION``).
 """
 from __future__ import annotations
@@ -21,19 +21,19 @@ from .context_processors import ASSET_VERSION
 
 # (path under static/, sizes, purpose) - all PNG
 MANIFEST_ICONS = (
-    ("icons/pet-192.png", "192x192", "any"),
-    ("icons/pet-512.png", "512x512", "any"),
-    ("icons/pet-maskable-512.png", "512x512", "maskable"),
+    ("icons/dial-192.png", "192x192", "any"),
+    ("icons/dial-512.png", "512x512", "any"),
+    ("icons/dial-maskable-512.png", "512x512", "maskable"),
 )
 # Precached on service-worker install (plus the offline page and the manifest).
-PRECACHE_VERSIONED = ("css/pet.css", "js/pet.js", "css/pwa.css", "js/pwa.js", "icons/favicon.svg")
-PRECACHE_PLAIN = ("icons/pet-192.png", "icons/pet-512.png", "icons/pet-maskable-512.png",
+PRECACHE_VERSIONED = ("css/dial.css", "js/dial.js", "css/pwa.css", "js/pwa.js", "icons/favicon.svg")
+PRECACHE_PLAIN = ("icons/dial-192.png", "icons/dial-512.png", "icons/dial-maskable-512.png",
                   "icons/apple-touch-icon.png")
 SW_SOURCE = "js/sw.js"
 
 
 def _require_pwa() -> None:
-    if not getattr(settings, "PET_PWA_ENABLED", True):
+    if not getattr(settings, "DIAL_PWA_ENABLED", True):
         raise Http404
 
 
@@ -58,22 +58,22 @@ def manifest(request):
     _require_pwa()
     data = {
         "id": "/",
-        "name": "PET – Portable Event Telephone",
-        "short_name": "PET",
+        "name": "DIAL – DECT & IP Administration Layer",
+        "short_name": "DIAL",
         "description": _("Your phone number for the event: extensions, handsets, softphones and the phonebook."),
         "lang": settings.LANGUAGE_CODE,
         "start_url": "/",
         "scope": "/",
         "display": "standalone",
         "orientation": "any",
-        "background_color": settings.PET_PWA_BACKGROUND_COLOR,
-        "theme_color": settings.PET_PWA_THEME_COLOR,
+        "background_color": settings.DIAL_PWA_BACKGROUND_COLOR,
+        "theme_color": settings.DIAL_PWA_THEME_COLOR,
         "icons": [
             {"src": static(rel), "sizes": sizes, "type": "image/png", "purpose": purpose}
             for rel, sizes, purpose in MANIFEST_ICONS
         ],
         "shortcuts": [
-            {"name": _("My extensions"), "url": "/", "icons": [{"src": static("icons/pet-192.png"),
+            {"name": _("My extensions"), "url": "/", "icons": [{"src": static("icons/dial-192.png"),
                                                                  "sizes": "192x192", "type": "image/png"}]},
             {"name": _("Docs"), "url": "/docs/"},
         ],
@@ -90,8 +90,8 @@ def service_worker(request):
     """``/sw.js`` - never HTTP-cached so browsers pick up a new ASSET_VERSION on the next navigation."""
     _require_pwa()
     body = (_sw_source()
-            .replace("__PET_ASSET_VERSION__", ASSET_VERSION)
-            .replace("__PET_PRECACHE__", json.dumps(precache_urls())))
+            .replace("__DIAL_ASSET_VERSION__", ASSET_VERSION)
+            .replace("__DIAL_PRECACHE__", json.dumps(precache_urls())))
     resp = HttpResponse(body, content_type="application/javascript; charset=utf-8")
     resp["Service-Worker-Allowed"] = "/"
     resp["Cache-Control"] = "no-cache"

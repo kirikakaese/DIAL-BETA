@@ -18,7 +18,7 @@ from apps.extensions.models import ENDPOINT_TYPES, Extension
 
 from .models import MAX_TEXT, Broadcast, Message
 
-logger = logging.getLogger("pet.messaging")
+logger = logging.getLogger("dial.messaging")
 
 
 class MessagingError(Exception):
@@ -124,7 +124,7 @@ def broadcast(event, sender, text: str, group=None, *, priority: str = "high", r
 
 
 def handle_inbound(event, from_ppn: str, text: str) -> Message | None:
-    """OMM → PET gateway hook (placeholder): store a message sent *from* a handset.
+    """OMM → DIAL gateway hook (placeholder): store a message sent *from* a handset.
 
     Wire this to the OMM message event stream (AXI ``MessageIndication``) in the DECT backend.
     """

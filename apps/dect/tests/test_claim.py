@@ -13,7 +13,7 @@ from apps.pbx import dialplan as dp
 pytestmark = pytest.mark.django_db
 
 SECRET = "hook-secret-123"
-HDR = {"HTTP_X_PET_PBX_SECRET": SECRET}
+HDR = {"HTTP_X_DIAL_PBX_SECRET": SECRET}
 
 
 @pytest.fixture
@@ -60,10 +60,10 @@ def test_claim_number_is_reserved_and_produces_dialplan_rows(event, plan):
     by_exten = {}
     for r in rows:
         by_exten.setdefault(r.exten, []).append(r)
-    assert by_exten["9004"][-1].appdata == "pet-services,dect-claim,1"
+    assert by_exten["9004"][-1].appdata == "dial-services,dect-claim,1"
     suffix = by_exten["_9004X."]
-    assert suffix[1].app == "Set" and suffix[1].appdata == "PET_CLAIM_CODE=${EXTEN:4}"
-    assert suffix[2].appdata == "pet-services,dect-claim,1"
+    assert suffix[1].app == "Set" and suffix[1].appdata == "DIAL_CLAIM_CODE=${EXTEN:4}"
+    assert suffix[2].appdata == "dial-services,dect-claim,1"
     assert {"9004", "_9004X."} <= dp.plan_extens(plan)
 
 
@@ -90,7 +90,7 @@ def test_sync_adopts_unknown_handsets_when_feature_on(dect, event, plan):
     d = Device.objects.get(event=event, ipei="0123456789077")
     assert d.unclaimed and d.omm_ppn == ppn and d.state == Device.State.SUBSCRIBED
     assert d.config["temp_number"] == "777" and d.config["adopted"] is True
-    # PET's SIP identity was pushed to the OMM user record
+    # DIAL's SIP identity was pushed to the OMM user record
     assert dect.subs[ppn]["sip_user"] == d.sip_username and dect.subs[ppn]["sip_password"] == d.sip_password
     assert d.last_seen_rfp is not None and d.last_seen_rfp.omm_id == "3"
     # idempotent
@@ -198,7 +198,7 @@ def test_new_claim_code_invalidates_old(dect, event, user, member, plan, pool_de
 # --------------------------------------------------------------------------- PBX hook
 
 def test_hook_dect_claim(client, dect, event, user, member, plan, pool_device, settings):
-    settings.PET_PBX_HOOK_SECRET = SECRET
+    settings.DIAL_PBX_HOOK_SECRET = SECRET
     ext = ext_services.register(event, user, "4242", "dect")
     r = client.post("/api/v1/pbx/hooks/dect-claim/",
                     {"event": "demo", "caller": pool_device.sip_username, "callerid": "9004001",

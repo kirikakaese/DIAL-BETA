@@ -6,7 +6,7 @@ works even while the PBX is down. Call control and status use ARI.
 
 In *agent* provisioning mode (``PBXConnection.provisioning == "agent"``) the same rows are the
 source of the snapshots a venue agent pulls; ARI/AMI are optional then (the venue box is usually
-not reachable from PET), reloads are left to the agent and registration status comes from the
+not reachable from DIAL), reloads are left to the agent and registration status comes from the
 ``ps_contacts`` rows the agent reports with its heartbeats.
 """
 from __future__ import annotations
@@ -31,7 +31,7 @@ from apps.pbx.models import (
     VoicemailUser,
 )
 
-log = logging.getLogger("pet.pbx.asterisk")
+log = logging.getLogger("dial.pbx.asterisk")
 
 # Device types that register with Asterisk over SIP (DECT handsets do so via the OMM).
 SIP_DEVICE_TYPES = {"dect", "sip", "webrtc", "analog"}
@@ -60,17 +60,17 @@ class AsteriskPBX(PBXAdapter):
         cfg.update(config or {})
         self.cfg = cfg
         self.ari = ari or ARIClient(cfg["ARI_URL"], cfg["ARI_USER"], cfg["ARI_PASSWORD"],
-                                    app=cfg.get("ARI_APP", "pet"),
-                                    timeout=getattr(settings, "PET_PBX_HTTP_TIMEOUT", 5))
-        self.codecs = getattr(settings, "PET_PBX_CODECS", "alaw,ulaw,g722")
-        self.webrtc_codecs = getattr(settings, "PET_PBX_WEBRTC_CODECS", "opus,alaw,ulaw")
-        self.use_ami = bool(getattr(settings, "PET_PBX_USE_AMI", True) and cfg.get("AMI_HOST"))
+                                    app=cfg.get("ARI_APP", "dial"),
+                                    timeout=getattr(settings, "DIAL_PBX_HTTP_TIMEOUT", 5))
+        self.codecs = getattr(settings, "DIAL_PBX_CODECS", "alaw,ulaw,g722")
+        self.webrtc_codecs = getattr(settings, "DIAL_PBX_WEBRTC_CODECS", "opus,alaw,ulaw")
+        self.use_ami = bool(getattr(settings, "DIAL_PBX_USE_AMI", True) and cfg.get("AMI_HOST"))
         self.agent_mode = cfg.get("PROVISIONING") == "agent"
         self.has_ari = bool(cfg.get("ARI_URL"))
 
     @property
     def _ari_offline(self) -> bool:
-        """Agent mode without an ARI URL: never try to reach the venue box from PET."""
+        """Agent mode without an ARI URL: never try to reach the venue box from DIAL."""
         return self.agent_mode and not self.has_ari
 
     def _agent_connection(self):
@@ -146,7 +146,7 @@ class AsteriskPBX(PBXAdapter):
             "auth_type": "userpass", "username": user, "password": device.sip_password,
         })
         PsAor.objects.update_or_create(id=user, defaults={
-            "max_contacts": 1 if is_dect else getattr(settings, "PET_PBX_MAX_CONTACTS", 3),
+            "max_contacts": 1 if is_dect else getattr(settings, "DIAL_PBX_MAX_CONTACTS", 3),
             "remove_existing": "yes", "remove_unavailable": "yes",
             "qualify_frequency": 0 if is_dect else 60,
             "default_expiration": 300, "minimum_expiration": 60, "maximum_expiration": 3600,
@@ -159,7 +159,7 @@ class AsteriskPBX(PBXAdapter):
             "direct_media": "no", "rtp_symmetric": "yes", "force_rport": "yes", "rewrite_contact": "yes",
             "dtmf_mode": "rfc4733", "callerid": self._callerid(device, ext), "mailboxes": mailbox,
             "language": (ext.language if ext and ext.language else event.default_language) or None,
-            "set_var": f"PET_EVENT={event.slug}", "accountcode": event.slug[:20],
+            "set_var": f"DIAL_EVENT={event.slug}", "accountcode": event.slug[:20],
             "identify_by": "username", "send_pai": "yes", "trust_id_inbound": "no",
             "allow_subscribe": "yes", "subscribe_context": ctx,
             "device_state_busy_at": 1 if (is_dect or no_call_waiting) else None,
@@ -261,12 +261,12 @@ class AsteriskPBX(PBXAdapter):
         return n
 
     def _reload_dialplan(self):
-        """Best effort: make Asterisk re-read the [pet-<slug>] shell contexts (#exec include).
+        """Best effort: make Asterisk re-read the [dial-<slug>] shell contexts (#exec include).
 
-        In agent mode the venue agent reloads its local Asterisk after applying a snapshot; PET only
+        In agent mode the venue agent reloads its local Asterisk after applying a snapshot; DIAL only
         tries when an AMI host is configured explicitly and logs (never raises) when it is unreachable.
         """
-        if not self.use_ami or not getattr(settings, "PET_PBX_RELOAD_ON_SYNC", True):
+        if not self.use_ami or not getattr(settings, "DIAL_PBX_RELOAD_ON_SYNC", True):
             if self.agent_mode:
                 log.debug("agent mode: dialplan reload left to the venue agent")
             return
@@ -380,14 +380,14 @@ class AsteriskPBX(PBXAdapter):
         return out
 
     # ------------------------------------------------------------------ call control
-    def originate(self, *, event, destination: str, caller_id: str, context: str = "pet-services",
+    def originate(self, *, event, destination: str, caller_id: str, context: str = "dial-services",
                   variables: dict | None = None, timeout: int = 30) -> str:
         variables = dict(variables or {})
-        service = variables.pop("PET_SERVICE", None) or "announce"
+        service = variables.pop("DIAL_SERVICE", None) or "announce"
         ctx = dp.event_context(event)
-        variables.setdefault("PET_EVENT", event.slug)
-        variables.setdefault("PET_DESTINATION", destination)
-        variables.setdefault("PET_CALLER_ID", caller_id)
+        variables.setdefault("DIAL_EVENT", event.slug)
+        variables.setdefault("DIAL_DESTINATION", destination)
+        variables.setdefault("DIAL_CALLER_ID", caller_id)
         endpoint = f"Local/{destination}@{ctx}"
         if self._ari_offline and not self.use_ami:
             raise PBXError("originate needs ARI or AMI - neither is configured (agent provisioning mode)")
@@ -436,7 +436,7 @@ class AsteriskPBX(PBXAdapter):
         text = dp.render_context(event, rows)
         if any(e.has_ringback_tone for e in exts):
             text += ("\n; Custom ringback tones referenced above via Dial(...,m(<class>)) need the music-on-hold\n"
-                     "; classes from render_musiconhold(); see musiconhold.conf (#include pet-moh.conf).\n")
+                     "; classes from render_musiconhold(); see musiconhold.conf (#include dial-moh.conf).\n")
         return text
 
     def render_musiconhold(self, event) -> str:
@@ -444,11 +444,11 @@ class AsteriskPBX(PBXAdapter):
 
         Each tone is processed into its own directory (``MEDIA_ROOT/ringback/processed/<id>/tone.wav``)
         because Asterisk ``mode=files`` plays a *directory*. Write the output to a file that
-        ``musiconhold.conf`` includes (``#include pet-moh.conf``) and run ``moh reload``.
+        ``musiconhold.conf`` includes (``#include dial-moh.conf``) and run ``moh reload``.
         """
         from apps.extensions.models import Extension
 
-        lines = [f"; PET custom ringback tones for event '{event.slug}' - generated "
+        lines = [f"; DIAL custom ringback tones for event '{event.slug}' - generated "
                  f"{datetime.now(UTC):%Y-%m-%d %H:%M:%S} UTC"]
         qs = Extension.objects.filter(event=event).active().filter(
             ringback_tone_status=Extension.RingbackStatus.READY).select_related("event")

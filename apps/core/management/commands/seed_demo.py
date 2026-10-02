@@ -6,7 +6,7 @@ everything that belongs to the demo (event, demo users, PBX realtime rows) and t
 Every feature block is wrapped in ``try/except`` and imports its service functions lazily, so a
 disabled feature flag or a missing function only produces a warning instead of aborting the seed.
 
-Demo credentials: ``admin@pet.local`` / ``admin`` (superuser), all other demo users use
+Demo credentials: ``admin@dial.local`` / ``admin`` (superuser), all other demo users use
 ``demo1234!``.
 """
 
@@ -22,10 +22,10 @@ from django.core.files.storage import default_storage
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-log = logging.getLogger("pet.seed")
+log = logging.getLogger("dial.seed")
 
 DEMO_SLUG = "demo"
-DEMO_DOMAIN = "pet.local"
+DEMO_DOMAIN = "dial.local"
 ADMIN_EMAIL = f"admin@{DEMO_DOMAIN}"
 ADMIN_PASSWORD = "admin"
 DEMO_PASSWORD = "demo1234!"
@@ -131,7 +131,7 @@ class Command(BaseCommand):
         # infrastructure
         # sync below sees the handsets. Also avoids racing a worker while we are still writing rows.
         try:
-            from pet.celery import app as celery_app
+            from dial.celery import app as celery_app
 
             celery_app.conf.task_always_eager = True
             celery_app.conf.task_eager_propagates = False
@@ -226,7 +226,7 @@ class Command(BaseCommand):
             slug=self.slug,
             defaults={
                 "name": "Demo Camp",
-                "description": "A fictional hacker camp used to demonstrate PET. Everything is fake.",
+                "description": "A fictional hacker camp used to demonstrate DIAL. Everything is fake.",
                 "state": Event.State.LIVE,
                 "start_date": today,
                 "end_date": today + dt.timedelta(days=5),
@@ -311,7 +311,7 @@ class Command(BaseCommand):
                 prefix="9",
                 mode="blocked",
                 priority=1,
-                description="PET service numbers (echo, ringback, wake-up, voicemail)",
+                description="DIAL service numbers (echo, ringback, wake-up, voicemail)",
             ),
             dict(
                 name="Vanity",
@@ -623,17 +623,17 @@ class Command(BaseCommand):
 
         if ServiceAccount.objects.filter(owner=users["admin"], name="demo-cli").exists():
             self.summary.append(
-                ("Service account", "demo-cli (exists; mint a new token with manage.py pet_token)")
+                ("Service account", "demo-cli (exists; mint a new token with manage.py dial_token)")
             )
             return
         _acct, raw = ServiceAccount.issue(
             name="demo-cli",
             owner=users["admin"],
             scopes=["*"],
-            description="Created by seed_demo for the pet CLI",
+            description="Created by seed_demo for the dial CLI",
         )
         self.summary.append(("Service account", "demo-cli (token printed below, shown only once)"))
-        self.notes.append(f"PET_TOKEN={raw}")
+        self.notes.append(f"DIAL_TOKEN={raw}")
 
     def seed_dect(self, event):
         from apps.dect.models import RFP

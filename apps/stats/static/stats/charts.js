@@ -1,4 +1,4 @@
-/* PET stats: dependency-free canvas bar chart.
+/* DIAL stats: dependency-free canvas bar chart.
  * Usage: <canvas data-chart="<id of a <script type=application/json>>"> with JSON
  *   {"labels": [...], "series": [{"name": "...", "values": [...], "color": "--css-var"?}, ...]}
  * Colors come from the current theme's CSS custom properties, so dark/light both work; the chart

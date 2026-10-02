@@ -72,9 +72,9 @@ def test_tokens_create_shows_once_and_api_accepts(client, user, member, event):
     r = client.post(reverse("accounts:tokens"), {"name": "cli", "scopes": "extensions:read", "event": event.pk})
     assert r.status_code == 200
     acct = ServiceAccount.objects.get(owner=user)
-    raw = [line for line in r.content.decode().splitlines() if "pet_" in line][0]
-    raw = raw.split("pet_", 1)[1].split("<")[0]
-    raw = "pet_" + raw
+    raw = [line for line in r.content.decode().splitlines() if "dial_" in line][0]
+    raw = raw.split("dial_", 1)[1].split("<")[0]
+    raw = "dial_" + raw
     assert ServiceAccount.hash_token(raw) == acct.token_hash
     # listing afterwards does not contain the raw token
     r2 = client.get(reverse("accounts:tokens"))

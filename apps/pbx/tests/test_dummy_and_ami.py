@@ -29,7 +29,7 @@ def test_dummy_records(event, user):
     assert pbx.sync_event(event) == 1 and pbx.synced_events == ["demo"]
     pbx.remove_extension(ext)
     assert pbx.removed_extensions == [str(ext.pk)] and pbx.extensions == {}
-    assert "[pet-demo]" in pbx.render_dialplan(event)
+    assert "[dial-demo]" in pbx.render_dialplan(event)
     assert pbx.health()["ok"] is True
     pbx.reset()
     assert pbx.snapshot()["originated"] == []
@@ -89,12 +89,12 @@ def test_ami_login_and_originate(fake_ami):
                       "Message: Originate successfully queued"],
         "Logoff": ["Response: Goodbye", "ActionID: {aid}"],
     })
-    with AMIClient("127.0.0.1", 5038, "pet", "pw") as ami:
-        cid = ami.originate(channel="Local/4242@pet-demo", context="pet-services", exten="announce",
+    with AMIClient("127.0.0.1", 5038, "dial", "pw") as ami:
+        cid = ami.originate(channel="Local/4242@dial-demo", context="dial-services", exten="announce",
                             caller_id="x", variables={"A": "1", "B": "2"})
-    assert cid.startswith("pet-")
+    assert cid.startswith("dial-")
     orig = [r for r in sock.received if r.get("Action") == "Originate"][0]
-    assert orig["Channel"] == "Local/4242@pet-demo" and orig["Async"] == "true"
+    assert orig["Channel"] == "Local/4242@dial-demo" and orig["Async"] == "true"
     assert orig["Variable"] == ["A=1", "B=2"]
     assert sock.received[0]["Action"] == "Login" and sock.received[0]["Secret"] == "pw"
     assert sock.received[-1]["Action"] == "Logoff"
@@ -103,7 +103,7 @@ def test_ami_login_and_originate(fake_ami):
 def test_ami_login_failure(fake_ami):
     fake_ami({"Login": ["Response: Error", "ActionID: {aid}", "Message: Authentication failed"]})
     with pytest.raises(AMIError, match="Authentication failed"):
-        AMIClient("127.0.0.1", 5038, "pet", "bad").connect()
+        AMIClient("127.0.0.1", 5038, "dial", "bad").connect()
 
 
 def test_ami_device_state_list(fake_ami):
@@ -114,7 +114,7 @@ def test_ami_device_state_list(fake_ami):
                             "Event: DeviceStateChange", "Device: PJSIP/b", "State: INUSE", "",
                             "Event: DeviceStateListComplete", "EventList: Complete", "ListItems: 2"],
     })
-    with AMIClient("127.0.0.1", 5038, "pet", "pw") as ami:
+    with AMIClient("127.0.0.1", 5038, "dial", "pw") as ami:
         assert ami.device_state_list() == {"PJSIP/a": "NOT_INUSE", "PJSIP/b": "INUSE"}
         assert ami.reload() is True
 
@@ -125,4 +125,4 @@ def test_ami_connection_error(monkeypatch):
 
     monkeypatch.setattr(socket, "create_connection", refuse)
     with pytest.raises(AMIError, match="refused"):
-        AMIClient("127.0.0.1", 5038, "pet", "pw", timeout=1).connect()
+        AMIClient("127.0.0.1", 5038, "dial", "pw", timeout=1).connect()

@@ -2,9 +2,9 @@
 
 Tree served for every event that is *registration* or *live* and has ``directory_enabled``::
 
-    dc=<slug>,dc=pet                         dcObject / organization
-    ou=phonebook,dc=<slug>,dc=pet            organizationalUnit (= services.base_dn)
-    cn=<name>+telephoneNumber=<number>,ou=phonebook,dc=<slug>,dc=pet   inetOrgPerson per entry
+    dc=<slug>,dc=dial                         dcObject / organization
+    ou=phonebook,dc=<slug>,dc=dial            organizationalUnit (= services.base_dn)
+    cn=<name>+telephoneNumber=<number>,ou=phonebook,dc=<slug>,dc=dial   inetOrgPerson per entry
 
 The multi-valued RDN keeps DNs unique when two extensions share a display name. All ORM access is in
 :func:`load_event_directory` / :func:`load_naming_contexts`; the server calls them through ``sync_to_async``.
@@ -18,9 +18,9 @@ from dataclasses import dataclass, field
 from django.conf import settings as dj_settings
 from django.db import close_old_connections
 
-logger = logging.getLogger("pet.ldap")
+logger = logging.getLogger("dial.ldap")
 
-SUFFIX = ("dc=pet",)
+SUFFIX = ("dc=dial",)
 BIND_CN = "directory"
 PERSON_CLASSES = ["top", "person", "organizationalPerson", "inetOrgPerson"]
 
@@ -100,9 +100,9 @@ def parse_dn(dn: str) -> tuple[frozenset[tuple[str, str]], ...]:
 
 
 def event_slug_from_dn(dn: str) -> str | None:
-    """``<anything>,dc=<slug>,dc=pet`` -> ``slug`` (``None`` when the DN is outside our suffix)."""
+    """``<anything>,dc=<slug>,dc=dial`` -> ``slug`` (``None`` when the DN is outside our suffix)."""
     parsed = parse_dn(dn)
-    if len(parsed) < 2 or parsed[0] != frozenset({("dc", "pet")}):
+    if len(parsed) < 2 or parsed[0] != frozenset({("dc", "dial")}):
         return None
     rdn = parsed[1]
     if len(rdn) != 1:
@@ -112,7 +112,7 @@ def event_slug_from_dn(dn: str) -> str | None:
 
 
 def bind_dn_slug(dn: str) -> str | None:
-    """``cn=directory,dc=<slug>,dc=pet`` -> ``slug``; anything else -> ``None``."""
+    """``cn=directory,dc=<slug>,dc=dial`` -> ``slug``; anything else -> ``None``."""
     parsed = parse_dn(dn)
     if len(parsed) != 3 or parsed[2] != frozenset({("cn", BIND_CN)}):
         return None
@@ -120,7 +120,7 @@ def bind_dn_slug(dn: str) -> str | None:
 
 
 def event_dn(slug: str) -> str:
-    return f"dc={escape_rdn_value(slug)},dc=pet"
+    return f"dc={escape_rdn_value(slug)},dc=dial"
 
 
 def bind_dn(slug: str) -> str:
@@ -268,7 +268,7 @@ def load_event_directory(slug: str) -> EventDirectory | None:
 
 
 def load_naming_contexts() -> list[str]:
-    """ORM: ``dc=<slug>,dc=pet`` for every servable event with the directory enabled."""
+    """ORM: ``dc=<slug>,dc=dial`` for every servable event with the directory enabled."""
     from apps.phonebook.models import PhonebookSettings
 
     close_old_connections()
@@ -279,10 +279,10 @@ def load_naming_contexts() -> list[str]:
 
 
 class DirectoryCache:
-    """TTL cache in front of :func:`load_event_directory` (``PET_LDAP_CACHE_SECONDS``, default 30)."""
+    """TTL cache in front of :func:`load_event_directory` (``DIAL_LDAP_CACHE_SECONDS``, default 30)."""
 
     def __init__(self, ttl: float | None = None):
-        self.ttl = float(getattr(dj_settings, "PET_LDAP_CACHE_SECONDS", 30) if ttl is None else ttl)
+        self.ttl = float(getattr(dj_settings, "DIAL_LDAP_CACHE_SECONDS", 30) if ttl is None else ttl)
         self._events: dict[str, tuple[float, EventDirectory | None]] = {}
         self._contexts: tuple[float, list[str]] | None = None
 

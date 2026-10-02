@@ -21,7 +21,7 @@ def test_send_without_handset_fails(event, user, other_user, ext_alice, dect):
 
 
 def test_flag_off_returns_none(event, user, other_user, ext_alice, handset, settings):
-    settings.PET_FEATURES = {**settings.PET_FEATURES, "messaging": False}
+    settings.DIAL_FEATURES = {**settings.DIAL_FEATURES, "messaging": False}
     assert services.send_to_extension(event, other_user, ext_alice, "x") is None
     assert services.broadcast(event, other_user, "x") is None
     assert services.send_to_group(event, other_user, None, "x") == []

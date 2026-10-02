@@ -15,7 +15,7 @@ import uuid
 
 from apps.pbx.base import PBXError
 
-log = logging.getLogger("pet.pbx.ami")
+log = logging.getLogger("dial.pbx.ami")
 
 
 class AMIError(PBXError):
@@ -131,7 +131,7 @@ class AMIClient:
 
     def originate(self, *, channel: str, context: str, exten: str, priority: int = 1, caller_id: str = "",
                   timeout: int = 30, variables: dict | None = None, channel_id: str | None = None) -> str:
-        cid = channel_id or f"pet-{uuid.uuid4().hex[:12]}"
+        cid = channel_id or f"dial-{uuid.uuid4().hex[:12]}"
         resp = self.action(
             "Originate", Channel=channel, Context=context, Exten=exten, Priority=priority,
             CallerID=caller_id or None, Timeout=timeout * 1000, Async="true", ChannelId=cid,

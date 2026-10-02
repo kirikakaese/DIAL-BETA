@@ -79,7 +79,7 @@ class DECTAdapter(abc.ABC):
         """Update number/name of an existing subscription; ``encryption=None`` leaves the setting untouched.
 
         ``sip_user``/``sip_password`` (both given) replace the SIP identity of the handset's user record -
-        used when PET adopts a handset that was created on the DECT system without PET (claim pool).
+        used when DIAL adopts a handset that was created on the DECT system without DIAL (claim pool).
         """
 
     @abc.abstractmethod

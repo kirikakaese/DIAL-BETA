@@ -21,7 +21,7 @@ from apps.core.middleware import client_ip
 from . import oidc
 from .views import LOGIN_FAIL_WINDOW, _login_keys
 
-seclog = logging.getLogger("pet.security")
+seclog = logging.getLogger("dial.security")
 
 
 def _require_enabled():
@@ -37,8 +37,8 @@ def _count_failure(request):
     """Failed callbacks count like wrong passwords for the per-IP login lockout."""
     ip_key, _acct = _login_keys(request, "")
     n = antispam.hit(ip_key, LOGIN_FAIL_WINDOW)
-    if n >= int(getattr(settings, "PET_LOGIN_IP_MAX_FAILURES", 30)):
-        antispam.lock(ip_key, int(getattr(settings, "PET_LOGIN_LOCKOUT_MINUTES", 15)) * 60)
+    if n >= int(getattr(settings, "DIAL_LOGIN_IP_MAX_FAILURES", 30)):
+        antispam.lock(ip_key, int(getattr(settings, "DIAL_LOGIN_LOCKOUT_MINUTES", 15)) * 60)
         seclog.warning("oidc callback locked for ip=%s after %s failures", client_ip(request), n)
 
 
@@ -100,14 +100,14 @@ def oidc_callback(request):
         _count_failure(request)
         return _error(request, str(exc), status=403)
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
-    if getattr(settings, "PET_OIDC_LOGOUT_AT_IDP", False) and tokens.get("id_token"):
+    if getattr(settings, "DIAL_OIDC_LOGOUT_AT_IDP", False) and tokens.get("id_token"):
         request.session[oidc.SESSION_ID_TOKEN_KEY] = tokens["id_token"]
     audit(action="login", actor=user, target=user, request=request, message="OIDC login")
     if how == "created":
-        messages.success(request, _("Welcome to PET, %(n)s! Pick an event to register your first extension.")
+        messages.success(request, _("Welcome to DIAL, %(n)s! Pick an event to register your first extension.")
                          % {"n": user.username})
     elif how == "linked":
-        messages.info(request, _("Your single sign-on identity is now linked to your existing PET account."))
+        messages.info(request, _("Your single sign-on identity is now linked to your existing DIAL account."))
     target = flow.get("next") or settings.LOGIN_REDIRECT_URL
     return redirect(target)
 
@@ -132,7 +132,7 @@ def oidc_unlink(request):
 
 
 class LogoutView(auth_views.LogoutView):
-    """Standard logout; with ``PET_OIDC_LOGOUT_AT_IDP`` the browser is sent on to the IdP's end-session endpoint."""
+    """Standard logout; with ``DIAL_OIDC_LOGOUT_AT_IDP`` the browser is sent on to the IdP's end-session endpoint."""
 
     def post(self, request, *args, **kwargs):
         id_token = request.session.get(oidc.SESSION_ID_TOKEN_KEY)

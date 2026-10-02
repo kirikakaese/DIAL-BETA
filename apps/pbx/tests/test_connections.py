@@ -19,9 +19,9 @@ EVENT_SECRET = "venue-secret"
 
 @pytest.fixture(autouse=True)
 def _defaults(settings):
-    settings.PET_PBX_BACKEND = "apps.pbx.backends.dummy.DummyPBX"
-    settings.PET_DECT_BACKEND = "apps.dect.backends.dummy.DummyDECT"
-    settings.PET_PBX_HOOK_SECRET = SERVER_SECRET
+    settings.DIAL_PBX_BACKEND = "apps.pbx.backends.dummy.DummyPBX"
+    settings.DIAL_DECT_BACKEND = "apps.dect.backends.dummy.DummyDECT"
+    settings.DIAL_PBX_HOOK_SECRET = SERVER_SECRET
     reset_pbx_cache()
     reset_dect_cache()
     yield
@@ -32,7 +32,7 @@ def _defaults(settings):
 @pytest.fixture
 def pbx_conn(event):
     return PBXConnection.objects.create(event=event, backend="dummy", ari_url="http://10.1.1.5:8088/ari",
-                                        ari_user="pet", ari_password="pw", hook_secret=EVENT_SECRET)
+                                        ari_user="dial", ari_password="pw", hook_secret=EVENT_SECRET)
 
 
 @pytest.fixture
@@ -94,19 +94,19 @@ def test_config_inherits_server_defaults_for_blank_fields(event, settings):
 def test_hook_accepts_event_secret_and_rejects_server_secret(event, pbx_conn):
     c = APIClient()
     ok = c.post("/api/v1/pbx/hooks/extension-idle/", {"event": "demo", "number": "4242"},
-                HTTP_X_PET_PBX_SECRET=EVENT_SECRET)
+                HTTP_X_DIAL_PBX_SECRET=EVENT_SECRET)
     assert ok.status_code == 200
     bad = c.post("/api/v1/pbx/hooks/extension-idle/", {"event": "demo", "number": "4242"},
-                 HTTP_X_PET_PBX_SECRET=SERVER_SECRET)
+                 HTTP_X_DIAL_PBX_SECRET=SERVER_SECRET)
     assert bad.status_code == 401
 
 
 def test_hook_without_connection_uses_server_secret(event):
     c = APIClient()
     assert c.post("/api/v1/pbx/hooks/extension-idle/", {"event": "demo", "number": "4242"},
-                  HTTP_X_PET_PBX_SECRET=SERVER_SECRET).status_code == 200
+                  HTTP_X_DIAL_PBX_SECRET=SERVER_SECRET).status_code == 200
     assert c.post("/api/v1/pbx/hooks/extension-idle/", {"event": "demo", "number": "4242"},
-                  HTTP_X_PET_PBX_SECRET=EVENT_SECRET).status_code == 401
+                  HTTP_X_DIAL_PBX_SECRET=EVENT_SECRET).status_code == 401
 
 
 def test_blank_event_hook_secret_falls_back_to_server(event, pbx_conn):
@@ -114,14 +114,14 @@ def test_blank_event_hook_secret_falls_back_to_server(event, pbx_conn):
     pbx_conn.save()
     c = APIClient()
     assert c.post("/api/v1/pbx/hooks/extension-idle/", {"event": "demo", "number": "4242"},
-                  HTTP_X_PET_PBX_SECRET=SERVER_SECRET).status_code == 200
+                  HTTP_X_DIAL_PBX_SECRET=SERVER_SECRET).status_code == 200
 
 
 def test_unknown_event_with_valid_secret_is_400_not_401(event):
     c = APIClient()
-    r = c.post("/api/v1/pbx/hooks/feature-code/", {"event": "nope"}, HTTP_X_PET_PBX_SECRET=SERVER_SECRET)
+    r = c.post("/api/v1/pbx/hooks/feature-code/", {"event": "nope"}, HTTP_X_DIAL_PBX_SECRET=SERVER_SECRET)
     assert r.status_code == 400
-    r = c.post("/api/v1/pbx/hooks/feature-code/", {"event": "nope"}, HTTP_X_PET_PBX_SECRET="wrong")
+    r = c.post("/api/v1/pbx/hooks/feature-code/", {"event": "nope"}, HTTP_X_DIAL_PBX_SECRET="wrong")
     assert r.status_code == 401
 
 
@@ -143,7 +143,7 @@ URL = "/e/demo/pbx/"
 
 def _pbx_post(action="save-pbx", **over):
     data = {"action": action, "pbx-backend": "dummy", "pbx-ari_url": "http://10.1.1.5:8088/ari",
-            "pbx-ari_user": "pet", "pbx-ari_password": "secret1", "pbx-ari_app": "pet", "pbx-ami_port": "5038",
+            "pbx-ari_user": "dial", "pbx-ari_password": "secret1", "pbx-ari_app": "dial", "pbx-ami_port": "5038",
             "pbx-hook_secret": EVENT_SECRET}
     data.update(over)
     return data
@@ -166,7 +166,7 @@ def test_page_for_orga_shows_defaults(client: Client, event, orga):
     r = client.get(URL)
     assert r.status_code == 200
     body = r.content.decode()
-    assert "server default" in body and "X-PET-PBX-Secret" in body
+    assert "server default" in body and "X-DIAL-PBX-Secret" in body
     assert "/api/v1/pbx/route/" in body
 
 
@@ -287,7 +287,7 @@ def test_api_connection_set_show_reset(event, orga):
 
     # the per-event hook secret set via API is live
     assert APIClient().post("/api/v1/pbx/hooks/extension-idle/", {"event": "demo", "number": "4242"},
-                            HTTP_X_PET_PBX_SECRET=EVENT_SECRET).status_code == 200
+                            HTTP_X_DIAL_PBX_SECRET=EVENT_SECRET).status_code == 200
 
     r = c.delete(API + "?event=demo&part=pbx")
     assert r.status_code == 200 and r.json()["pbx"] is None and r.json()["dect"] is not None

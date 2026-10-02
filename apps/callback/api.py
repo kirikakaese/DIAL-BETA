@@ -3,7 +3,7 @@
 - ``callback/requests/``          list mine (or all with ``?event=<slug>`` as orga), create (web request), ``cancel``
 - ``callback/scheduled-calls/``   CRUD for own scheduled/wake-up calls, ``snooze``, ``cancel``
 - ``POST callback/test-ringback/``  ``{event, extension, delay?}``
-- ``POST callback/result/``       PBX result hook (``X-PET-PBX-Secret``): ``{event, kind, id, result}``
+- ``POST callback/result/``       PBX result hook (``X-DIAL-PBX-Secret``): ``{event, kind, id, result}``
 """
 from django.db.models import Q
 from django.shortcuts import get_object_or_404

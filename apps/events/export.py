@@ -1,4 +1,4 @@
-"""Full event export/import (JSON) for offline backup and migration between PET instances."""
+"""Full event export/import (JSON) for offline backup and migration between DIAL instances."""
 from __future__ import annotations
 
 from django.db import transaction

@@ -2,7 +2,7 @@
 
 ``get_dect(event)`` returns the adapter for the event's :class:`~apps.dect.models.DECTConnection` (the OMM
 at the venue); events without one - and callers without an event - get the server-wide default
-(``settings.PET_DECT_BACKEND`` + ``OMM``). Adapters accept ``config=`` (an ``OMM``-shaped dict).
+(``settings.DIAL_DECT_BACKEND`` + ``OMM``). Adapters accept ``config=`` (an ``OMM``-shaped dict).
 """
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ _per_event: dict = {}  # event pk -> ((connection pk, updated_at), adapter)
 
 @lru_cache(maxsize=1)
 def default_dect():
-    return import_string(settings.PET_DECT_BACKEND)()
+    return import_string(settings.DIAL_DECT_BACKEND)()
 
 
 def get_dect(event=None):

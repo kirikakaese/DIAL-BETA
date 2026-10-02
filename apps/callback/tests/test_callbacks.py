@@ -69,11 +69,11 @@ def test_on_extension_idle_fires_originate(event, ext_alice, ext_bob, pbx):
     assert services.on_extension_idle(event, "4300") == 1
     o = pbx.originated[-1]
     assert o["destination"] == "4242"
-    assert o["caller_id"] == "Callback 4300" and o["context"] == "pet-services"
-    assert o["variables"]["PET_CALLBACK_TARGET"] == "4300"
-    assert o["variables"]["PET_SERVICE"] == "callback"
+    assert o["caller_id"] == "Callback 4300" and o["context"] == "dial-services"
+    assert o["variables"]["DIAL_CALLBACK_TARGET"] == "4300"
+    assert o["variables"]["DIAL_SERVICE"] == "callback"
     req = CallbackRequest.objects.get()
-    assert o["variables"]["PET_CALLBACK_ID"] == str(req.pk)
+    assert o["variables"]["DIAL_CALLBACK_ID"] == str(req.pk)
     assert req.state == "completed" and req.attempts == 1 and req.channel_id == o["id"]
     # firing again does nothing
     assert services.on_extension_idle(event, "4300") == 0

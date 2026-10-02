@@ -1,12 +1,12 @@
-"""Asterisk realtime tables + PET-side bookkeeping.
+"""Asterisk realtime tables + DIAL-side bookkeeping.
 
 The ``Ps*``, ``Extension``-dialplan, ``VoicemailUser`` and ``Cdr`` models are
 *managed* Django models whose ``db_table`` names match the Asterisk realtime
-schema (``contrib/ast-db-manage/config``), so Asterisk reads/writes the PET
+schema (``contrib/ast-db-manage/config``), so Asterisk reads/writes the DIAL
 database directly:
 
 ==================  =========================  ==================================
-Asterisk table      PET model                  Consumer (Asterisk side)
+Asterisk table      DIAL model                  Consumer (Asterisk side)
 ==================  =========================  ==================================
 ps_endpoints        PsEndpoint                 res_pjsip via sorcery realtime
 ps_auths            PsAuth                     res_pjsip
@@ -38,7 +38,7 @@ def _yesno(default=None, **kw):
 
 
 class PsEndpoint(models.Model):
-    """``ps_endpoints`` - one row per SIP account (PET ``Device``)."""
+    """``ps_endpoints`` - one row per SIP account (DIAL ``Device``)."""
 
     id = models.CharField(max_length=40, primary_key=True)
     transport = models.CharField(max_length=40, null=True, blank=True)
@@ -281,7 +281,7 @@ class Cdr(models.Model):
     linkedid = models.CharField(max_length=150, null=True, blank=True)
     peeraccount = models.CharField(max_length=20, null=True, blank=True)
     sequence = models.IntegerField(null=True, blank=True)
-    # PET-side: set once apps.stats has ingested the row (via the ``cdr`` hook or a sweep)
+    # DIAL-side: set once apps.stats has ingested the row (via the ``cdr`` hook or a sweep)
     ingested_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
@@ -305,7 +305,7 @@ class Cdr(models.Model):
 
 
 class PBXSyncLog(models.Model):
-    """PET-side audit of provisioning pushes to the PBX (one row per sync call)."""
+    """DIAL-side audit of provisioning pushes to the PBX (one row per sync call)."""
 
     class Kind(models.TextChoices):
         EXTENSION = "extension", _("Extension")
@@ -399,30 +399,30 @@ PBX_BACKEND_LABELS = {
 def pbx_backend_choices():
     from django.conf import settings
 
-    return [(k, PBX_BACKEND_LABELS.get(k, k)) for k in getattr(settings, "PET_PBX_BACKENDS", {})]
+    return [(k, PBX_BACKEND_LABELS.get(k, k)) for k in getattr(settings, "DIAL_PBX_BACKENDS", {})]
 
 
 class PBXConnection(models.Model):
-    """How PET reaches *this event's* PBX at the venue.
+    """How DIAL reaches *this event's* PBX at the venue.
 
-    PET is one permanent service; every event brings its own phone infrastructure. This row holds the
+    DIAL is one permanent service; every event brings its own phone infrastructure. This row holds the
     adapter and credentials for the event's Asterisk (ARI for originate/channels, AMI as fallback and
     for reloads). Realtime provisioning goes through the shared database by default - the venue
-    Asterisk reads its ``ps_*``/dialplan rows from PET's PostgreSQL. In ``agent`` mode a small venue
+    Asterisk reads its ``ps_*``/dialplan rows from DIAL's PostgreSQL. In ``agent`` mode a small venue
     agent pulls snapshots of those rows over HTTPS (:mod:`apps.pbx.snapshot`) into a local database
     instead and reports back with heartbeats (the ``agent_*`` fields). Events without a row fall back
     to the server-wide ``ASTERISK`` settings from ``.env``.
     """
 
     class Provisioning(models.TextChoices):
-        SHARED_DB = "shared_db", _("Shared database – venue Asterisk reads PET's PostgreSQL")
+        SHARED_DB = "shared_db", _("Shared database – venue Asterisk reads DIAL's PostgreSQL")
         AGENT = "agent", _("Venue agent – pulls snapshots over HTTPS into a local database")
 
     AGENT_STALE_FACTOR = 3  # no heartbeat within this many poll intervals -> stale
 
     event = models.OneToOneField("events.Event", on_delete=models.CASCADE, related_name="pbx_connection")
     backend = models.CharField(max_length=40, default="asterisk",
-                               help_text=_("Adapter key from PET_PBX_BACKENDS."))
+                               help_text=_("Adapter key from DIAL_PBX_BACKENDS."))
     provisioning = models.CharField(
         _("Provisioning"), max_length=12, choices=Provisioning.choices, default=Provisioning.SHARED_DB,
         help_text=_("How the realtime rows reach the venue Asterisk."))
@@ -438,7 +438,7 @@ class PBXConnection(models.Model):
     ari_url = models.URLField(_("ARI URL"), blank=True, help_text=_("e.g. http://10.20.0.5:8088/ari"))
     ari_user = models.CharField(_("ARI user"), max_length=64, blank=True)
     ari_password = models.CharField(_("ARI password"), max_length=128, blank=True)
-    ari_app = models.CharField(_("ARI application"), max_length=64, blank=True, default="pet")
+    ari_app = models.CharField(_("ARI application"), max_length=64, blank=True, default="dial")
     ami_host = models.CharField(_("AMI host"), max_length=200, blank=True,
                                 help_text=_("Empty = AMI disabled (ARI only)."))
     ami_port = models.PositiveIntegerField(_("AMI port"), default=5038)
@@ -446,8 +446,8 @@ class PBXConnection(models.Model):
     ami_password = models.CharField(_("AMI password"), max_length=128, blank=True)
     hook_secret = models.CharField(
         _("Hook secret"), max_length=128, blank=True,
-        help_text=_("Sent by the venue Asterisk as X-PET-PBX-Secret on hooks, route lookups and phone "
-                    "provisioning. Empty = server-wide PET_PBX_HOOK_SECRET."))
+        help_text=_("Sent by the venue Asterisk as X-DIAL-PBX-Secret on hooks, route lookups and phone "
+                    "provisioning. Empty = server-wide DIAL_PBX_HOOK_SECRET."))
     notes = models.TextField(blank=True, help_text=_("Where the box is, who to call, VPN details..."))
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -473,7 +473,7 @@ class PBXConnection(models.Model):
 
     @property
     def agent_behind(self) -> bool:
-        """The agent's applied snapshot version differs from what PET would serve right now."""
+        """The agent's applied snapshot version differs from what DIAL would serve right now."""
         from apps.pbx.snapshot import snapshot_version
 
         return self.agent_version != snapshot_version(self.event)
@@ -483,7 +483,7 @@ class PBXConnection(models.Model):
         from django.conf import settings
 
         try:
-            return settings.PET_PBX_BACKENDS[self.backend]
+            return settings.DIAL_PBX_BACKENDS[self.backend]
         except KeyError as exc:
             raise ValueError(f"Unknown PBX backend {self.backend!r}") from exc
 
@@ -496,14 +496,14 @@ class PBXConnection(models.Model):
         from django.conf import settings
 
         base = dict(getattr(settings, "ASTERISK", {}) or {})
-        # agent mode: an empty ARI URL means "no ARI" (the venue box is normally not reachable from PET),
+        # agent mode: an empty ARI URL means "no ARI" (the venue box is normally not reachable from DIAL),
         # not "use the server default"
         ari_url = self.ari_url or ("" if self.is_agent else base.get("ARI_URL", ""))
         return {
             "ARI_URL": ari_url,
             "ARI_USER": self.ari_user or base.get("ARI_USER", ""),
             "ARI_PASSWORD": self.ari_password or base.get("ARI_PASSWORD", ""),
-            "ARI_APP": self.ari_app or base.get("ARI_APP", "pet"),
+            "ARI_APP": self.ari_app or base.get("ARI_APP", "dial"),
             "AMI_HOST": self.ami_host,
             "AMI_PORT": self.ami_port or 5038,
             "AMI_USER": self.ami_user,

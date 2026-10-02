@@ -8,12 +8,12 @@ from apps.extensions import services as ext_services
 
 pytestmark = pytest.mark.django_db
 
-PUBLIC = "https://pet.example.org"
+PUBLIC = "https://dial.example.org"
 
 
 @pytest.fixture
 def softphone(event, user, member, settings):
-    settings.PET_PUBLIC_URL = PUBLIC + "/"
+    settings.DIAL_PUBLIC_URL = PUBLIC + "/"
     ext = ext_services.register(event, user, "4242", "sip", display_name="Alice & Co")
     d = Device.objects.create(event=event, owner=user, type="sip", sip_transport="tls")
     d.ensure_sip_credentials()
@@ -33,13 +33,13 @@ def test_softphone_links(softphone):
     tok = softphone.provisioning_token
     assert set(links) == {"generic", "linphone", "acrobits"}
     assert links["generic"] == softphone.softphone_deeplink() == (
-        f"sip:{softphone.sip_username}:{softphone.sip_password}@demo.pet.local;transport=tls")
+        f"sip:{softphone.sip_username}:{softphone.sip_password}@demo.dial.local;transport=tls")
     assert links["linphone"] == f"linphone-config:{PUBLIC}/prov/{tok}/linphone.xml"
     assert links["acrobits"] == f"{PUBLIC}/prov/{tok}/acrobits.xml"
     assert reverse("prov:softphone", args=[tok, "linphone"]) == f"/prov/{tok}/linphone.xml"
     # no token yet -> only the generic deep link is available
     bare = Device(event=softphone.event, type="sip", sip_username="u", sip_password="p")
-    assert bare.softphone_links() == {"generic": "sip:u:p@demo.pet.local;transport=udp", "linphone": "",
+    assert bare.softphone_links() == {"generic": "sip:u:p@demo.dial.local;transport=udp", "linphone": "",
                                       "acrobits": ""}
 
 
@@ -53,15 +53,15 @@ def test_linphone_xml_endpoint(client, softphone):
     assert '<section name="proxy_0">' in body and '<section name="auth_info_0">' in body
     assert '<section name="sip">' in body
     assert ('<entry name="reg_identity">"Alice &amp; Co" &lt;sip:' + softphone.sip_username
-            + "@demo.pet.local&gt;</entry>") in body
-    assert '<entry name="reg_proxy">&lt;sip:demo.pet.local;transport=tls&gt;</entry>' in body
-    assert '<entry name="reg_route">&lt;sip:demo.pet.local;transport=tls&gt;</entry>' in body
+            + "@demo.dial.local&gt;</entry>") in body
+    assert '<entry name="reg_proxy">&lt;sip:demo.dial.local;transport=tls&gt;</entry>' in body
+    assert '<entry name="reg_route">&lt;sip:demo.dial.local;transport=tls&gt;</entry>' in body
     assert '<entry name="reg_expires">600</entry>' in body
     assert '<entry name="publish">0</entry>' in body and '<entry name="dial_escape_plus">0</entry>' in body
     assert f'<entry name="username">{softphone.sip_username}</entry>' in body
     assert f'<entry name="passwd">{softphone.sip_password}</entry>' in body
-    assert '<entry name="realm">demo.pet.local</entry>' in body
-    assert '<entry name="domain">demo.pet.local</entry>' in body
+    assert '<entry name="realm">demo.dial.local</entry>' in body
+    assert '<entry name="domain">demo.dial.local</entry>' in body
     # TLS device: only the TLS transport is enabled
     assert '<entry name="sip_tls_port">-1</entry>' in body and '<entry name="sip_port">0</entry>' in body
     softphone.refresh_from_db()
@@ -73,10 +73,10 @@ def test_acrobits_xml_endpoint(client, softphone):
     assert r.status_code == 200 and r["Content-Type"] == "application/xml; charset=utf-8"
     body = r.content.decode()
     assert body.lstrip().startswith('<?xml version="1.0" encoding="UTF-8"?>\n<account>')
-    assert "<title>PET 4242</title>" in body
+    assert "<title>DIAL 4242</title>" in body
     assert f"<username>{softphone.sip_username}</username>" in body
     assert f"<password>{softphone.sip_password}</password>" in body
-    assert "<host>demo.pet.local</host>" in body
+    assert "<host>demo.dial.local</host>" in body
     assert "<transport>tls</transport>" in body
     assert "<displayName>Alice &amp; Co</displayName>" in body
     softphone.refresh_from_db()
@@ -87,7 +87,7 @@ def test_transport_mapping(softphone):
     softphone.sip_transport = "udp"
     assert "<transport>udp</transport>" in render_acrobits(softphone)
     assert '<entry name="sip_port">-1</entry>' in render_linphone(softphone)
-    assert '<entry name="reg_proxy">&lt;sip:demo.pet.local;transport=udp&gt;</entry>' in render_linphone(softphone)
+    assert '<entry name="reg_proxy">&lt;sip:demo.dial.local;transport=udp&gt;</entry>' in render_linphone(softphone)
     softphone.sip_transport = "tcp"
     assert "<transport>tcp</transport>" in render_acrobits(softphone)
     softphone.sip_transport = "wss"  # no classic-SIP softphone speaks WSS; TLS is the closest match

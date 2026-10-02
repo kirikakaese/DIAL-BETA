@@ -5,7 +5,7 @@ from django.conf import settings
 def enabled(name: str, event=None) -> bool:
     """A feature is enabled if the deployment flag is on and, if an event is
     given, the event has not disabled it."""
-    if not settings.PET_FEATURES.get(name, False):
+    if not settings.DIAL_FEATURES.get(name, False):
         return False
     if event is not None:
         disabled = (event.settings or {}).get("disabled_features", [])

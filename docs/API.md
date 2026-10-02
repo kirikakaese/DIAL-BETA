@@ -1,4 +1,4 @@
-# PET REST API
+# DIAL REST API
 
 Base URL: `/api/v1/`. Interactive docs: **Swagger UI at `/api/docs/`**, ReDoc at `/api/redoc/`, raw schema
 at `/api/schema/`. A generated copy lives in [`api/openapi.yaml`](api/openapi.yaml)
@@ -9,15 +9,15 @@ at `/api/schema/`. A generated copy lives in [`api/openapi.yaml`](api/openapi.ya
 | Method | Use |
 |---|---|
 | Session cookie (+ CSRF token) | the browser portal and quick experiments in Swagger UI after logging in |
-| `Authorization: Bearer pet_...` | service accounts for integrations (badge printers, info-beamers, CLI) |
+| `Authorization: Bearer dial_...` | service accounts for integrations (badge printers, info-beamers, CLI) |
 
 Service tokens are minted once and stored hashed (SHA-256). Mint them at `/accounts/profile/tokens/`
 (personal, all your rights), at `/e/<slug>/orga/tokens/` (event-bound), or on the server:
 
 ```sh
-manage.py pet_token --user admin@pet.local --name badge-printer --event demo \
+manage.py dial_token --user admin@dial.local --name badge-printer --event demo \
     --scopes extensions:read phonebook:read --expires-days 14 --export
-# → export PET_TOKEN=pet_...
+# → export DIAL_TOKEN=dial_...
 ```
 
 **Scopes** are `<app>:read` / `<app>:write` (e.g. `extensions:write`, `dect:read`, `pages:read`,
@@ -47,7 +47,7 @@ the owner's role in the event and, if set, the token's event.
 ## Endpoint overview
 
 Who: **any** = anonymous, **user** = authenticated member, **owner** = object owner or orga,
-**orga** = event orga/admin, **pbx** = Asterisk with `X-PET-PBX-Secret`.
+**orga** = event orga/admin, **pbx** = Asterisk with `X-DIAL-PBX-Secret`.
 
 ### Core (`apps/api`)
 
@@ -55,7 +55,7 @@ Who: **any** = anonymous, **user** = authenticated member, **owner** = object ow
 |---|---|---|---|
 | GET | `availability/?event=&number=&type=` (`&block_digits=1|2|3` with `type=trunk`) | live policy + availability check (incl. `conflicts`, `reserved`); for trunks the whole block is checked | any |
 | GET | `random-number/?event=&type=` | a random, instantly registrable number from the event's extension pools (`{"number": "4711"}`, `null` if none) | any |
-| GET | `health/?event=` | PET, PBX and DECT backend health. Without `event` the **server default** adapters are checked; with `?event=<slug>` the event's venue connection (`404` for an unknown slug). Response carries `event` | any |
+| GET | `health/?event=` | DIAL, PBX and DECT backend health. Without `event` the **server default** adapters are checked; with `?event=<slug>` the event's venue connection (`404` for an unknown slug). Response carries `event` | any |
 | GET | `me/` | current user / service account | user |
 | GET, POST | `events/` | list / create events | user / admin |
 | GET, PATCH, DELETE | `events/{slug}/` | event details / edit / delete. Scheduled lifecycle: `registration_opens_at`, `goes_live_at`, `archives_at` (ISO 8601 or `null`; validated against the current state) and read-only `next_scheduled_transition` (`{"state", "at"}` or `null`); a beat task applies due schedules every minute | user / orga / admin |
@@ -85,17 +85,17 @@ Who: **any** = anonymous, **user** = authenticated member, **owner** = object ow
 
 | Method | Path | Purpose | Who |
 |---|---|---|---|
-| POST | `pbx/hooks/{kind}/` (`feature-code`, `extension-idle`, `cdr`, `voicemail`, `site-survey`, `dect-claim`, `announcement-record-start`, `announcement-recorded`) | Asterisk → PET events | pbx |
+| POST | `pbx/hooks/{kind}/` (`feature-code`, `extension-idle`, `cdr`, `voicemail`, `site-survey`, `dect-claim`, `announcement-record-start`, `announcement-recorded`) | Asterisk → DIAL events | pbx |
 | GET | `pbx/route/?event=&number=` | dial string / strategy / IVR for dynamic numbers; numbers inside a SIP trunk block (base or wildcard part) come back as `type: "trunk"` with `trunk: {base, range}` and the dial string towards the remote PBX | pbx |
 | GET | `pbx/dialplan/?event=` (`&shell=1`) | rendered dialplan / shell contexts | pbx, orga |
 | POST | `pbx/resync/?event=` | rewrite all realtime rows | orga |
 | GET | `pbx/status/?event=` | backend health, channels, registrations | orga |
 | GET | `pbx/outbox/?event=` | PBX outbox: counts per state (`pending/sending/failed/dead/delivered`, `backend`, `sync_mode`) + 20 most recent `PBXJob`s | orga |
 | POST | `pbx/outbox/retry/?event=` | re-queue all dead jobs of the event (`{"event", "retried", "stats"}`) | orga |
-| GET, PUT/PATCH, DELETE | `pbx/connection/?event=` | the event's **venue connection** (what `/e/<slug>/pbx/` edits). `GET` → `{pbx, dect, effective, server_default, backends}`; secrets come back only as `has_ari_password` / `has_hook_secret` / `has_password` flags. `PUT`/`PATCH` body `{"pbx": {backend, provisioning, agent_poll_interval, ari_url, ari_user, ari_password, ari_app, ami_host, ami_port, ami_user, ami_password, hook_secret, notes}, "dect": {backend, host, port, user, password, verify_tls, notes}}` - either part optional, partial updates merge, omitted/empty secrets keep the stored value, same validation as the orga page (`400` with `errors`). `provisioning` is `shared_db` (default: the venue Asterisk reads PET's PostgreSQL) or `agent` (a venue agent pulls snapshots, see below); `agent_poll_interval` in seconds (min 5). The `pbx` part also carries the read-only agent status `agent_last_seen`, `agent_version` (applied snapshot version), `agent_host`, `agent_software`, `agent_asterisk_ok`, `agent_message` plus the computed `agent_is_stale` (no heartbeat within 3 poll intervals), `agent_behind` (applied ≠ current) and `snapshot_version`. `DELETE ?part=pbx\|dect\|all` removes the connection(s) → server default. Scopes `pbx:read` / `pbx:write`; audited. | orga |
-| GET | `pbx/snapshot/?event=` | **venue agent** snapshot of all realtime rows of the event: `{event, version, generated_at, poll_interval, tables: {ps_endpoints, ps_auths, ps_aors, ps_endpoint_id_ips, extensions, voicemail_users}}`, each table `{key, rows}` (`key` = primary-key column). `version` is a content hash that ignores the volatile `voicemail_users.stamp` and `extensions.id`; it is also sent as `ETag`, and `If-None-Match` (strong or `W/`) with the current version yields `304` without a body | agent (`X-PET-PBX-Secret` = the event's hook secret), service token with scope `pbx:sync`, or orga session; wrong credentials `401`, unknown event `404` |
+| GET, PUT/PATCH, DELETE | `pbx/connection/?event=` | the event's **venue connection** (what `/e/<slug>/pbx/` edits). `GET` → `{pbx, dect, effective, server_default, backends}`; secrets come back only as `has_ari_password` / `has_hook_secret` / `has_password` flags. `PUT`/`PATCH` body `{"pbx": {backend, provisioning, agent_poll_interval, ari_url, ari_user, ari_password, ari_app, ami_host, ami_port, ami_user, ami_password, hook_secret, notes}, "dect": {backend, host, port, user, password, verify_tls, notes}}` - either part optional, partial updates merge, omitted/empty secrets keep the stored value, same validation as the orga page (`400` with `errors`). `provisioning` is `shared_db` (default: the venue Asterisk reads DIAL's PostgreSQL) or `agent` (a venue agent pulls snapshots, see below); `agent_poll_interval` in seconds (min 5). The `pbx` part also carries the read-only agent status `agent_last_seen`, `agent_version` (applied snapshot version), `agent_host`, `agent_software`, `agent_asterisk_ok`, `agent_message` plus the computed `agent_is_stale` (no heartbeat within 3 poll intervals), `agent_behind` (applied ≠ current) and `snapshot_version`. `DELETE ?part=pbx\|dect\|all` removes the connection(s) → server default. Scopes `pbx:read` / `pbx:write`; audited. | orga |
+| GET | `pbx/snapshot/?event=` | **venue agent** snapshot of all realtime rows of the event: `{event, version, generated_at, poll_interval, tables: {ps_endpoints, ps_auths, ps_aors, ps_endpoint_id_ips, extensions, voicemail_users}}`, each table `{key, rows}` (`key` = primary-key column). `version` is a content hash that ignores the volatile `voicemail_users.stamp` and `extensions.id`; it is also sent as `ETag`, and `If-None-Match` (strong or `W/`) with the current version yields `304` without a body | agent (`X-DIAL-PBX-Secret` = the event's hook secret), service token with scope `pbx:sync`, or orga session; wrong credentials `401`, unknown event `404` |
 | GET | `pbx/snapshot/schema/?event=` | `{dialect: "postgresql", sql, tables}` - `CREATE TABLE IF NOT EXISTS` DDL for the agent's local database (`ps_endpoints`, `ps_auths`, `ps_aors`, `ps_contacts`, `ps_endpoint_id_ips`, `extensions`, `voicemail_users`, `cdr`); same output as `manage.py pbx_venue_schema` | agent / `pbx:sync` / orga |
-| POST | `pbx/agent/heartbeat/` `{event, version, hostname, agent_version, asterisk_ok, message, contacts?}` | agent check-in (JSON or form): stores the `agent_*` fields on the event's `PBXConnection`; optional `contacts` (rows of the venue's `ps_contacts`) replace PET's copy for the event's endpoints so registration status keeps working. Response `{ok, event, connection, current_version, poll_interval, behind}` (`connection` = the event has a PBX connection row, `behind` = applied `version` ≠ `current_version`). Not audited | agent / `pbx:sync` / orga |
+| POST | `pbx/agent/heartbeat/` `{event, version, hostname, agent_version, asterisk_ok, message, contacts?}` | agent check-in (JSON or form): stores the `agent_*` fields on the event's `PBXConnection`; optional `contacts` (rows of the venue's `ps_contacts`) replace DIAL's copy for the event's endpoints so registration status keeps working. Response `{ok, event, connection, current_version, poll_interval, behind}` (`connection` = the event has a PBX connection row, `behind` = applied `version` ≠ `current_version`). Not audited | agent / `pbx:sync` / orga |
 
 ### DECT (`apps/dect`)
 
@@ -121,7 +121,7 @@ Who: **any** = anonymous, **user** = authenticated member, **owner** = object ow
 
 | Method | Path | Purpose | Who |
 |---|---|---|---|
-| GET | `phonebook/?event=&q=&type=` | public entries (`{event, count, results}`); each entry carries `number`, `number_label` (`4700–4799` for trunk blocks, else the number), `name`, `type`, `type_display`, `description`, optional `location`/`owner`/`category`, and the business card links `vcard_url` / `card_qr_url` (absolute, rooted at `PET_PUBLIC_URL`) | any |
+| GET | `phonebook/?event=&q=&type=` | public entries (`{event, count, results}`); each entry carries `number`, `number_label` (`4700–4799` for trunk blocks, else the number), `name`, `type`, `type_display`, `description`, optional `location`/`owner`/`category`, and the business card links `vcard_url` / `card_qr_url` (absolute, rooted at `DIAL_PUBLIC_URL`) | any |
 | GET | `phonebook/export.{csv|vcf|ldif|pdf}?event=` | exports | any |
 | GET | `phonebook/directory/?event=` | **remote directory** for desk phones / the DECT OMM: `{event, enabled, token, urls: {snom, yealink, grandstream, cisco, mitel, generic}, ldap: {host, port, base_dn, bind_dn, password, name_attributes, number_attribute}}` - the per-vendor XML URLs (`/e/<slug>/phonebook/remote/<token>/<vendor>.xml`, absolute) and what to type into a phone's LDAP settings (`password` = the directory token). `enabled` mirrors `PhonebookSettings.directory_enabled` (orga phonebook settings page). Scopes `phonebook:read` | orga |
 | POST | `phonebook/directory/rotate/?event=` | mint a new directory token (every phone, OMM and LDAP client configured with the old one is locked out); returns the same payload as `GET directory/`. Scope `phonebook:write`; audited | orga |
@@ -162,7 +162,7 @@ Orga-written Markdown pages shown under `/e/<slug>/pages/`; scopes `pages:read` 
 
 ```sh
 curl "http://localhost:8000/api/v1/availability/?event=demo&number=2323&type=dect" \
-     -H "Authorization: Bearer $PET_TOKEN"
+     -H "Authorization: Bearer $DIAL_TOKEN"
 ```
 
 ```json
@@ -178,7 +178,7 @@ requested one (e.g. `["23"]` when asking for `2323`) and `taken` is `true`; `res
 open extension claim blocks the number for other users. Anonymous calls are allowed
 (role-based checks then assume no membership). Create the extension with
 `POST /api/v1/extensions/ {"event": "demo", "number": "4323", "type": "dect", "display_name": "Alice"}`,
-or let PET pick: `GET /api/v1/random-number/?event=demo&type=dect` → `{"number": "4711"}`.
+or let DIAL pick: `GET /api/v1/random-number/?event=demo&type=dect` → `{"number": "4711"}`.
 
 ## Webhooks
 
@@ -192,8 +192,8 @@ created or edited; `data` = the page fields plus `action: "create"|"update"`), `
 events whose PBX connection uses `provisioning: agent`). Delivery is a Celery task with 5 retries (30 s
 backoff); the last status is shown in the UI.
 
-Request: `POST <url>`, `Content-Type: application/json`, headers `X-PET-Event: <type>` and, when a secret is
-set, `X-PET-Signature: sha256=<hex HMAC-SHA256 of the raw body>`.
+Request: `POST <url>`, `Content-Type: application/json`, headers `X-DIAL-Event: <type>` and, when a secret is
+set, `X-DIAL-Signature: sha256=<hex HMAC-SHA256 of the raw body>`.
 
 ```json
 {"type": "extension.approved", "sent_at": "2026-09-14T12:00:00+00:00",
@@ -212,10 +212,10 @@ def verify(secret: str, body: bytes, header: str) -> bool:
 
 ## PBX hook & route contracts
 
-Asterisk calls `POST /api/v1/pbx/hooks/<kind>/` (form-encoded, header `X-PET-PBX-Secret`) and
+Asterisk calls `POST /api/v1/pbx/hooks/<kind>/` (form-encoded, header `X-DIAL-PBX-Secret`) and
 `GET /api/v1/pbx/route/?event=&number=`; responses are JSON. For call groups the route response also
 carries `waves` (members grouped by ring delay), `dial_string_waves` (ring-all string with
-`Local/<delay>*<number>@pet-group` legs for delayed members) and `callerid_prefix` (`"[SEC] "` from the
+`Local/<delay>*<number>@dial-group` legs for delayed members) and `callerid_prefix` (`"[SEC] "` from the
 group shortcode).
 
 Recording announcements by phone (`NumberPlan.announcement_record_number` + the per-announcement
@@ -223,13 +223,13 @@ Recording announcements by phone (`NumberPlan.announcement_record_number` + the 
 
 | Hook | Request fields | Response |
 |---|---|---|
-| `POST pbx/hooks/announcement-record-start/` | `event`, `caller` (PJSIP endpoint name), `callerid` (`CALLERID(num)`), `code` | `{"handled": true, "number": "<announcement>", "name": "<slug>-<number>-<timestamp>", "file": "<PET_RECORDING_DIR>/<name>"}` (path without extension - Asterisk `Record`s there); `{"handled": false}` for an unknown code, a caller that is not an endpoint of the event, or a caller who is neither the announcement's owner nor helpdesk |
-| `POST pbx/hooks/announcement-recorded/` | `event`, `code`, `file` (or `file_path`), `duration` (s) | `{"handled": true, "number": "<announcement>"}`; PET copies the wav into media storage when it can read it (shared `recordings` volume), otherwise keeps the PBX path as playback reference, re-provisions the announcement and emits `announcement.recorded` |
+| `POST pbx/hooks/announcement-record-start/` | `event`, `caller` (PJSIP endpoint name), `callerid` (`CALLERID(num)`), `code` | `{"handled": true, "number": "<announcement>", "name": "<slug>-<number>-<timestamp>", "file": "<DIAL_RECORDING_DIR>/<name>"}` (path without extension - Asterisk `Record`s there); `{"handled": false}` for an unknown code, a caller that is not an endpoint of the event, or a caller who is neither the announcement's owner nor helpdesk |
+| `POST pbx/hooks/announcement-recorded/` | `event`, `code`, `file` (or `file_path`), `duration` (s) | `{"handled": true, "number": "<announcement>"}`; DIAL copies the wav into media storage when it can read it (shared `recordings` volume), otherwise keeps the PBX path as playback reference, re-provisions the announcement and emits `announcement.recorded` |
 
 The exact bodies, response keys and the
 dialplan contexts that use them are documented in
-[`deploy/asterisk/README.md`](../deploy/asterisk/README.md#hooks-and-route-api-asterisk--pet) and the
-service functions they dispatch into in [`DEVELOPING.md`](DEVELOPING.md#pbx--pet-contracts).
+[`deploy/asterisk/README.md`](../deploy/asterisk/README.md#hooks-and-route-api-asterisk--dial) and the
+service functions they dispatch into in [`DEVELOPING.md`](DEVELOPING.md#pbx--dial-contracts).
 
 ## Provisioning & GSM endpoints (`/prov/`, outside `/api/v1/`)
 
@@ -243,7 +243,7 @@ header instead (`apps/devices/prov_urls.py`, `prov_views.py`).
 | GET | `/prov/<token>/acrobits.xml` | the SIP device's `provisioning_token` in the path | Acrobits / Groundwire / Cloud Softphone `<account>` XML; the QR payload is the URL itself (`softphone_links.acrobits`) |
 | GET | `/prov/<token>/phonebook.xml` (`?vendor=snom\|yealink\|grandstream\|cisco\|mitel\|generic`, `?q=`) | the device's `provisioning_token` in the path | remote phonebook of the device's event in the XML dialect of its provisioning profile's vendor (`?vendor=` overrides, else `generic`); `?q=`/`?search=`/`?name=` filter by name fragment. `404` when the device or token is unknown, the phonebook feature is off or the event's remote directory is disabled. The builtin templates reference this URL (`phonebook_url`), so the event-wide directory token never appears in a config file |
 | GET | `/prov/<vendor>/<mac>.cfg` or `.xml` (`vendor` = `snom|yealink|grandstream|cisco|generic`) | `?token=<provisioning token>` **or** HTTP Basic `sip_username:sip_password`; otherwise `401` with a help text | MAC-based lookup for phones that only know their MAC. Credentials are never served on the MAC alone |
-| POST | `/prov/gsm/register/` | header `X-PET-PBX-Secret` (same as the Asterisk hooks) | body `{"event": "<slug>", "token": "<6-digit code>", "imsi": "...", "msisdn": "..."}` (JSON or form-encoded) links the SIM to the GSM device holding `token`; `{"registered": true, ...}` or `404 {"registered": false, "detail": ...}` |
+| POST | `/prov/gsm/register/` | header `X-DIAL-PBX-Secret` (same as the Asterisk hooks) | body `{"event": "<slug>", "token": "<6-digit code>", "imsi": "...", "msisdn": "..."}` (JSON or form-encoded) links the SIM to the GSM device holding `token`; `{"registered": true, ...}` or `404 {"registered": false, "detail": ...}` |
 
 Filename patterns of the builtin profiles: Snom `{mac}.xml`, Yealink `{mac}.cfg`, Grandstream
 `cfg{mac}.xml`, Cisco SPA `spa{mac}.cfg`. Responses are `Cache-Control: no-store`.
@@ -253,7 +253,7 @@ Filename patterns of the builtin profiles: Snom `{mac}.xml`, Yealink `{mac}.cfg`
 Not part of the REST API but useful for integrators and kiosks (session auth):
 
 - `GET /manifest.webmanifest`, `GET /sw.js`, `GET /offline/` - the PWA shell (no auth; `/sw.js` answers 404
-  when `PET_PWA_ENABLED=0`). The service worker caches only an allowlist of read-only pages and never
+  when `DIAL_PWA_ENABLED=0`). The service worker caches only an allowlist of read-only pages and never
   anything under `/api/`, `/accounts/`, `/prov/` or orga/PBX pages.
 
 - `GET /e/<slug>/numbering/random/?type=` - random free number for the registration form.
@@ -276,26 +276,26 @@ Not part of the REST API but useful for integrators and kiosks (session auth):
   `POST /api/v1/phonebook/directory/rotate/`).
 - `/accounts/oidc/login/` (`?next=`; `link=1` for a logged-in user links the identity to the current
   account), `/accounts/oidc/callback/`, `POST /accounts/oidc/unlink/` - **OpenID Connect login**
-  (authorization code + PKCE, `PET_OIDC_*` settings; `manage.py pet_oidc_check` prints the provider endpoints
+  (authorization code + PKCE, `DIAL_OIDC_*` settings; `manage.py dial_oidc_check` prints the provider endpoints
   and the redirect URI to register). Browser sessions only: there is **no** API token exchange for SSO,
-  service tokens are unchanged. With `PET_OIDC_ALLOW_PASSWORD_LOGIN=false` (SSO-only) the password form,
+  service tokens are unchanged. With `DIAL_OIDC_ALLOW_PASSWORD_LOGIN=false` (SSO-only) the password form,
   the signup form and the header's *Sign up* button are hidden and `POST /accounts/login/` /
   `POST /accounts/register/` answer `403`.
 
 ### LDAP directory (not HTTP)
 
-`manage.py pet_ldap [--host H] [--port P] [--cert crt.pem [--key key.pem]]` (compose service `ldap`,
+`manage.py dial_ldap [--host H] [--port P] [--cert crt.pem [--key key.pem]]` (compose service `ldap`,
 port **3890**; `--cert` switches the same port to LDAPS) serves every *registration*/*live* event whose
-remote directory is enabled as a read-only LDAP v3 tree. Settings `PET_LDAP_HOST`, `PET_LDAP_PORT`,
-`PET_LDAP_ALLOW_ANONYMOUS` (default off), `PET_LDAP_CACHE_SECONDS` (default 30). What a phone or the OMM
+remote directory is enabled as a read-only LDAP v3 tree. Settings `DIAL_LDAP_HOST`, `DIAL_LDAP_PORT`,
+`DIAL_LDAP_ALLOW_ANONYMOUS` (default off), `DIAL_LDAP_CACHE_SECONDS` (default 30). What a phone or the OMM
 needs (also returned as `ldap` by `GET /api/v1/phonebook/directory/`):
 
 | Setting | Value |
 |---|---|
-| Bind DN | `cn=directory,dc=<slug>,dc=pet` (simple bind) |
+| Bind DN | `cn=directory,dc=<slug>,dc=dial` (simple bind) |
 | Bind password | the event's directory token |
-| Search base | `ou=phonebook,dc=<slug>,dc=pet` |
-| Entry DN | `cn=<name>+telephoneNumber=<number>,ou=phonebook,dc=<slug>,dc=pet` (`inetOrgPerson`) |
+| Search base | `ou=phonebook,dc=<slug>,dc=dial` |
+| Entry DN | `cn=<name>+telephoneNumber=<number>,ou=phonebook,dc=<slug>,dc=dial` (`inetOrgPerson`) |
 | Attributes | `cn`, `sn`, `givenName`, `displayName`, `telephoneNumber`, `mobile`, `uid` (= number), `description`, `l` (location hint), `ou` (phonebook category), `o` (event name), `title` (extension type) |
 | Name / number attributes | `cn sn` / `telephoneNumber` |
 
@@ -305,49 +305,49 @@ LDAPS), write operations answer `unwillingToPerform`.
 
 ## CLI
 
-The `pet` console script (`apps/api/cli.py`, installed with the project) wraps the API:
+The `dial` console script (`apps/api/cli.py`, installed with the project) wraps the API:
 
 ```sh
-export PET_URL=http://localhost:8000 PET_TOKEN=pet_...     # or --url / --token
-pet health [--event demo]          # PET, PBX, DECT health (--event: that event's venue instead of the server default)
-pet me
-pet events list | show <slug> | transition <slug> <draft|registration|live|archived> | export <slug>
-pet events schedule <slug> [--registration ISO] [--live ISO] [--archive ISO] [--clear]   # PATCH the lifecycle schedule; --clear removes all, --live "" clears one
-pet extensions list --event demo [--state requested] [--type dect] [--search alice]
-pet extensions create --event demo --number 4323 [--type sip] [--display-name ...] [--location ...]
-pet extensions create --event demo --number 4700 --type trunk --block-digits 2   # SIP trunk block 4700–4799
-pet extensions approve|reject <id> [--note ...]
-pet extensions delete <id>
-pet extensions import --event demo --file people.csv [--dry-run] [--create-users]   # POST /extensions/import/
-pet devices list --event demo [--type sip] [--state subscribed]
-pet queue --event demo             # extensions awaiting approval
-pet phonebook --event demo [--search bar]
-pet phonebook directory --event demo [--rotate]   # remote-phonebook URLs (desk phones / OMM) + LDAP details; --rotate mints a new token first
-pet dect rfps|handsets|sync --event demo
-pet dect alerts --event demo [--open]
-pet resync --event demo            # push the whole event to the PBX
-pet pbx outbox --event demo [--retry-dead]   # PBX outbox stats + recent jobs; re-queue dead jobs first
-pet pbx connection show --event demo         # venue PBX/DECT connection (server default vs. configured)
-pet pbx connection set --event demo --pbx '{"backend":"asterisk","ari_url":"http://10.1.1.5:8088/ari","ari_user":"pet","ari_password":"...","hook_secret":"..."}' [--dect '{"backend":"omm","host":"10.1.1.9","password":"..."}']
-pet pbx connection reset --event demo [--part pbx|dect|all]
-pet pbx connection set --event demo --provisioning agent|shared_db [--agent-poll-interval 15]   # switch to / from venue-agent snapshot sync
-pet pbx agent status --event demo                # venue agent: last heartbeat, applied vs. current snapshot version, host, Asterisk state
-pet pbx snapshot --event demo [--out snapshot.json]   # dump GET /pbx/snapshot/
-pet pages list --event demo                  # info pages (slug, title, order, published)
-pet pages show <slug> --event demo           # one page with its Markdown body
+export DIAL_URL=http://localhost:8000 DIAL_TOKEN=dial_...     # or --url / --token
+dial health [--event demo]          # DIAL, PBX, DECT health (--event: that event's venue instead of the server default)
+dial me
+dial events list | show <slug> | transition <slug> <draft|registration|live|archived> | export <slug>
+dial events schedule <slug> [--registration ISO] [--live ISO] [--archive ISO] [--clear]   # PATCH the lifecycle schedule; --clear removes all, --live "" clears one
+dial extensions list --event demo [--state requested] [--type dect] [--search alice]
+dial extensions create --event demo --number 4323 [--type sip] [--display-name ...] [--location ...]
+dial extensions create --event demo --number 4700 --type trunk --block-digits 2   # SIP trunk block 4700–4799
+dial extensions approve|reject <id> [--note ...]
+dial extensions delete <id>
+dial extensions import --event demo --file people.csv [--dry-run] [--create-users]   # POST /extensions/import/
+dial devices list --event demo [--type sip] [--state subscribed]
+dial queue --event demo             # extensions awaiting approval
+dial phonebook --event demo [--search bar]
+dial phonebook directory --event demo [--rotate]   # remote-phonebook URLs (desk phones / OMM) + LDAP details; --rotate mints a new token first
+dial dect rfps|handsets|sync --event demo
+dial dect alerts --event demo [--open]
+dial resync --event demo            # push the whole event to the PBX
+dial pbx outbox --event demo [--retry-dead]   # PBX outbox stats + recent jobs; re-queue dead jobs first
+dial pbx connection show --event demo         # venue PBX/DECT connection (server default vs. configured)
+dial pbx connection set --event demo --pbx '{"backend":"asterisk","ari_url":"http://10.1.1.5:8088/ari","ari_user":"dial","ari_password":"...","hook_secret":"..."}' [--dect '{"backend":"omm","host":"10.1.1.9","password":"..."}']
+dial pbx connection reset --event demo [--part pbx|dect|all]
+dial pbx connection set --event demo --provisioning agent|shared_db [--agent-poll-interval 15]   # switch to / from venue-agent snapshot sync
+dial pbx agent status --event demo                # venue agent: last heartbeat, applied vs. current snapshot version, host, Asterisk state
+dial pbx snapshot --event demo [--out snapshot.json]   # dump GET /pbx/snapshot/
+dial pages list --event demo                  # info pages (slug, title, order, published)
+dial pages show <slug> --event demo           # one page with its Markdown body
 ```
 
-Server-side helpers: `manage.py pet_token` (mint tokens), `manage.py phonebook_ldif --event <slug>
-[--format csv|vcf|ldif|pdf] [--out file]`, `manage.py seed_demo`, `manage.py pet_provisioning_profiles
+Server-side helpers: `manage.py dial_token` (mint tokens), `manage.py phonebook_ldif --event <slug>
+[--format csv|vcf|ldif|pdf] [--out file]`, `manage.py seed_demo`, `manage.py dial_provisioning_profiles
 [--update]` (builtin autoprovisioning templates; `--update` rewrites existing builtin profiles to the shipped
-version, e.g. to pick up the phonebook keys), `manage.py pet_dect_vendors` (DECT manufacturer codes),
-`manage.py pet_purge_tokens` (expired e-mail confirmation tokens), `manage.py pet_ldap` (LDAP phonebook
-server, see above), `manage.py pet_oidc_check` (verify the OpenID Connect configuration),
+version, e.g. to pick up the phonebook keys), `manage.py dial_dect_vendors` (DECT manufacturer codes),
+`manage.py dial_purge_tokens` (expired e-mail confirmation tokens), `manage.py dial_ldap` (LDAP phonebook
+server, see above), `manage.py dial_oidc_check` (verify the OpenID Connect configuration),
 `manage.py pbx_venue_schema [--out file.sql]` (PostgreSQL DDL for a venue agent's local database).
 
-The venue side of the snapshot sync is `deploy/venue-agent/pet_venue_agent.py` (+ `Dockerfile`, systemd unit
-`pet-venue-agent.service`, `README.md`): configured by environment (`PET_URL`, `PET_EVENT`,
-`PET_PBX_HOOK_SECRET` **or** `PET_SYNC_TOKEN` = a service token with scope `pbx:sync`, `DATABASE_URL` or
+The venue side of the snapshot sync is `deploy/venue-agent/dial_venue_agent.py` (+ `Dockerfile`, systemd unit
+`dial-venue-agent.service`, `README.md`): configured by environment (`DIAL_URL`, `DIAL_EVENT`,
+`DIAL_PBX_HOOK_SECRET` **or** `DIAL_SYNC_TOKEN` = a service token with scope `pbx:sync`, `DATABASE_URL` or
 `DB_*`, `POLL_INTERVAL`, `ASTERISK_RELOAD` / `AMI_*`), `--once` runs one cycle, `--check` prints connectivity
 and schema status. `deploy/asterisk/docker-compose.venue.example.yml` + `.env.venue.example` run `venue-db`,
 `venue-agent` and the Asterisk image together.

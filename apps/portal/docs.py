@@ -44,7 +44,7 @@ DOCS: list[Doc] = [
         _("Deployment, DECT and SIP setup, Asterisk operations, helpdesk, monitoring, emergencies."),
         "\U0001F6E0\uFE0F"),
     Doc("api", "docs/API.md", _("API & CLI"), _("Integrators"),
-        _("REST API, authentication and scopes, webhooks and the pet command-line client."), "\U0001F50C"),
+        _("REST API, authentication and scopes, webhooks and the dial command-line client."), "\U0001F50C"),
     Doc("architecture", "docs/ARCHITECTURE.md", _("Architecture"), _("Developers"),
         _("Components, data model, key flows, adapter pattern, security and design decisions."), "\U0001F3D7\uFE0F"),
     Doc("developing", "docs/DEVELOPING.md", _("Developing"), _("Contributors"),
@@ -111,10 +111,10 @@ class _TaskLists(Treeprocessor):
             li.set("class", (li.get("class", "") + " task").strip())
 
 
-class _PetDocsExtension(Extension):
+class _DialDocsExtension(Extension):
     def extendMarkdown(self, md):  # noqa: N802 - markdown API
-        md.treeprocessors.register(_LinkRewriter(md), "pet_links", 5)
-        md.treeprocessors.register(_TaskLists(md), "pet_tasks", 4)
+        md.treeprocessors.register(_LinkRewriter(md), "dial_links", 5)
+        md.treeprocessors.register(_TaskLists(md), "dial_tasks", 4)
 
 
 _MERMAID = re.compile(r"^```mermaid\n(.*?)^```\s*$", re.S | re.M)
@@ -134,7 +134,7 @@ def _extract_mermaid(text: str) -> tuple[str, bool]:
 def _make_md() -> markdown.Markdown:
     return markdown.Markdown(
         extensions=["tables", "fenced_code", "codehilite", "toc", "attr_list", "sane_lists",
-                    "md_in_html", _PetDocsExtension()],
+                    "md_in_html", _DialDocsExtension()],
         extension_configs={
             "codehilite": {"css_class": "highlight", "guess_lang": False, "noclasses": False},
             "toc": {"toc_depth": "2-3", "permalink": "#", "permalink_class": "headerlink",

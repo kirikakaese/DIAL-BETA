@@ -91,7 +91,7 @@ class PoolHandsetForm(forms.Form):
 @require_orga
 @require_POST
 def pool_add(request, slug, *, event):
-    """Add a handset to the claim pool: PET creates the subscription with a PIN and a temporary number."""
+    """Add a handset to the claim pool: DIAL creates the subscription with a PIN and a temporary number."""
     form = PoolHandsetForm(request.POST)
     if not form.is_valid():
         messages.error(request, _("Please enter a 13-digit IPEI."))

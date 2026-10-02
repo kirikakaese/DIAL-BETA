@@ -1,7 +1,7 @@
-"""PBX ↔ PET API: hook endpoints called by Asterisk, the routing lookup and orga tools.
+"""PBX ↔ DIAL API: hook endpoints called by Asterisk, the routing lookup and orga tools.
 
-Hook/route endpoints authenticate with the shared secret header ``X-PET-PBX-Secret``
-(``settings.PET_PBX_HOOK_SECRET``, falling back to ``ASTERISK["ARI_PASSWORD"]``).
+Hook/route endpoints authenticate with the shared secret header ``X-DIAL-PBX-Secret``
+(``settings.DIAL_PBX_HOOK_SECRET``, falling back to ``ASTERISK["ARI_PASSWORD"]``).
 They dispatch lazily into other apps' ``services`` modules and degrade gracefully
 when those are missing (packages are built in parallel) or a feature is off.
 """
@@ -32,7 +32,7 @@ from apps.pbx import dialplan as dp
 from apps.pbx import get_pbx, pbx_connection
 from apps.pbx.base import PBXError
 
-log = logging.getLogger("pet.pbx.api")
+log = logging.getLogger("dial.pbx.api")
 
 HOOK_KINDS = ("feature-code", "extension-idle", "cdr", "voicemail", "site-survey", "dect-claim",
               "announcement-record-start", "announcement-recorded")
@@ -45,17 +45,17 @@ CDR_KEYS = ("src", "dst", "start", "answer", "end", "duration", "billsec", "disp
 
 def hook_secret(event=None) -> str:
     """Secret the venue Asterisk must present: the event's ``PBXConnection.hook_secret`` if set, else the
-    server-wide ``PET_PBX_HOOK_SECRET`` (or the default ARI password)."""
+    server-wide ``DIAL_PBX_HOOK_SECRET`` (or the default ARI password)."""
     if event is not None:
         conn = pbx_connection(event)
         if conn is not None and conn.hook_secret:
             return conn.hook_secret
-    return getattr(settings, "PET_PBX_HOOK_SECRET", None) or settings.ASTERISK.get("ARI_PASSWORD") or ""
+    return getattr(settings, "DIAL_PBX_HOOK_SECRET", None) or settings.ASTERISK.get("ARI_PASSWORD") or ""
 
 
 def _authorized(request, event=None) -> bool:
     secret = hook_secret(event)
-    given = request.headers.get("X-PET-PBX-Secret", "")
+    given = request.headers.get("X-DIAL-PBX-Secret", "")
     return bool(secret) and hmac.compare_digest(str(given), str(secret))
 
 
@@ -267,13 +267,13 @@ def route(request):
             numbers = cfg.get("members") or []
         out["targets"] = _targets_for_numbers(event, numbers)
         out["strategy"] = "serial" if str(strategy) in ("serial", "linear", "roundrobin") else "parallel"
-        # Optional extras consumed by [pet-group]: shortcode caller-ID prefix + per-member ring delays.
+        # Optional extras consumed by [dial-group]: shortcode caller-ID prefix + per-member ring delays.
         out["callerid_prefix"] = call_service("apps.callgroups.services", "callerid_prefix", ext, default="") or ""
         waves = call_service("apps.callgroups.services", "dial_waves", ext, default=None) or []
         out["waves"] = [{"delay": int(w["delay"]), "targets": _targets_for_numbers(event, w["targets"])}
                         for w in waves]
         legs = [t for w in waves if not w["delay"] for t in _targets_for_numbers(event, w["targets"])]
-        legs += [f"Local/{int(w['delay']):03d}*{n}@pet-group" for w in waves if w["delay"] for n in w["targets"]]
+        legs += [f"Local/{int(w['delay']):03d}*{n}@dial-group" for w in waves if w["delay"] for n in w["targets"]]
         out["dial_string_waves"] = "&".join(legs)
     elif ext.type in (ExtensionType.IVR, ExtensionType.ANNOUNCEMENT):
         ivr = _ivr_payload(ext)
@@ -308,7 +308,7 @@ def route(request):
 def dialplan_export(request):
     """Static dialplan for Asterisk ``#exec`` includes.
 
-    ``?shell=1`` returns only the ``[pet-<slug>]`` shell contexts (``switch => Realtime/@``) for all
+    ``?shell=1`` returns only the ``[dial-<slug>]`` shell contexts (``switch => Realtime/@``) for all
     non-archived events; without it the full static equivalent (``render_dialplan``) of one event
     (``?event=<slug>``) or all events is returned. Content-Type is text/plain.
     """
@@ -453,8 +453,8 @@ def _connection_state(event) -> dict:
         "dect": _connection_payload(dect_conn, DECTConnectionForm.Meta.fields),
         "effective": {"pbx": get_pbx(event).name, "dect": get_dect(event).name},
         "server_default": {"pbx": pbx_conn is None, "dect": dect_conn is None},
-        "backends": {"pbx": dict(getattr(settings, "PET_PBX_BACKENDS", {})),
-                     "dect": dict(getattr(settings, "PET_DECT_BACKENDS", {}))},
+        "backends": {"pbx": dict(getattr(settings, "DIAL_PBX_BACKENDS", {})),
+                     "dect": dict(getattr(settings, "DIAL_DECT_BACKENDS", {}))},
     }
 
 
@@ -537,7 +537,7 @@ connection.cls.required_scopes = {"get": ["pbx:read"], "default": ["pbx:write"]}
 # --------------------------------------------------------------------------- venue agent (snapshot sync)
 
 def _sync_authorized(request, event) -> bool:
-    """The venue agent presents the event's hook secret (``X-PET-PBX-Secret``); alternatively an orga of
+    """The venue agent presents the event's hook secret (``X-DIAL-PBX-Secret``); alternatively an orga of
     the event may use a session or a service token carrying the ``pbx:sync`` scope."""
     if event is None:
         return False
@@ -616,7 +616,7 @@ snapshot_schema.cls.required_scopes = {"default": ["pbx:sync"]}
 @throttle_classes([])
 def agent_heartbeat(request):
     """Venue agent check-in: ``{event, version, hostname, agent_version, asterisk_ok, message, contacts?}``.
-    ``contacts`` (optional, ``ps_contacts`` rows) replace PET's copy for the event's endpoints. Not audited."""
+    ``contacts`` (optional, ``ps_contacts`` rows) replace DIAL's copy for the event's endpoints. Not audited."""
     from apps.pbx import snapshot as snap
 
     body = request.data if isinstance(request.data, dict) else _flat(request.data)

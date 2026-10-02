@@ -8,7 +8,7 @@
 * ``GET /prov/<vendor>/<mac>.cfg|.xml``  - MAC-based lookup for phones that only know their MAC; the
   request must still carry ``?token=`` or HTTP Basic ``sip_username:sip_password``. Credentials are
   never served on the MAC alone.
-* ``POST /prov/gsm/register/``           - ``X-PET-PBX-Secret`` protected hook for OsmoHLR & co.
+* ``POST /prov/gsm/register/``           - ``X-DIAL-PBX-Secret`` protected hook for OsmoHLR & co.
 """
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ from . import services, softphone
 from .services import GSMRegisterError
 
 MAC_AUTH_HELP = (
-    "PET provisioning: fetching a config by MAC address requires either ?token=<provisioning token> "
+    "DIAL provisioning: fetching a config by MAC address requires either ?token=<provisioning token> "
     "or HTTP Basic auth with the device's SIP username and password. The per-device URL shown on the "
     "device page (/prov/<token>/<filename>) needs no extra authentication.\n"
 )
@@ -38,7 +38,7 @@ def _hook_authorized(request, event=None) -> bool:
     from apps.pbx.api import hook_secret
 
     secret = hook_secret(event)
-    given = request.headers.get("X-PET-PBX-Secret", "")
+    given = request.headers.get("X-DIAL-PBX-Secret", "")
     return bool(secret) and hmac.compare_digest(str(given), str(secret))
 
 
@@ -104,7 +104,7 @@ def _basic_auth(request) -> tuple[str, str]:
 
 def _unauthorized() -> HttpResponse:
     resp = HttpResponse(MAC_AUTH_HELP, content_type="text/plain", status=401)
-    resp["WWW-Authenticate"] = 'Basic realm="PET provisioning"'
+    resp["WWW-Authenticate"] = 'Basic realm="DIAL provisioning"'
     return resp
 
 

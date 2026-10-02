@@ -1,6 +1,6 @@
 """Abstract PBX adapter.
 
-PET stores the source of truth (extensions, devices, groups). The adapter
+DIAL stores the source of truth (extensions, devices, groups). The adapter
 translates that into PBX state and offers call-control primitives used by
 callbacks, wake-up calls, emergency broadcast and the test ringback service.
 
@@ -89,7 +89,7 @@ class PBXAdapter(abc.ABC):
 
     # --- call control ------------------------------------------------------
     @abc.abstractmethod
-    def originate(self, *, event, destination: str, caller_id: str, context: str = "pet-services",
+    def originate(self, *, event, destination: str, caller_id: str, context: str = "dial-services",
                   variables: dict | None = None, timeout: int = 30) -> str:
         """Originate a call to ``destination`` (an extension number) from a service context.
 
@@ -105,8 +105,8 @@ class PBXAdapter(abc.ABC):
         ids = []
         for n in numbers:
             ids.append(self.originate(event=event, destination=n, caller_id="EMERGENCY",
-                                      variables={"PET_ANNOUNCEMENT": announcement,
-                                                 "PET_PRIORITY": str(priority)}))
+                                      variables={"DIAL_ANNOUNCEMENT": announcement,
+                                                 "DIAL_PRIORITY": str(priority)}))
         return ids
 
     # --- messaging (MWI etc.) ---------------------------------------------

@@ -3,7 +3,7 @@
 Usage: .venv/bin/python scripts/smoke.py   (requires `manage.py seed_demo` first)
 
 ``page_lists()`` is side-effect free and is reused by ``apps/core/tests/test_a11y.py`` and
-``manage.py pet_a11y`` so the accessibility checks cover the same URLs.
+``manage.py dial_a11y`` so the accessibility checks cover the same URLs.
 """
 import os
 import sys
@@ -73,8 +73,8 @@ def page_lists(S, ext_pk, ext_number, dev_pk, pb_token, vendors=(), prov_token=N
 
 def main():
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "pet.settings.dev")
-    os.environ.setdefault("PET_FEATURES", FEATURES)
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "dial.settings.dev")
+    os.environ.setdefault("DIAL_FEATURES", FEATURES)
     import django
 
     django.setup()
@@ -89,8 +89,8 @@ def main():
     from apps.phonebook import services as pb_services
 
     event = Event.objects.get(slug="demo")
-    admin = User.objects.get(email="admin@pet.local")
-    alice = User.objects.get(email="alice@pet.local")
+    admin = User.objects.get(email="admin@dial.local")
+    alice = User.objects.get(email="alice@dial.local")
     ext = Extension.objects.filter(event=event, owner=alice, state="active").first()
     dev = Device.objects.filter(event=event, owner=alice).first()
     requested = Extension.objects.filter(event=event, state="requested").first()

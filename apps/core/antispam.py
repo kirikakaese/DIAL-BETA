@@ -14,7 +14,7 @@ from django.core import signing
 from django.core.cache import cache
 from django.utils.translation import gettext_lazy as _
 
-log = logging.getLogger("pet.security")
+log = logging.getLogger("dial.security")
 
 
 # --------------------------------------------------------------------------- counters / lockouts
@@ -55,10 +55,10 @@ def clear(key: str) -> None:
 # --------------------------------------------------------------------------- form spam guard
 
 def spam_guard_enabled() -> bool:
-    return bool(getattr(settings, "PET_SPAM_GUARD", True))
+    return bool(getattr(settings, "DIAL_SPAM_GUARD", True))
 
 
-_signer = signing.TimestampSigner(salt="pet.spamguard")
+_signer = signing.TimestampSigner(salt="dial.spamguard")
 
 
 class SpamGuardMixin:
@@ -66,7 +66,7 @@ class SpamGuardMixin:
 
     Adds two extra fields: ``website`` (the honeypot - hidden via ``.hp`` in ``_form.html``, must stay empty)
     and ``form_ts`` (signed issue time). Submissions that fill the honeypot, arrive faster than
-    ``PET_SPAM_GUARD_MIN_SECONDS`` or carry a missing/forged/too old timestamp are rejected with one
+    ``DIAL_SPAM_GUARD_MIN_SECONDS`` or carry a missing/forged/too old timestamp are rejected with one
     generic error. ``check_timing = False`` keeps only the honeypot (login: password managers submit fast).
     """
 
@@ -95,7 +95,7 @@ class SpamGuardMixin:
             log.info("spam guard: honeypot filled on %s", type(self).__name__)
             raise forms.ValidationError(_("Spam protection triggered. Please try again."), code="spam")
         if self.check_timing:
-            min_seconds = getattr(settings, "PET_SPAM_GUARD_MIN_SECONDS", 3)
+            min_seconds = getattr(settings, "DIAL_SPAM_GUARD_MIN_SECONDS", 3)
             ts = cleaned.get("form_ts") or ""
             try:
                 _signer.unsign(ts, max_age=self.max_age)

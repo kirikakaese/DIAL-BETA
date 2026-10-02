@@ -1,4 +1,4 @@
-"""Events: the multi-tenant root of everything in PET."""
+"""Events: the multi-tenant root of everything in DIAL."""
 import uuid
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -88,13 +88,13 @@ class Event(TimeStampedModel):
     accent_color = models.CharField(max_length=7, default="#22d3ee")
     announcement = models.TextField(blank=True, help_text=_("Shown on the event dashboard."))
     # Dial plan
-    sip_domain = models.CharField(max_length=120, blank=True, help_text=_("SIP realm, e.g. event.pet.local"))
+    sip_domain = models.CharField(max_length=120, blank=True, help_text=_("SIP realm, e.g. event.dial.local"))
     dial_prefix = models.CharField(
         max_length=8, blank=True,
-        help_text=_("Prefix used by federated peers to reach this event (PET-VPN)."),
+        help_text=_("Prefix used by federated peers to reach this event (DIAL-VPN)."),
     )
     default_language = models.CharField(
-        max_length=8, default="en", choices=settings.PET_PBX_LANGUAGES, verbose_name=_("Announcement language"),
+        max_length=8, default="en", choices=settings.DIAL_PBX_LANGUAGES, verbose_name=_("Announcement language"),
         help_text=_("Asterisk sound pack for voicemail prompts and system announcements; extensions may override it. "
                     "The web interface itself is English only."),
     )

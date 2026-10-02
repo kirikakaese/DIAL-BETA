@@ -13,11 +13,11 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='extension',
             name='type',
-            field=models.CharField(choices=[('dect', 'DECT handset'), ('sip', 'SIP endpoint'), ('gsm', 'GSM (local cell network)'), ('webrtc', 'WebRTC browser softphone'), ('analog', 'Analog via ATA'), ('group', 'Call group / hunt group'), ('announcement', 'Announcement'), ('ivr', 'IVR menu'), ('conference', 'Conference room'), ('voicemail', 'Voicemail box'), ('app', 'Application / service'), ('federation', 'Federation trunk (PET-VPN)'), ('breakout', 'PSTN breakout'), ('trunk', 'SIP trunk (number block)')], default='dect', max_length=20),
+            field=models.CharField(choices=[('dect', 'DECT handset'), ('sip', 'SIP endpoint'), ('gsm', 'GSM (local cell network)'), ('webrtc', 'WebRTC browser softphone'), ('analog', 'Analog via ATA'), ('group', 'Call group / hunt group'), ('announcement', 'Announcement'), ('ivr', 'IVR menu'), ('conference', 'Conference room'), ('voicemail', 'Voicemail box'), ('app', 'Application / service'), ('federation', 'Federation trunk (DIAL-VPN)'), ('breakout', 'PSTN breakout'), ('trunk', 'SIP trunk (number block)')], default='dect', max_length=20),
         ),
         migrations.AlterField(
             model_name='extensionrequest',
             name='type',
-            field=models.CharField(choices=[('dect', 'DECT handset'), ('sip', 'SIP endpoint'), ('gsm', 'GSM (local cell network)'), ('webrtc', 'WebRTC browser softphone'), ('analog', 'Analog via ATA'), ('group', 'Call group / hunt group'), ('announcement', 'Announcement'), ('ivr', 'IVR menu'), ('conference', 'Conference room'), ('voicemail', 'Voicemail box'), ('app', 'Application / service'), ('federation', 'Federation trunk (PET-VPN)'), ('breakout', 'PSTN breakout'), ('trunk', 'SIP trunk (number block)')], default='dect', max_length=20),
+            field=models.CharField(choices=[('dect', 'DECT handset'), ('sip', 'SIP endpoint'), ('gsm', 'GSM (local cell network)'), ('webrtc', 'WebRTC browser softphone'), ('analog', 'Analog via ATA'), ('group', 'Call group / hunt group'), ('announcement', 'Announcement'), ('ivr', 'IVR menu'), ('conference', 'Conference room'), ('voicemail', 'Voicemail box'), ('app', 'Application / service'), ('federation', 'Federation trunk (DIAL-VPN)'), ('breakout', 'PSTN breakout'), ('trunk', 'SIP trunk (number block)')], default='dect', max_length=20),
         ),
     ]

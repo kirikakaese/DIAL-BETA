@@ -1,8 +1,8 @@
 """asyncio LDAP v3 server serving every event's phonebook read-only on one port.
 
-Authentication: ``cn=directory,dc=<slug>,dc=pet`` + the event's ``PhonebookSettings.directory_token`` binds a
+Authentication: ``cn=directory,dc=<slug>,dc=dial`` + the event's ``PhonebookSettings.directory_token`` binds a
 connection to that event; anonymous binds (and unbound searches) are honoured only with
-``PET_LDAP_ALLOW_ANONYMOUS``. The root DSE is always readable but lists ``namingContexts`` only for what the
+``DIAL_LDAP_ALLOW_ANONYMOUS``. The root DSE is always readable but lists ``namingContexts`` only for what the
 connection may search. Write operations answer ``unwillingToPerform``; malformed PDUs end the connection.
 """
 from __future__ import annotations
@@ -18,7 +18,7 @@ from django.conf import settings as dj_settings
 from . import ber, protocol
 from .directory import DirectoryCache, Entry, EventDirectory, bind_dn, bind_dn_slug, event_dn, event_slug_from_dn
 
-logger = logging.getLogger("pet.ldap")
+logger = logging.getLogger("dial.ldap")
 
 READ_CHUNK = 64 * 1024
 IDLE_TIMEOUT = 15 * 60  # seconds without a PDU before the connection is dropped (like slapd idletimeout)
@@ -98,7 +98,7 @@ class _Connection:
         elif isinstance(op, protocol.UnsupportedRequest) and op.tag in protocol.WRITE_OPERATIONS:
             await self.send(protocol.result_response(mid, protocol.WRITE_OPERATIONS[op.tag],
                                                      protocol.UNWILLING_TO_PERFORM, "",
-                                                     "PET phonebook is read-only"))
+                                                     "DIAL phonebook is read-only"))
         else:
             raise protocol.ProtocolError(f"unsupported operation {getattr(op, 'tag', '?')}")
 
@@ -159,8 +159,8 @@ class _Connection:
             "namingContexts": contexts,
             "supportedLDAPVersion": ["3"],
             "supportedExtension": [protocol.OID_WHOAMI],
-            "vendorName": ["PET"],
-            "vendorVersion": ["PET Portable Event Telephone phonebook (read-only)"],
+            "vendorName": ["DIAL"],
+            "vendorVersion": ["DIAL DECT & IP Administration Layer phonebook (read-only)"],
         })
 
     async def search(self, mid: int, req: protocol.SearchRequest) -> None:
@@ -180,7 +180,7 @@ class _Connection:
                 slugs = [event_slug_from_dn(dn) for dn in await self.server.naming_contexts()]
             else:
                 await self.send(protocol.search_result_done(mid, protocol.INSUFFICIENT_ACCESS_RIGHTS, "",
-                                                            "bind with cn=directory,dc=<event>,dc=pet first"))
+                                                            "bind with cn=directory,dc=<event>,dc=dial first"))
                 return
             matches: list[Entry] = []
             for slug in slugs:
@@ -194,7 +194,7 @@ class _Connection:
         slug = event_slug_from_dn(base)
         if slug is None:
             await self.send(protocol.search_result_done(mid, protocol.NO_SUCH_OBJECT, "",
-                                                        "base must be below dc=<event>,dc=pet"))
+                                                        "base must be below dc=<event>,dc=dial"))
             return
         if not self.may_search(slug):
             logger.info("ldap %s: search %r refused (bound to %r)", self.peer, base, self.bound_slug)
@@ -231,7 +231,7 @@ class _Connection:
             await self.send(protocol.extended_response(mid, protocol.SUCCESS, value=authz.encode("utf-8")))
         elif req.name == protocol.OID_START_TLS:
             await self.send(protocol.extended_response(mid, protocol.PROTOCOL_ERROR,
-                                                       "StartTLS is not supported - use LDAPS (pet_ldap --cert)",
+                                                       "StartTLS is not supported - use LDAPS (dial_ldap --cert)",
                                                        name=protocol.OID_START_TLS))
         else:
             await self.send(protocol.extended_response(mid, protocol.PROTOCOL_ERROR,
@@ -247,7 +247,7 @@ class LDAPServer:
         self.host = host
         self.port = port
         self.ssl_context = ssl_context
-        self.allow_anonymous = (bool(getattr(dj_settings, "PET_LDAP_ALLOW_ANONYMOUS", False))
+        self.allow_anonymous = (bool(getattr(dj_settings, "DIAL_LDAP_ALLOW_ANONYMOUS", False))
                                 if allow_anonymous is None else allow_anonymous)
         self.cache = cache or DirectoryCache()
         self.bind_failure_delay = bind_failure_delay
@@ -294,7 +294,7 @@ class LDAPServer:
 
 
 async def serve(host: str, port: int, ssl_context=None) -> None:
-    """Run until SIGTERM/SIGINT (used by ``manage.py pet_ldap``)."""
+    """Run until SIGTERM/SIGINT (used by ``manage.py dial_ldap``)."""
     server = LDAPServer(host, port, ssl_context=ssl_context)
     await server.start()
     stop = asyncio.Event()

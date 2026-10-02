@@ -8,7 +8,7 @@ from apps.phonebook import services
 
 
 class Command(BaseCommand):
-    help = "Export the event phonebook as LDIF (base DN ou=phonebook,dc=<slug>,dc=pet)."
+    help = "Export the event phonebook as LDIF (base DN ou=phonebook,dc=<slug>,dc=dial)."
 
     def add_arguments(self, parser):
         parser.add_argument("--event", required=True, help="event slug")

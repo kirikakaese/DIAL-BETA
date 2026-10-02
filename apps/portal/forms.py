@@ -45,11 +45,11 @@ class AccessibleFormMixin:
                 w.attrs["aria-describedby"] = f"{desc} {self.auto_id % name}_errors".strip()
 
 
-class PetForm(AccessibleFormMixin, forms.Form):
+class DialForm(AccessibleFormMixin, forms.Form):
     pass
 
 
-class PetModelForm(AccessibleFormMixin, forms.ModelForm):
+class DialModelForm(AccessibleFormMixin, forms.ModelForm):
     pass
 
 
@@ -135,12 +135,12 @@ def compatible_endpoint_types(extension: Extension):
 # ----------------------------------------------------------------------------- user forms
 
 
-class EventJoinForm(PetForm):
+class EventJoinForm(DialForm):
     join_code = forms.CharField(label=_("Group join code"), required=False, max_length=32,
                                 help_text=_("Optional: code handed out by your team to join its user group."))
 
 
-class ExtensionCreateForm(PetForm):
+class ExtensionCreateForm(DialForm):
     BLOCK_CHOICES = [("1", _("10 numbers (base ends in 0, e.g. 4710)")),
                      ("2", _("100 numbers (base ends in 00, e.g. 4700)")),
                      ("3", _("1000 numbers (base ends in 000, e.g. 4000)"))]
@@ -197,7 +197,7 @@ class ExtensionCreateForm(PetForm):
         return {}
 
 
-class ExtensionEditForm(PetModelForm):
+class ExtensionEditForm(DialModelForm):
     forward_target_number = forms.CharField(
         label=_("…or type a number"), max_length=16, required=False,
         widget=forms.TextInput(attrs={"inputmode": "numeric", "autocomplete": "off"}),
@@ -321,7 +321,7 @@ class ExtensionEditForm(PetModelForm):
         return data
 
 
-class TransferForm(PetForm):
+class TransferForm(DialForm):
     recipient = forms.CharField(label=_("Recipient"), max_length=254,
                                 help_text=_("Nickname or e-mail address of the new owner."))
 
@@ -332,7 +332,7 @@ class TransferForm(PetForm):
         return u
 
 
-class DeviceAddForm(PetForm):
+class DeviceAddForm(DialForm):
     """Add a device to an extension: either a brand-new one or an existing device the user owns."""
 
     FIELD_LABELS = {
@@ -416,7 +416,7 @@ class DeviceAddForm(PetForm):
         return data
 
 
-class DeviceRenameForm(PetModelForm):
+class DeviceRenameForm(DialModelForm):
     class Meta:
         model = Device
         fields = ["name", "handset_model", "notes"]
@@ -430,7 +430,7 @@ class DeviceRenameForm(PetModelForm):
 # ----------------------------------------------------------------------------- orga forms
 
 
-class EventCreateForm(PetModelForm):
+class EventCreateForm(DialModelForm):
     class Meta:
         model = Event
         fields = ["name", "slug", "start_date", "end_date", "location", "timezone", "is_public"]
@@ -444,11 +444,11 @@ class EventCreateForm(PetModelForm):
         return data
 
 
-class EventSettingsForm(PetModelForm):
+class EventSettingsForm(DialModelForm):
     disabled_features = forms.MultipleChoiceField(
         label=_("Disabled features for this event"), required=False, widget=forms.CheckboxSelectMultiple(
             attrs={"class": "checkbox-list"}),
-        help_text=_("Features enabled on this PET instance can be switched off per event."))
+        help_text=_("Features enabled on this DIAL instance can be switched off per event."))
 
     class Meta:
         model = Event
@@ -470,7 +470,7 @@ class EventSettingsForm(PetModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["disabled_features"].choices = [(f, f) for f in settings.PET_ALL_FEATURES]
+        self.fields["disabled_features"].choices = [(f, f) for f in settings.DIAL_ALL_FEATURES]
         self.fields["disabled_features"].initial = (self.instance.settings or {}).get("disabled_features", [])
         # Schedule inputs are wall-clock times in the *event's* timezone, not the server's.
         for name in self.SCHEDULE_FIELD_NAMES:
@@ -501,7 +501,7 @@ class EventSettingsForm(PetModelForm):
         return ev
 
 
-class EventCloneForm(PetForm):
+class EventCloneForm(DialForm):
     name = forms.CharField(label=_("Name"), max_length=120)
     slug = forms.SlugField(label=_("Slug"))
     start_date = forms.DateField(label=_("Start date"), widget=forms.DateInput(attrs={"type": "date"}))
@@ -514,7 +514,7 @@ class EventCloneForm(PetForm):
         return slug
 
 
-class NumberPlanForm(PetModelForm):
+class NumberPlanForm(DialModelForm):
     emergency_numbers = CommaListField(label=_("Emergency numbers"), digits_only=True,
                                        help_text=_("Comma separated. Always blocked and routed to on-site emergency."))
 
@@ -543,7 +543,7 @@ class NumberPlanForm(PetModelForm):
         return data
 
 
-class NumberRangeForm(PetModelForm):
+class NumberRangeForm(DialModelForm):
     allowed_roles = forms.MultipleChoiceField(label=_("Allowed roles"), required=False,
                                               choices=EventMembership.Role.choices,
                                               widget=forms.CheckboxSelectMultiple(attrs={"class": "checkbox-list"}))
@@ -579,13 +579,13 @@ class NumberRangeForm(PetModelForm):
         return data
 
 
-class NumberTestForm(PetForm):
+class NumberTestForm(DialForm):
     number = forms.CharField(label=_("Test a number"), max_length=16,
                              widget=forms.TextInput(attrs={"inputmode": "numeric"}))
     as_user = forms.CharField(label=_("Evaluate as user (nickname/e-mail)"), required=False)
 
 
-class AddMemberForm(PetForm):
+class AddMemberForm(DialForm):
     identifier = forms.CharField(label=_("Nickname or e-mail"), max_length=254)
     role = forms.ChoiceField(label=_("Role"), choices=EventMembership.Role.choices,
                              initial=EventMembership.Role.USER)
@@ -597,7 +597,7 @@ class AddMemberForm(PetForm):
         return u
 
 
-class MemberUpdateForm(PetModelForm):
+class MemberUpdateForm(DialModelForm):
     class Meta:
         model = EventMembership
         fields = ["role", "groups"]
@@ -609,7 +609,7 @@ class MemberUpdateForm(PetModelForm):
         self.fields["groups"].required = False
 
 
-class UserGroupForm(PetModelForm):
+class UserGroupForm(DialModelForm):
     class Meta:
         model = UserGroup
         fields = ["name", "slug", "description", "join_code"]
@@ -628,7 +628,7 @@ class UserGroupForm(PetModelForm):
         return slug
 
 
-class GuestCreateForm(PetForm):
+class GuestCreateForm(DialForm):
     start = forms.CharField(label=_("First number"), required=False, max_length=16,
                             widget=forms.TextInput(attrs={"inputmode": "numeric"}))
     count = forms.IntegerField(label=_("How many"), required=False, min_value=1, max_value=200, initial=10)
@@ -649,7 +649,7 @@ class GuestCreateForm(PetForm):
         return data
 
 
-class WebhookForm(PetModelForm):
+class WebhookForm(DialModelForm):
     event_types = forms.MultipleChoiceField(label=_("Event types"), required=False, choices=Webhook.EVENT_TYPES,
                                             widget=forms.CheckboxSelectMultiple(attrs={"class": "checkbox-list"}),
                                             help_text=_("Empty = all events."))
@@ -659,13 +659,13 @@ class WebhookForm(PetModelForm):
         fields = ["name", "url", "secret", "event_types", "is_active"]
 
 
-class ImportForm(PetForm):
+class ImportForm(DialForm):
     file = forms.FileField(label=_("Export file (JSON)"))
     slug_override = forms.SlugField(label=_("New slug"), required=False,
                                     help_text=_("Leave empty to keep the slug stored in the file."))
 
 
-class CSVImportForm(PetForm):
+class CSVImportForm(DialForm):
     """Step 1 of the orga CSV import: upload a file or paste the text."""
 
     MAX_SIZE = 2 * 1024 * 1024
@@ -694,7 +694,7 @@ class CSVImportForm(PetForm):
         return data
 
 
-class ServiceAccountForm(PetForm):
+class ServiceAccountForm(DialForm):
     name = forms.CharField(label=_("Name"), max_length=120)
     description = forms.CharField(label=_("Description"), required=False, max_length=500)
     scopes = CommaListField(label=_("Scopes"), help_text=_(
@@ -703,6 +703,6 @@ class ServiceAccountForm(PetForm):
                                      widget=forms.DateTimeInput(attrs={"type": "datetime-local"}))
 
 
-class HelpdeskSearchForm(PetForm):
+class HelpdeskSearchForm(DialForm):
     q = forms.CharField(label=_("Search"), max_length=120, required=False, widget=forms.TextInput(attrs={
         "placeholder": _("number, nickname, e-mail, IPEI or SIP user"), "autofocus": True}))

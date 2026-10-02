@@ -20,13 +20,13 @@
         <td class="small">{% if w.last_status %}<span class="badge badge-{% if w.last_status|slice:':1' == '2' %}ok{% else %}err{% endif %}">{{ w.last_status }}</span> {{ w.last_delivery_at|date:"D H:i" }}{% else %}<span class="muted">–</span>{% endif %}</td>
         <td class="actions"><a class="btn btn-sm" href="?edit={{ w.pk }}">{% trans "Edit" %}</a>
           <form method="post" class="inline" data-confirm="{% trans 'Delete this webhook?' %}">{% csrf_token %}<input type="hidden" name="action" value="delete"><input type="hidden" name="pk" value="{{ w.pk }}"><button class="btn btn-sm btn-danger">{% trans "Delete" %}</button></form></td>
-      </tr>{% empty %}<tr><td colspan="5" class="empty">{% trans "No webhooks. PET can POST signed JSON on extension changes and DECT alerts." %}</td></tr>{% endfor %}</tbody></table></div>
+      </tr>{% empty %}<tr><td colspan="5" class="empty">{% trans "No webhooks. DIAL can POST signed JSON on extension changes and DECT alerts." %}</td></tr>{% endfor %}</tbody></table></div>
   </section>
   <section class="card">
     <h2>{% if editing %}{% trans "Edit webhook" %}{% else %}{% trans "New webhook" %}{% endif %}</h2>
     <form method="post">{% csrf_token %}{% if editing %}<input type="hidden" name="pk" value="{{ editing.pk }}">{% endif %}
       {% include "portal/_form.html" with form=form %}
-      <p class="small muted">{% blocktrans %}Deliveries carry an <code>X-PET-Signature</code> header (HMAC-SHA256 of the body with the secret).{% endblocktrans %}</p>
+      <p class="small muted">{% blocktrans %}Deliveries carry an <code>X-DIAL-Signature</code> header (HMAC-SHA256 of the body with the secret).{% endblocktrans %}</p>
       <div class="form-actions"><button class="btn btn-primary">{% trans "Save" %}</button>{% if editing %}<a class="btn" href="{% url 'portal:orga_webhooks' event.slug %}">{% trans "Cancel" %}</a>{% endif %}</div>
     </form>
   </section>

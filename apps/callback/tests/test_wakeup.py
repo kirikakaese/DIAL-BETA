@@ -23,8 +23,8 @@ def test_ringback_feature_code_originates(event, ext_alice, pbx):
     # celery is eager: the fire task already ran
     assert rb.state == "delivered" and rb.channel_id == pbx.originated[-1]["id"]
     o = pbx.originated[-1]
-    assert o["destination"] == "4242" and o["variables"]["PET_SERVICE"] == "ringback"
-    assert o["variables"]["PET_RINGBACK_ID"] == str(rb.pk)
+    assert o["destination"] == "4242" and o["variables"]["DIAL_SERVICE"] == "ringback"
+    assert o["variables"]["DIAL_RINGBACK_ID"] == str(rb.pk)
 
 
 def test_ringback_web_owner_check(event, user, other_user, ext_alice, pbx):
@@ -82,8 +82,8 @@ def test_schedule_fire_answer_and_retry(event, user, ext_alice, pbx):
     assert out["scheduled_fired"] == 1
     call.refresh_from_db()
     o = pbx.originated[-1]
-    assert o["destination"] == "4242" and o["variables"]["PET_SERVICE"] == "wakeup-call"
-    assert o["variables"]["PET_WAKEUP_ID"] == str(call.pk) and o["variables"]["PET_ANNOUNCEMENT"] == ""
+    assert o["destination"] == "4242" and o["variables"]["DIAL_SERVICE"] == "wakeup-call"
+    assert o["variables"]["DIAL_WAKEUP_ID"] == str(call.pk) and o["variables"]["DIAL_ANNOUNCEMENT"] == ""
     assert call.state == "dialing" and call.attempts == 1 and call.channel_id == o["id"]
     assert call.next_attempt_at == when + dt.timedelta(minutes=5)
 
@@ -138,7 +138,7 @@ def test_daily_repeat_creates_next_occurrence(event, user, ext_alice, pbx):
     call = services.schedule_wakeup(event, user, ext_alice, when, repeat="daily", announcement="custom",
                                     announcement_text="Rise and shine")
     services.fire_scheduled_call(call, now=when)
-    assert pbx.originated[-1]["variables"]["PET_ANNOUNCEMENT"] == "Rise and shine"
+    assert pbx.originated[-1]["variables"]["DIAL_ANNOUNCEMENT"] == "Rise and shine"
     services.report_result(event, "wakeup", call.pk, "answered", now=when)
     nxt = ScheduledCall.objects.exclude(pk=call.pk).get()
     assert nxt.state == "scheduled" and nxt.repeat == "daily" and nxt.announcement_text == "Rise and shine"

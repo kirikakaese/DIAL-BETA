@@ -1,4 +1,4 @@
-"""Core models shared by every PET app."""
+"""Core models shared by every DIAL app."""
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType

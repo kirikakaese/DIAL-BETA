@@ -12,15 +12,15 @@ from .models import User
 
 
 def validate_signup_email(email: str) -> str:
-    """Apply the instance's domain allow/block lists (``PET_SIGNUP_ALLOWED_DOMAINS`` / ``_BLOCKED_DOMAINS``).
+    """Apply the instance's domain allow/block lists (``DIAL_SIGNUP_ALLOWED_DOMAINS`` / ``_BLOCKED_DOMAINS``).
 
     Both compare the full domain and parent domains, so ``example.org`` also covers ``mail.example.org``.
     """
     domain = email.rsplit("@", 1)[-1].lower().strip(".")
     parts = domain.split(".")
     candidates = {".".join(parts[i:]) for i in range(len(parts))}
-    blocked = {d.lower().lstrip("@.") for d in getattr(settings, "PET_SIGNUP_BLOCKED_DOMAINS", []) if d}
-    allowed = {d.lower().lstrip("@.") for d in getattr(settings, "PET_SIGNUP_ALLOWED_DOMAINS", []) if d}
+    blocked = {d.lower().lstrip("@.") for d in getattr(settings, "DIAL_SIGNUP_BLOCKED_DOMAINS", []) if d}
+    allowed = {d.lower().lstrip("@.") for d in getattr(settings, "DIAL_SIGNUP_ALLOWED_DOMAINS", []) if d}
     if candidates & blocked:
         raise forms.ValidationError(_("Sign-ups from this e-mail provider are not accepted here."), code="blocked")
     if allowed and not (candidates & allowed):

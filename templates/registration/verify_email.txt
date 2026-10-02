@@ -1,10 +1,10 @@
 {% load i18n %}{% autoescape off %}{% blocktrans with u=user.username %}Hello {{ u }},
 
-please confirm that this e-mail address belongs to your PET account by opening this link:{% endblocktrans %}
+please confirm that this e-mail address belongs to your DIAL account by opening this link:{% endblocktrans %}
 
 {{ verify_url }}
 
 {% blocktrans %}The link is valid for {{ ttl_hours }} hours. You can request a new one from your profile page at any time.{% endblocktrans %}
 
--- PET · Portable Event Telephone
+-- DIAL · DECT & IP Administration Layer
 {% endautoescape %}

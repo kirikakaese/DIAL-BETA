@@ -1,0 +1,47 @@
+# DIAL venue agent - systemd unit for bare-metal venue boxes.
+#
+#   install -m 0755 dial_venue_agent.py /usr/local/lib/dial-venue-agent/dial_venue_agent.py
+#   install -m 0644 README.md /usr/local/lib/dial-venue-agent/README.md
+#   python3 -m venv /usr/local/lib/dial-venue-agent/venv
+#   /usr/local/lib/dial-venue-agent/venv/bin/pip install 'psycopg[binary]'
+#   useradd --system --home-dir /var/lib/dial-venue-agent dial-venue-agent
+#   install -m 0600 -o root -g root .env.venue /etc/dial-venue-agent.env     (DIAL_URL, DIAL_EVENT, secret, DB_*)
+#   cp dial-venue-agent.service /etc/systemd/system/ && systemctl enable --now dial-venue-agent
+#
+# Reload of the local Asterisk: prefer AMI (set AMI_HOST=127.0.0.1 + AMI_USER/AMI_PASSWORD in the env file).
+# If you use the default `asterisk -rx ...` command instead, add the service user to the `asterisk`
+# group (SupplementaryGroups below) so it may talk to /var/run/asterisk/asterisk.ctl.
+[Unit]
+Description=DIAL venue agent (PBX snapshot -> local PostgreSQL for Asterisk Realtime)
+Documentation=file:///usr/local/lib/dial-venue-agent/README.md
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=dial-venue-agent
+Group=dial-venue-agent
+#SupplementaryGroups=asterisk
+EnvironmentFile=/etc/dial-venue-agent.env
+Environment=STATE_DIR=/var/lib/dial-venue-agent
+StateDirectory=dial-venue-agent
+ExecStart=/usr/local/lib/dial-venue-agent/venv/bin/python3 /usr/local/lib/dial-venue-agent/dial_venue_agent.py
+# SIGHUP forces a full re-sync on the next cycle (ignores the cached version)
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=20
+
+# hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/dial-venue-agent
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+
+[Install]
+WantedBy=multi-user.target

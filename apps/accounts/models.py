@@ -141,7 +141,7 @@ class ServiceAccount(models.Model):
         token is only available at creation time."""
         import secrets
 
-        raw = "pet_" + secrets.token_urlsafe(32)
+        raw = "dial_" + secrets.token_urlsafe(32)
         acct = cls.objects.create(
             name=name, owner=owner, event=event, scopes=scopes or [], expires_at=expires_at,
             description=description, token_hash=cls.hash_token(raw), token_prefix=raw[:12],
@@ -211,7 +211,7 @@ class RegistrationEmailToken(models.Model):
     def issue(cls, email, purpose, user=None, new_email="", ip=None):
         """Create a token and return ``(token, raw_token)``. The raw token is never stored."""
         raw = secrets.token_urlsafe(32)
-        ttl = getattr(settings, "PET_EMAIL_TOKEN_TTL_HOURS", 48)
+        ttl = getattr(settings, "DIAL_EMAIL_TOKEN_TTL_HOURS", 48)
         obj = cls.objects.create(
             email=cls.normalize(email), purpose=purpose, user=user, new_email=cls.normalize(new_email),
             token_hash=cls.hash_token(raw), expires_at=timezone.now() + dt.timedelta(hours=ttl), ip=ip or None,

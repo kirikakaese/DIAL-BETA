@@ -99,7 +99,7 @@ def test_detail_manage_and_toggle_permissions(client, event, user, other_user, o
 
 
 def test_feature_flag_off(client, event, user, member, settings):
-    settings.PET_FEATURES = dict(settings.PET_FEATURES, callgroups=False)
+    settings.DIAL_FEATURES = dict(settings.DIAL_FEATURES, callgroups=False)
     client.force_login(user)
     assert client.get(_url("index", event)).status_code == 404
 

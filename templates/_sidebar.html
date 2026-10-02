@@ -1,10 +1,10 @@
-{% load i18n pet_nav %}
+{% load i18n dial_nav %}
 <aside class="sidenav" id="sidenav">
   <nav class="sidenav-nav" aria-label="{% trans 'Event navigation' %}">
     <div class="sidenav-group">
       <h2 class="sidenav-h">{% trans "Event" %}</h2>
       <a href="{% url 'portal:event_dashboard' current_event.slug %}" {% nav_active 'portal:event_dashboard' 'portal:event_join' %}>{% trans "Overview" %}</a>
-      {% if PET_FEATURES.phonebook %}<a href="{% url 'phonebook:index' current_event.slug %}" {% nav_active 'phonebook:' %}>{% trans "Phonebook" %}</a>{% endif %}
+      {% if DIAL_FEATURES.phonebook %}<a href="{% url 'phonebook:index' current_event.slug %}" {% nav_active 'phonebook:' %}>{% trans "Phonebook" %}</a>{% endif %}
       <a href="{% url 'pages:index' current_event.slug %}" {% nav_active 'pages:index' 'pages:show' %}>{% trans "Info pages" %}</a>
       {% if user.is_authenticated and current_event.registration_open %}<a href="{% url 'portal:extension_create' current_event.slug %}" {% nav_active 'portal:extension_create' 'portal:extension_port' 'numbering:random' %}>{% trans "Register a number" %}</a>{% endif %}
     </div>
@@ -14,13 +14,13 @@
       <h2 class="sidenav-h">{% trans "My stuff" %}</h2>
       <a href="{% url 'portal:extension_list' current_event.slug %}" {% nav_active 'portal:extension_list' 'portal:extension_detail' 'portal:extension_edit' 'portal:extension_delete' 'portal:extension_transfer' 'portal:device_*' 'portal:waitlist_join' %}>{% trans "My extensions" %}</a>
       <a href="{% url 'devices:history' current_event.slug %}" {% nav_active 'devices:history' 'devices:reuse' %}>{% trans "My handsets" %}</a>
-      {% if PET_FEATURES.callgroups %}<a href="{% url 'callgroups:index' current_event.slug %}" {% nav_active 'callgroups:' %}>{% trans "Call groups" %}</a>{% endif %}
+      {% if DIAL_FEATURES.callgroups %}<a href="{% url 'callgroups:index' current_event.slug %}" {% nav_active 'callgroups:' %}>{% trans "Call groups" %}</a>{% endif %}
       <a href="{% url 'callback:index' current_event.slug %}" {% nav_active 'callback:index' 'callback:request' 'callback:cancel' 'callback:wakeup*' %}>{% trans "Callbacks & wake-up" %}</a>
-      {% if PET_FEATURES.voicemail %}<a href="{% url 'voicemail:index' current_event.slug %}" {% nav_active 'voicemail:index' 'voicemail:settings' 'voicemail:audio' 'voicemail:delete' 'voicemail:mark_read' %}>{% trans "Voicemail" %}</a>{% endif %}
-      {% if PET_FEATURES.messaging %}<a href="{% url 'messaging:index' current_event.slug %}" {% nav_active 'messaging:index' %}>{% trans "Messages" %}</a>{% endif %}
-      {% if PET_FEATURES.conferences %}<a href="{% url 'conferences:index' current_event.slug %}" {% nav_active 'conferences:' %}>{% trans "Conferences" %}</a>{% endif %}
-      {% if PET_FEATURES.ivr %}<a href="{% url 'ivr:index' current_event.slug %}" {% nav_active 'ivr:' %}>{% trans "Announcements & IVR" %}</a>{% endif %}
-      {% if PET_FEATURES.stats %}<a href="{% url 'stats:mine' current_event.slug %}" {% nav_active 'stats:mine' %}>{% trans "My calls" %}</a>{% endif %}
+      {% if DIAL_FEATURES.voicemail %}<a href="{% url 'voicemail:index' current_event.slug %}" {% nav_active 'voicemail:index' 'voicemail:settings' 'voicemail:audio' 'voicemail:delete' 'voicemail:mark_read' %}>{% trans "Voicemail" %}</a>{% endif %}
+      {% if DIAL_FEATURES.messaging %}<a href="{% url 'messaging:index' current_event.slug %}" {% nav_active 'messaging:index' %}>{% trans "Messages" %}</a>{% endif %}
+      {% if DIAL_FEATURES.conferences %}<a href="{% url 'conferences:index' current_event.slug %}" {% nav_active 'conferences:' %}>{% trans "Conferences" %}</a>{% endif %}
+      {% if DIAL_FEATURES.ivr %}<a href="{% url 'ivr:index' current_event.slug %}" {% nav_active 'ivr:' %}>{% trans "Announcements & IVR" %}</a>{% endif %}
+      {% if DIAL_FEATURES.stats %}<a href="{% url 'stats:mine' current_event.slug %}" {% nav_active 'stats:mine' %}>{% trans "My calls" %}</a>{% endif %}
     </div>
     {% endif %}
 
@@ -34,7 +34,7 @@
       <a href="{% url 'portal:orga_numberplan' current_event.slug %}" {% nav_active 'portal:orga_numberplan' 'portal:orga_range_*' 'numbering:settings' %}>{% trans "Number plan" %}</a>
       <a href="{% url 'numbering:pools' current_event.slug %}" {% nav_active 'numbering:pool*' %}>{% trans "Pools" %}</a>
       <a href="{% url 'numbering:claims' current_event.slug %}" {% nav_active 'numbering:claim*' %}>{% trans "Claims" %}</a>
-      {% if PET_FEATURES.guest_extensions and current_event.allow_guest_extensions %}<a href="{% url 'portal:orga_guests' current_event.slug %}" {% nav_active 'portal:orga_guests' %}>{% trans "Guest numbers" %}</a>{% endif %}
+      {% if DIAL_FEATURES.guest_extensions and current_event.allow_guest_extensions %}<a href="{% url 'portal:orga_guests' current_event.slug %}" {% nav_active 'portal:orga_guests' %}>{% trans "Guest numbers" %}</a>{% endif %}
     </div>
     <div class="sidenav-group sidenav-orga">
       <h2 class="sidenav-h">{% trans "Orga" %} · {% trans "People" %}</h2>
@@ -48,22 +48,22 @@
       <a href="{% url 'dect:index' current_event.slug %}" {% nav_active 'dect:' %}>{% trans "DECT" %}</a>
       <a href="{% url 'devices:manufacturers' current_event.slug %}" {% nav_active 'devices:manufacturers' 'devices:suggest_vendor' %}>{% trans "Handset vendors" %}</a>
       {% if current_event.has_gsm %}<a href="{% url 'devices:gsm' current_event.slug %}" {% nav_active 'devices:gsm*' %}>{% trans "GSM" %}</a>{% endif %}
-      {% if PET_FEATURES.stats %}<a href="{% url 'stats:index' current_event.slug %}" {% nav_active 'stats:index' 'stats:csv' 'stats:json' 'stats:export_csv' %}>{% trans "Statistics" %}</a>{% endif %}
+      {% if DIAL_FEATURES.stats %}<a href="{% url 'stats:index' current_event.slug %}" {% nav_active 'stats:index' 'stats:csv' 'stats:json' 'stats:export_csv' %}>{% trans "Statistics" %}</a>{% endif %}
     </div>
     <div class="sidenav-group sidenav-orga">
       <h2 class="sidenav-h">{% trans "Orga" %} · {% trans "Services" %}</h2>
       <a href="{% url 'callback:all' current_event.slug %}" {% nav_active 'callback:all' %}>{% trans "Callbacks" %}</a>
-      {% if PET_FEATURES.voicemail %}<a href="{% url 'voicemail:all' current_event.slug %}" {% nav_active 'voicemail:all' %}>{% trans "Voicemail" %}</a>{% endif %}
-      {% if PET_FEATURES.messaging %}<a href="{% url 'messaging:broadcast' current_event.slug %}" {% nav_active 'messaging:broadcast' %}>{% trans "Broadcast" %}</a>{% endif %}
-      {% if PET_FEATURES.emergency %}<a href="{% url 'emergency:index' current_event.slug %}" {% nav_active 'emergency:' %}>{% trans "Emergency" %}</a>{% endif %}
-      {% if PET_FEATURES.federation %}<a href="{% url 'federation:index' current_event.slug %}" {% nav_active 'federation:' %}>{% trans "Federation" %}</a>{% endif %}
-      {% if PET_FEATURES.breakout %}<a href="{% url 'breakout:index' current_event.slug %}" {% nav_active 'breakout:' %}>{% trans "Breakout" %}</a>{% endif %}
+      {% if DIAL_FEATURES.voicemail %}<a href="{% url 'voicemail:all' current_event.slug %}" {% nav_active 'voicemail:all' %}>{% trans "Voicemail" %}</a>{% endif %}
+      {% if DIAL_FEATURES.messaging %}<a href="{% url 'messaging:broadcast' current_event.slug %}" {% nav_active 'messaging:broadcast' %}>{% trans "Broadcast" %}</a>{% endif %}
+      {% if DIAL_FEATURES.emergency %}<a href="{% url 'emergency:index' current_event.slug %}" {% nav_active 'emergency:' %}>{% trans "Emergency" %}</a>{% endif %}
+      {% if DIAL_FEATURES.federation %}<a href="{% url 'federation:index' current_event.slug %}" {% nav_active 'federation:' %}>{% trans "Federation" %}</a>{% endif %}
+      {% if DIAL_FEATURES.breakout %}<a href="{% url 'breakout:index' current_event.slug %}" {% nav_active 'breakout:' %}>{% trans "Breakout" %}</a>{% endif %}
     </div>
     <div class="sidenav-group sidenav-orga">
       <h2 class="sidenav-h">{% trans "Orga" %} · {% trans "Event" %}</h2>
       <a href="{% url 'portal:orga_event_settings' current_event.slug %}" {% nav_active 'portal:orga_event_*' 'portal:orga_import' 'portal:orga_export' %}>{% trans "Settings" %}</a>
       <a href="{% url 'pages:manage' current_event.slug %}" {% nav_active 'pages:manage' 'pages:create' 'pages:edit' %}>{% trans "Info pages" %}</a>
-      {% if PET_FEATURES.webhooks %}<a href="{% url 'portal:orga_webhooks' current_event.slug %}" {% nav_active 'portal:orga_webhooks' %}>{% trans "Webhooks" %}</a>{% endif %}
+      {% if DIAL_FEATURES.webhooks %}<a href="{% url 'portal:orga_webhooks' current_event.slug %}" {% nav_active 'portal:orga_webhooks' %}>{% trans "Webhooks" %}</a>{% endif %}
       <a href="{% url 'portal:orga_service_accounts' current_event.slug %}" {% nav_active 'portal:orga_service_accounts' %}>{% trans "API tokens" %}</a>
       <a href="{% url 'portal:orga_audit' current_event.slug %}" {% nav_active 'portal:orga_audit' %}>{% trans "Audit log" %}</a>
     </div>
@@ -71,7 +71,7 @@
     <div class="sidenav-group sidenav-orga">
       <h2 class="sidenav-h">{% trans "Helpdesk" %}</h2>
       <a href="{% url 'portal:helpdesk_lookup' current_event.slug %}" {% nav_active 'portal:helpdesk_lookup' %}>{% trans "User lookup" %}</a>
-      {% if PET_FEATURES.stats %}<a href="{% url 'stats:index' current_event.slug %}" {% nav_active 'stats:index' %}>{% trans "Statistics" %}</a>{% endif %}
+      {% if DIAL_FEATURES.stats %}<a href="{% url 'stats:index' current_event.slug %}" {% nav_active 'stats:index' %}>{% trans "Statistics" %}</a>{% endif %}
     </div>
     {% endif %}
   </nav>

@@ -16,8 +16,8 @@ class Message(TimeStampedModel):
         DELIVERED = "delivered", _("Delivered")
 
     class Direction(models.TextChoices):
-        OUT = "out", _("Outbound (PET → handset)")
-        IN = "in", _("Inbound (handset → PET)")
+        OUT = "out", _("Outbound (DIAL → handset)")
+        IN = "in", _("Inbound (handset → DIAL)")
 
     event = models.ForeignKey("events.Event", on_delete=models.CASCADE, related_name="messages")
     direction = models.CharField(max_length=3, choices=Direction.choices, default=Direction.OUT)

@@ -1,7 +1,7 @@
 """Phonebook REST API (``/api/v1/phonebook/``).
 
 - ``GET phonebook/?event=<slug>&q=&type=``  entries (no auth needed for public events); every entry carries
-  read-only ``vcard_url`` / ``card_qr_url`` (absolute, rooted at ``PET_PUBLIC_URL``) for the business card
+  read-only ``vcard_url`` / ``card_qr_url`` (absolute, rooted at ``DIAL_PUBLIC_URL``) for the business card
 - ``GET phonebook/export.<fmt>?event=<slug>``  fmt in csv / vcf / ldif / pdf
 - ``GET phonebook/directory/?event=<slug>``  orga: remote-directory token, per-vendor XML URLs, LDAP details
 - ``POST phonebook/directory/rotate/?event=<slug>``  orga: new token (locks out every configured phone)

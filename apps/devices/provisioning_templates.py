@@ -1,6 +1,6 @@
 """Built-in autoprovisioning templates for common hard phones.
 
-Loaded as global (``event=None``) ``ProvisioningProfile`` rows by ``manage.py pet_provisioning_profiles``.
+Loaded as global (``event=None``) ``ProvisioningProfile`` rows by ``manage.py dial_provisioning_profiles``.
 Template context (see ``ProvisioningProfile.render``): ``device``, ``extension``, ``event``,
 ``sip_server``, ``sip_port``, ``transport``, ``display_name``, ``phonebook_url`` (remote phonebook served under
 the device's own provisioning token; empty when the event's remote directory is disabled).

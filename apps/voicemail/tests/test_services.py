@@ -15,7 +15,7 @@ def test_ensure_mailbox_writes_realtime_row(event, ext_alice):
     mb = services.ensure_mailbox(ext_alice)
     assert mb.event == event and mb.pin.isdigit() and len(mb.pin) == 4 and mb.enabled
     assert services.ensure_mailbox(ext_alice) == mb
-    row = VoicemailUser.objects.get(context="pet-demo", mailbox="4242")
+    row = VoicemailUser.objects.get(context="dial-demo", mailbox="4242")
     assert row.password == mb.pin and row.fullname == "alice" and row.attach == "no" and row.maxmsg == 50
     ext_alice.refresh_from_db()
     assert ext_alice.config["voicemail_pin"] == mb.pin
@@ -24,16 +24,16 @@ def test_ensure_mailbox_writes_realtime_row(event, ext_alice):
 def test_update_mailbox_and_pin_validation(event, ext_alice, user):
     mb = services.ensure_mailbox(ext_alice)
     services.update_mailbox(mb, actor=user, pin="123456", email_delivery=True, email="vm@example.org", max_messages=10)
-    row = VoicemailUser.objects.get(context="pet-demo", mailbox="4242")
+    row = VoicemailUser.objects.get(context="dial-demo", mailbox="4242")
     assert row.password == "123456" and row.email == "vm@example.org" and row.attach == "yes" and row.maxmsg == 10
     with pytest.raises(VoicemailError):
         services.update_mailbox(mb, pin="12")
     with pytest.raises(VoicemailError):
         services.update_mailbox(mb, pin="abcd")
     services.update_mailbox(mb, enabled=False)
-    assert not VoicemailUser.objects.filter(context="pet-demo", mailbox="4242").exists()
+    assert not VoicemailUser.objects.filter(context="dial-demo", mailbox="4242").exists()
     services.update_mailbox(mb, enabled=True)
-    assert VoicemailUser.objects.filter(context="pet-demo", mailbox="4242").exists()
+    assert VoicemailUser.objects.filter(context="dial-demo", mailbox="4242").exists()
 
 
 def test_store_message_copies_audio_and_sets_mwi(event, ext_alice, ext_bob, wav_file, pbx):
@@ -50,7 +50,7 @@ def test_store_message_copies_audio_and_sets_mwi(event, ext_alice, ext_bob, wav_
     assert services.store_message(event, "4242", "4300", str(wav_file), 7) == msg
     assert Message.objects.count() == 1
     # mailbox@context notation from Asterisk is accepted
-    msg2 = services.store_message(event, "4242@pet-demo", "", "", 3)
+    msg2 = services.store_message(event, "4242@dial-demo", "", "", 3)
     assert msg2.mailbox == msg.mailbox and msg2.caller_number == ""
     assert pbx.mwi[-1] == ("4242", 2, 0)
 
@@ -64,7 +64,7 @@ def test_store_message_without_file_logs_warning(event, ext_alice, pbx, caplog):
 
 def test_store_message_unknown_mailbox_or_flag_off(event, ext_alice, settings):
     assert services.store_message(event, "1111", "4300", "", 1) is None
-    settings.PET_FEATURES = dict(settings.PET_FEATURES, voicemail=False)
+    settings.DIAL_FEATURES = dict(settings.DIAL_FEATURES, voicemail=False)
     assert services.store_message(event, "4242", "4300", "", 1) is None
 
 
@@ -126,7 +126,7 @@ def test_hook_dispatch_end_to_end(client, event, ext_alice, wav_file, pbx):
 
     r = client.post("/api/v1/pbx/hooks/voicemail/", {"event": "demo", "mailbox": "4242", "caller": "4300",
                                                      "file_path": str(wav_file), "duration": "7.4"},
-                    HTTP_X_PET_PBX_SECRET=hook_secret())
+                    HTTP_X_DIAL_PBX_SECRET=hook_secret())
     assert r.status_code == 200 and r.json()["handled"] is True
     assert Message.objects.get().duration_seconds == 7 and pbx.mwi[-1] == ("4242", 1, 0)
     assert Mailbox.objects.filter(extension=ext_alice).exists()

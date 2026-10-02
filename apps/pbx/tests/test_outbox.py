@@ -13,7 +13,7 @@ from .conftest import bind, make_device, make_extension
 
 pytestmark = pytest.mark.django_db
 
-ASYNC = override_settings(PET_PBX_OUTBOX_SYNC=False)
+ASYNC = override_settings(DIAL_PBX_OUTBOX_SYNC=False)
 
 
 @pytest.fixture(autouse=True)
@@ -77,7 +77,7 @@ def test_sync_mode_defaults_to_celery_eager(event, user, settings):
     assert job.state == "delivered" and str(ext.pk) in get_pbx().extensions
     ext.refresh_from_db()
     assert ext.provisioned_at is not None
-    settings.PET_PBX_OUTBOX_SYNC = False
+    settings.DIAL_PBX_OUTBOX_SYNC = False
     assert outbox.sync_mode() is False
 
 

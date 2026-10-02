@@ -71,7 +71,7 @@ def infrastructure(request, slug, *, event):
 
     pbx = get_pbx(event)
     dect = get_dect(event)
-    public = settings.PET_PUBLIC_URL.rstrip("/")
+    public = settings.DIAL_PUBLIC_URL.rstrip("/")
     agent = None
     if pbx_conn is not None and pbx_conn.is_agent:
         from apps.pbx.snapshot import agent_state
@@ -88,7 +88,7 @@ def infrastructure(request, slug, *, event):
         "schema_url": public + reverse("api:pbx-snapshot-schema"),
         "heartbeat_url": public + reverse("api:pbx-agent-heartbeat"),
         "agent": agent,
-        "default_pbx": settings.PET_PBX_BACKEND.rsplit(".", 1)[-1],
-        "default_dect": settings.PET_DECT_BACKEND.rsplit(".", 1)[-1],
+        "default_pbx": settings.DIAL_PBX_BACKEND.rsplit(".", 1)[-1],
+        "default_dect": settings.DIAL_DECT_BACKEND.rsplit(".", 1)[-1],
         "sip_domain": event.sip_domain or settings.ASTERISK.get("SIP_DOMAIN", ""),
     })

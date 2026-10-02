@@ -375,7 +375,7 @@ def test_orga_event_settings_and_state(client, orga, event):
     r = client.post(u("orga_event_settings", event.slug), {
         "name": "Demo Camp 2", "description": "", "start_date": event.start_date, "end_date": event.end_date,
         "location": "Field", "timezone": "Europe/Berlin", "is_public": "on", "primary_color": "#112233",
-        "accent_color": "#445566", "announcement": "Hi", "sip_domain": "demo.pet.local", "dial_prefix": "",
+        "accent_color": "#445566", "announcement": "Hi", "sip_domain": "demo.dial.local", "dial_prefix": "",
         "default_language": "de", "max_extensions_per_user": 5, "allow_guest_extensions": "on",
         "cdr_retention_days": "", "disabled_features": ["messaging"]})
     assert r.status_code == 302
@@ -414,7 +414,7 @@ def test_orga_webhooks_and_tokens(client, orga, event):
     assert r.status_code == 302 and event.webhooks.get().event_types == ["extension.created"]
     r = client.post(u("orga_service_accounts", event.slug), {"name": "badge printer",
                                                              "scopes": "extensions:read, phonebook:read"})
-    assert r.status_code == 200 and b"pet_" in r.content
+    assert r.status_code == 200 and b"dial_" in r.content
     acct = event.service_accounts.get()
     assert acct.scopes == ["extensions:read", "phonebook:read"]
     client.post(u("orga_service_accounts", event.slug), {"action": "revoke", "pk": acct.pk})

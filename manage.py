@@ -1,11 +1,11 @@
 #!/usr/bin/env python
-"""Django management entry point for PET."""
+"""Django management entry point for DIAL."""
 import os
 import sys
 
 
 def main():
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "pet.settings.dev")
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "dial.settings.dev")
     from django.core.management import execute_from_command_line
 
     execute_from_command_line(sys.argv)

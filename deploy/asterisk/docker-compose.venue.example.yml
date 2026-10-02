@@ -1,15 +1,15 @@
-# PET Asterisk - "venue agent" deployment variant.
+# DIAL Asterisk - "venue agent" deployment variant.
 #
-# Use this when the Asterisk box at the event must NOT have database access to the central PET server
-# (venue behind NAT / flaky uplink / PET hosted elsewhere). Three services:
+# Use this when the Asterisk box at the event must NOT have database access to the central DIAL server
+# (venue behind NAT / flaky uplink / DIAL hosted elsewhere). Three services:
 #
 #   venue-db     local PostgreSQL 16 - the only database Asterisk talks to (ODBC realtime, CDRs, contacts)
-#   venue-agent  deploy/venue-agent: pulls PBX snapshots from PET over HTTPS and writes them into venue-db
-#   asterisk     the unchanged PET reference image, pointed at venue-db and at the public PET URL
+#   venue-agent  deploy/venue-agent: pulls PBX snapshots from DIAL over HTTPS and writes them into venue-db
+#   asterisk     the unchanged DIAL reference image, pointed at venue-db and at the public DIAL URL
 #
 # The database serves exactly ONE event (the agent replaces whole tables on every change).
-# Hooks / route lookups / CDR hook still go from Asterisk to PET over HTTPS - see deploy/asterisk/README.md,
-# section "Deployment modes", for what keeps working when PET is unreachable.
+# Hooks / route lookups / CDR hook still go from Asterisk to DIAL over HTTPS - see deploy/asterisk/README.md,
+# section "Deployment modes", for what keeps working when DIAL is unreachable.
 #
 # Paths in this file are relative to deploy/asterisk/ (build contexts, env_file), so run it from there:
 #
@@ -19,7 +19,7 @@
 #   docker compose -f docker-compose.venue.example.yml --env-file .env.venue run --rm venue-agent --check
 #   docker compose -f docker-compose.venue.example.yml --env-file .env.venue logs -f venue-agent
 #
-# For the shared-database variant (Asterisk next to PET) see docker-compose.example.yml.
+# For the shared-database variant (Asterisk next to DIAL) see docker-compose.example.yml.
 services:
   venue-db:
     image: postgres:16-alpine
@@ -39,9 +39,9 @@ services:
 
   venue-agent:
     build: ../venue-agent          # deploy/venue-agent (relative to this file)
-    image: pet-venue-agent:local
+    image: dial-venue-agent:local
     restart: unless-stopped
-    env_file: .env.venue           # PET_URL, PET_EVENT, PET_PBX_HOOK_SECRET (or PET_SYNC_TOKEN), POLL_INTERVAL ...
+    env_file: .env.venue           # DIAL_URL, DIAL_EVENT, DIAL_PBX_HOOK_SECRET (or DIAL_SYNC_TOKEN), POLL_INTERVAL ...
     environment:
       DB_HOST: venue-db
       DB_PORT: "5432"
@@ -51,42 +51,42 @@ services:
       # the agent runs in its own container -> reload Asterisk over AMI instead of `asterisk -rx`
       AMI_HOST: asterisk
       AMI_PORT: "5038"
-      AMI_USER: ${ASTERISK_AMI_USER:-pet}
-      AMI_PASSWORD: ${ASTERISK_AMI_PASSWORD:-pet}
-      STATE_DIR: /var/lib/pet-venue-agent
+      AMI_USER: ${ASTERISK_AMI_USER:-dial}
+      AMI_PASSWORD: ${ASTERISK_AMI_PASSWORD:-dial}
+      STATE_DIR: /var/lib/dial-venue-agent
     volumes:
-      - venue-agent-state:/var/lib/pet-venue-agent   # last_version + snapshot.json (offline restarts)
-      # - ./venue-ca.crt:/etc/pet/venue-ca.crt:ro     # + TLS_CA_FILE=/etc/pet/venue-ca.crt in .env.venue
+      - venue-agent-state:/var/lib/dial-venue-agent   # last_version + snapshot.json (offline restarts)
+      # - ./venue-ca.crt:/etc/dial/venue-ca.crt:ro     # + TLS_CA_FILE=/etc/dial/venue-ca.crt in .env.venue
     depends_on:
       venue-db:
         condition: service_healthy
 
   asterisk:
     build: .                       # deploy/asterisk - same image as the shared-database variant
-    image: pet-asterisk:local
+    image: dial-asterisk:local
     restart: unless-stopped
     depends_on:
       venue-db:
         condition: service_healthy
     environment:
-      # hooks, route API, shell contexts and the CDR hook go to the central PET over HTTPS
-      PET_API_URL: ${PET_URL:-https://pet.example.org}
-      PET_PBX_HOOK_SECRET: ${PET_PBX_HOOK_SECRET:?set PET_PBX_HOOK_SECRET in .env.venue}
-      PET_EVENTS: ${PET_EVENT:?set PET_EVENT in .env.venue}   # shell context when PET is down at boot
-      PET_EMERGENCY_FALLBACK: ${PET_EMERGENCY_FALLBACK:-}
-      # "yes": [pet-hangup] POSTs every CDR to /api/v1/pbx/hooks/cdr/ as well. Required here, because PET's
+      # hooks, route API, shell contexts and the CDR hook go to the central DIAL over HTTPS
+      DIAL_API_URL: ${DIAL_URL:-https://dial.example.org}
+      DIAL_PBX_HOOK_SECRET: ${DIAL_PBX_HOOK_SECRET:?set DIAL_PBX_HOOK_SECRET in .env.venue}
+      DIAL_EVENTS: ${DIAL_EVENT:?set DIAL_EVENT in .env.venue}   # shell context when DIAL is down at boot
+      DIAL_EMERGENCY_FALLBACK: ${DIAL_EMERGENCY_FALLBACK:-}
+      # "yes": [dial-hangup] POSTs every CDR to /api/v1/pbx/hooks/cdr/ as well. Required here, because DIAL's
       # ingest_cdrs sweep only reads *its own* database - it never sees the rows in venue-db.
-      PET_CDR_HOOK: "yes"
+      DIAL_CDR_HOOK: "yes"
       DB_HOST: venue-db
       DB_PORT: "5432"
       DB_NAME: ${VENUE_DB_NAME:-asterisk}
       DB_USER: ${VENUE_DB_USER:-asterisk}
       DB_PASSWORD: ${VENUE_DB_PASSWORD:?set VENUE_DB_PASSWORD in .env.venue}
-      ARI_USER: ${ASTERISK_ARI_USER:-pet}
-      ARI_PASSWORD: ${ASTERISK_ARI_PASSWORD:-pet}
-      AMI_USER: ${ASTERISK_AMI_USER:-pet}
-      AMI_PASSWORD: ${ASTERISK_AMI_PASSWORD:-pet}
-      SIP_DOMAIN: ${ASTERISK_SIP_DOMAIN:-pet.local}
+      ARI_USER: ${ASTERISK_ARI_USER:-dial}
+      ARI_PASSWORD: ${ASTERISK_ARI_PASSWORD:-dial}
+      AMI_USER: ${ASTERISK_AMI_USER:-dial}
+      AMI_PASSWORD: ${ASTERISK_AMI_PASSWORD:-dial}
+      SIP_DOMAIN: ${ASTERISK_SIP_DOMAIN:-dial.local}
       EXTERNAL_IP: ${EXTERNAL_IP:-}   # host LAN IP when not using network_mode: host
       RTP_START: "10000"
       RTP_END: "10200"
@@ -98,15 +98,15 @@ services:
       - "5060:5060/udp"
       - "5060:5060/tcp"
       - "5061:5061/tcp"
-      - "8088:8088/tcp"     # ARI  (PET's originate/status need to reach this - VPN or firewall it!)
+      - "8088:8088/tcp"     # ARI  (DIAL's originate/status need to reach this - VPN or firewall it!)
       - "8089:8089/tcp"     # WSS  (WebRTC scaffold)
       - "5038:5038/tcp"     # AMI  (used by venue-agent; keep internal)
       - "10000-10200:10000-10200/udp"
     volumes:
-      - asterisk-voicemail:/var/spool/asterisk/voicemail   # voicemail spool (PET cannot read it remotely - see README)
-      - asterisk-sounds:/var/lib/asterisk/sounds/pet       # custom prompts / IVR audio
+      - asterisk-voicemail:/var/spool/asterisk/voicemail   # voicemail spool (DIAL cannot read it remotely - see README)
+      - asterisk-sounds:/var/lib/asterisk/sounds/dial       # custom prompts / IVR audio
       - asterisk-keys:/etc/asterisk/keys                   # mount your own asterisk.crt/.key/.pem here
-      - asterisk-recordings:/var/spool/asterisk/pet-recordings  # record-by-phone announcements
+      - asterisk-recordings:/var/spool/asterisk/dial-recordings  # record-by-phone announcements
 
 volumes:
   venue-pgdata:

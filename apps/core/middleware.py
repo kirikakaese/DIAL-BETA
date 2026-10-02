@@ -31,7 +31,7 @@ class RateLimitMiddleware(MiddlewareMixin):
             return None
         for prefix, bucket in RATE_LIMITED_PATHS.items():
             if request.path.startswith(prefix):
-                limit = settings.PET_RATE_LIMITS.get(bucket, 60)
+                limit = settings.DIAL_RATE_LIMITS.get(bucket, 60)
                 key = f"rl:{bucket}:{client_ip(request)}"
                 try:
                     count = cache.get_or_set(key, 0, timeout=60)

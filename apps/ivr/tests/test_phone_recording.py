@@ -17,15 +17,15 @@ from apps.ivr import services
 pytestmark = pytest.mark.django_db
 
 SECRET = "hook-secret-123"
-HDR = {"HTTP_X_PET_PBX_SECRET": SECRET}
+HDR = {"HTTP_X_DIAL_PBX_SECRET": SECRET}
 
 
 @pytest.fixture(autouse=True)
 def _dirs(settings, tmp_path):
-    settings.PET_PBX_HOOK_SECRET = SECRET
+    settings.DIAL_PBX_HOOK_SECRET = SECRET
     settings.MEDIA_ROOT = str(tmp_path / "media")
-    settings.PET_RECORDING_DIR = str(tmp_path / "rec")
-    os.makedirs(settings.PET_RECORDING_DIR)
+    settings.DIAL_RECORDING_DIR = str(tmp_path / "rec")
+    os.makedirs(settings.DIAL_RECORDING_DIR)
 
 
 @pytest.fixture
@@ -106,8 +106,8 @@ def test_begin_returns_payload(event, ann, alice_phone, settings):
     res = services.begin_phone_recording(event, "demo-alice", ann.extension.announcement_record_code,
                                          callerid="4242")
     assert res["handled"] is True and res["number"] == "4801"
-    assert res["file"].startswith(settings.PET_RECORDING_DIR + os.sep) and "demo-4801-" in res["name"]
-    assert res["file"] == os.path.join(settings.PET_RECORDING_DIR, res["name"])
+    assert res["file"].startswith(settings.DIAL_RECORDING_DIR + os.sep) and "demo-4801-" in res["name"]
+    assert res["file"] == os.path.join(settings.DIAL_RECORDING_DIR, res["name"])
 
 
 def test_begin_wrong_code_or_feature_off(event, ann, alice_phone, plan):
@@ -173,7 +173,7 @@ def test_finish_imports_wav_and_emits(event, ann, alice_phone, settings, monkeyp
 
 def test_finish_keeps_reference_when_file_not_local(event, ann, settings):
     code = ann.extension.announcement_record_code
-    out = services.finish_phone_recording(event, code, "/var/spool/asterisk/pet-recordings/demo-4801-x.wav", 7)
+    out = services.finish_phone_recording(event, code, "/var/spool/asterisk/dial-recordings/demo-4801-x.wav", 7)
     assert out is not None
     ann.refresh_from_db()
     assert not ann.audio
@@ -181,7 +181,7 @@ def test_finish_keeps_reference_when_file_not_local(event, ann, settings):
     rec = ext.config["phone_recording"]
     assert rec["imported"] is False and rec["duration"] == 7
     # the PBX plays the file from its own disk until an upload/import replaces it
-    assert services.dialplan_for(ext)["greeting"] == "/var/spool/asterisk/pet-recordings/demo-4801-x"
+    assert services.dialplan_for(ext)["greeting"] == "/var/spool/asterisk/dial-recordings/demo-4801-x"
 
 
 def test_finish_refuses_files_outside_recording_dir(event, ann, tmp_path):

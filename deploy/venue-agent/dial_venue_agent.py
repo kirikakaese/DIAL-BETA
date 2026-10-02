@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""PET venue agent - mirrors one event's PBX configuration into a *local* PostgreSQL for Asterisk Realtime.
+"""DIAL venue agent - mirrors one event's PBX configuration into a *local* PostgreSQL for Asterisk Realtime.
 
-    GET  {PET_URL}/api/v1/pbx/snapshot/?event=<slug>         (If-None-Match: "<applied version>" -> 304)
-    GET  {PET_URL}/api/v1/pbx/snapshot/schema/?event=<slug>  (DDL, applied idempotently at startup)
-    POST {PET_URL}/api/v1/pbx/agent/heartbeat/               (every cycle, carries the local ps_contacts)
+    GET  {DIAL_URL}/api/v1/pbx/snapshot/?event=<slug>         (If-None-Match: "<applied version>" -> 304)
+    GET  {DIAL_URL}/api/v1/pbx/snapshot/schema/?event=<slug>  (DDL, applied idempotently at startup)
+    POST {DIAL_URL}/api/v1/pbx/agent/heartbeat/               (every cycle, carries the local ps_contacts)
 
 Cycle: fetch snapshot -> ONE transaction (DELETE + INSERT per table) -> COMMIT -> reload Asterisk
 -> persist state -> heartbeat -> sleep.  Only stdlib + psycopg 3.  See README.md next to this file.
@@ -37,7 +37,7 @@ except ImportError:  # pragma: no cover - reported by main()
 AGENT_VERSION = "1.0.0"
 DEFAULT_POLL_INTERVAL = 15
 MAX_BACKOFF = 300
-DEFAULT_STATE_DIR = "/var/lib/pet-venue-agent"
+DEFAULT_STATE_DIR = "/var/lib/dial-venue-agent"
 # Written by Asterisk itself (registrations, call records) - the snapshot never replaces them.
 PROTECTED_TABLES = frozenset({"ps_contacts", "cdr"})
 REALTIME_TABLES = ("ps_endpoints", "ps_auths", "ps_aors", "ps_contacts", "ps_endpoint_id_ips", "extensions",
@@ -50,7 +50,7 @@ DEFAULT_RELOAD_CMD = (
 AMI_RELOAD_MODULES = ("res_pjsip.so", "pbx_config.so", "app_voicemail.so")
 IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
-log = logging.getLogger("pet.venue_agent")
+log = logging.getLogger("dial.venue_agent")
 
 
 # ----------------------------------------------------------------------------- errors
@@ -62,7 +62,7 @@ class ConfigError(AgentError):
     pass
 
 
-class PetHTTPError(AgentError):
+class DialHTTPError(AgentError):
     def __init__(self, status: int | None, url: str, detail: str = ""):
         self.status, self.url, self.detail = status, url, detail
         where = f"HTTP {status}" if status else "connection failed"
@@ -99,18 +99,18 @@ def build_conninfo(env: Mapping[str, str]) -> str:
     parts = {
         "host": pick("HOST", "localhost"),
         "port": pick("PORT", "5432"),
-        "dbname": pick("NAME", "pet"),
-        "user": pick("USER", "pet"),
-        "password": pick("PASSWORD", "pet"),
+        "dbname": pick("NAME", "dial"),
+        "user": pick("USER", "dial"),
+        "password": pick("PASSWORD", "dial"),
         "connect_timeout": "5",
-        "application_name": f"pet-venue-agent/{AGENT_VERSION}",
+        "application_name": f"dial-venue-agent/{AGENT_VERSION}",
     }
     return " ".join(f"{k}={_conninfo_value(v)}" for k, v in parts.items())
 
 
 @dataclass
 class Config:
-    pet_url: str
+    dial_url: str
     event: str
     hook_secret: str = ""
     sync_token: str = ""
@@ -130,17 +130,17 @@ class Config:
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> Config:
         env = os.environ if env is None else env
-        pet_url = env.get("PET_URL", "").strip().rstrip("/")
-        event = env.get("PET_EVENT", "").strip()
-        missing = [name for name, value in (("PET_URL", pet_url), ("PET_EVENT", event)) if not value]
+        dial_url = env.get("DIAL_URL", "").strip().rstrip("/")
+        event = env.get("DIAL_EVENT", "").strip()
+        missing = [name for name, value in (("DIAL_URL", dial_url), ("DIAL_EVENT", event)) if not value]
         if missing:
             raise ConfigError("missing required environment variable(s): " + ", ".join(missing))
-        if not pet_url.startswith(("http://", "https://")):
-            raise ConfigError("PET_URL must start with https:// (or http:// for lab setups)")
-        hook_secret = env.get("PET_PBX_HOOK_SECRET", "").strip()
-        sync_token = env.get("PET_SYNC_TOKEN", "").strip()
+        if not dial_url.startswith(("http://", "https://")):
+            raise ConfigError("DIAL_URL must start with https:// (or http:// for lab setups)")
+        hook_secret = env.get("DIAL_PBX_HOOK_SECRET", "").strip()
+        sync_token = env.get("DIAL_SYNC_TOKEN", "").strip()
         if not hook_secret and not sync_token:
-            raise ConfigError("set PET_PBX_HOOK_SECRET (event hook secret) or PET_SYNC_TOKEN (service token)")
+            raise ConfigError("set DIAL_PBX_HOOK_SECRET (event hook secret) or DIAL_SYNC_TOKEN (service token)")
         poll_raw = env.get("POLL_INTERVAL", "").strip()
         try:
             poll_interval = max(1, int(poll_raw)) if poll_raw else None
@@ -149,7 +149,7 @@ class Config:
         except ValueError as exc:
             raise ConfigError(f"POLL_INTERVAL / AMI_PORT / HTTP_TIMEOUT must be numbers: {exc}")
         return cls(
-            pet_url=pet_url,
+            dial_url=dial_url,
             event=event,
             hook_secret=hook_secret,
             sync_token=sync_token,
@@ -179,7 +179,7 @@ def build_ssl_context(cfg: Config) -> ssl.SSLContext:
     return context
 
 
-class PetClient:
+class DialClient:
     """urllib based client for the three agent endpoints."""
 
     def __init__(self, cfg: Config):
@@ -191,16 +191,16 @@ class PetClient:
         return self._opener.open(request, timeout=timeout)
 
     def _headers(self) -> dict[str, str]:
-        headers = {"Accept": "application/json", "User-Agent": f"pet-venue-agent/{AGENT_VERSION}"}
+        headers = {"Accept": "application/json", "User-Agent": f"dial-venue-agent/{AGENT_VERSION}"}
         if self.cfg.hook_secret:
-            headers["X-PET-PBX-Secret"] = self.cfg.hook_secret
+            headers["X-DIAL-PBX-Secret"] = self.cfg.hook_secret
         if self.cfg.sync_token:
             headers["Authorization"] = f"Bearer {self.cfg.sync_token}"
         return headers
 
     def request(self, method: str, path: str, *, query: dict | None = None, body: dict | None = None,
                 headers: dict | None = None) -> tuple[int, dict]:
-        url = self.cfg.pet_url + path
+        url = self.cfg.dial_url + path
         if query:
             url += "?" + urllib.parse.urlencode(query)
         data = json.dumps(body, default=str).encode() if body is not None else None
@@ -217,17 +217,17 @@ class PetClient:
             if exc.code == 304:
                 raise NotModified()
             detail = exc.read()[:200].decode("utf-8", "replace") if exc.fp else str(exc.reason)
-            raise PetHTTPError(exc.code, url, detail.strip())
+            raise DialHTTPError(exc.code, url, detail.strip())
         except (urllib.error.URLError, OSError) as exc:  # includes socket.timeout / TimeoutError
-            raise PetHTTPError(None, url, str(getattr(exc, "reason", exc)))
+            raise DialHTTPError(None, url, str(getattr(exc, "reason", exc)))
         if not raw:
             return status, {}
         try:
             payload = json.loads(raw.decode("utf-8"))
         except ValueError as exc:
-            raise PetHTTPError(status, url, f"invalid JSON: {exc}")
+            raise DialHTTPError(status, url, f"invalid JSON: {exc}")
         if not isinstance(payload, dict):
-            raise PetHTTPError(status, url, "unexpected JSON payload (not an object)")
+            raise DialHTTPError(status, url, "unexpected JSON payload (not an object)")
         return status, payload
 
     def fetch_snapshot(self, current_version: str) -> dict:
@@ -235,14 +235,14 @@ class PetClient:
         headers = {"If-None-Match": f'"{current_version}"'} if current_version else {}
         _, payload = self.request("GET", "/api/v1/pbx/snapshot/", query={"event": self.cfg.event}, headers=headers)
         if "tables" not in payload or "version" not in payload:
-            raise PetHTTPError(200, self.cfg.pet_url + "/api/v1/pbx/snapshot/", "snapshot without tables/version")
+            raise DialHTTPError(200, self.cfg.dial_url + "/api/v1/pbx/snapshot/", "snapshot without tables/version")
         return payload
 
     def fetch_schema(self) -> str:
         _, payload = self.request("GET", "/api/v1/pbx/snapshot/schema/", query={"event": self.cfg.event})
         dialect = payload.get("dialect", "postgresql")
         if dialect != "postgresql":
-            raise PetHTTPError(200, self.cfg.pet_url, f"schema dialect {dialect!r} is not postgresql")
+            raise DialHTTPError(200, self.cfg.dial_url, f"schema dialect {dialect!r} is not postgresql")
         return payload.get("sql") or ""
 
     def heartbeat(self, payload: dict) -> dict:
@@ -252,7 +252,7 @@ class PetClient:
 
 # ----------------------------------------------------------------------------- state on disk
 class State:
-    """``last_version`` + ``snapshot.json`` so a restart without PET still knows what it runs."""
+    """``last_version`` + ``snapshot.json`` so a restart without DIAL still knows what it runs."""
 
     def __init__(self, directory: Path):
         self.dir = Path(directory)
@@ -553,10 +553,10 @@ class Backoff:
 
 # ----------------------------------------------------------------------------- the agent
 class Agent:
-    def __init__(self, cfg: Config, client: PetClient | None = None, connect=None, reloader: Reloader | None = None,
+    def __init__(self, cfg: Config, client: DialClient | None = None, connect=None, reloader: Reloader | None = None,
                  hostname: str | None = None):
         self.cfg = cfg
-        self.client = client or PetClient(cfg)
+        self.client = client or DialClient(cfg)
         self.state = State(cfg.state_dir)
         self.reloader = reloader or Reloader(cfg)
         self._connect = connect or (lambda: connect_db(cfg.conninfo))
@@ -670,29 +670,29 @@ class Agent:
     def heartbeat(self) -> dict | None:
         try:
             response = self.client.heartbeat(self.heartbeat_payload())
-        except PetHTTPError as exc:
+        except DialHTTPError as exc:
             log.warning("heartbeat failed: %s", exc)
             return None
         self._set_poll_interval(response.get("poll_interval"))
         self.behind = bool(response.get("behind"))
         if self.behind:
-            log.info("PET reports current version %s, we run %s - fetching next cycle",
+            log.info("DIAL reports current version %s, we run %s - fetching next cycle",
                      str(response.get("current_version", ""))[:12], self.state.version[:12] or "<none>")
         return response
 
     # --- lifecycle ---------------------------------------------------------------
     def startup(self) -> None:
-        if not self.cfg.pet_url.startswith("https://"):
-            log.warning("PET_URL is plain http:// - the hook secret and SIP credentials travel unencrypted!")
+        if not self.cfg.dial_url.startswith("https://"):
+            log.warning("DIAL_URL is plain http:// - the hook secret and SIP credentials travel unencrypted!")
         if self.cfg.insecure_skip_verify:
             log.warning("INSECURE_SKIP_VERIFY is set - TLS certificates are NOT verified. Do not use in production.")
         try:
             self.ensure_schema()
-        except Exception as exc:  # noqa: BLE001 - DB or PET unreachable: keep going with what we have
+        except Exception as exc:  # noqa: BLE001 - DB or DIAL unreachable: keep going with what we have
             log.warning("startup: could not apply schema (%s) - continuing", exc)
         cached = self.state.load_snapshot()
         if cached is None:
-            log.info("no cached snapshot in %s - waiting for PET", self.state.dir)
+            log.info("no cached snapshot in %s - waiting for DIAL", self.state.dir)
             return
         try:
             names = [t for t in cached.get("tables", {}) if t not in PROTECTED_TABLES and t in self.local_columns()]
@@ -719,7 +719,7 @@ class Agent:
             snapshot = self.client.fetch_snapshot(current)
         except NotModified:
             snapshot = None
-        # reaching this point means PET and (below) the DB work again - only a reload failure is sticky
+        # reaching this point means DIAL and (below) the DB work again - only a reload failure is sticky
         if not self.last_error.startswith("asterisk reload"):
             self.last_error = ""
         summary = ""
@@ -761,10 +761,10 @@ class Agent:
 
     def _on_failure(self, exc: Exception) -> None:
         self.last_error = str(exc)[:500]
-        if not isinstance(exc, PetHTTPError):
+        if not isinstance(exc, DialHTTPError):
             self._drop_connection()  # DB errors: reconnect next time
-        if not (isinstance(exc, PetHTTPError) and exc.status is None):
-            self.heartbeat()  # PET is reachable: let it show the error
+        if not (isinstance(exc, DialHTTPError) and exc.status is None):
+            self.heartbeat()  # DIAL is reachable: let it show the error
 
     # --- --check -----------------------------------------------------------------
     def check(self, out=sys.stdout) -> int:
@@ -777,24 +777,24 @@ class Agent:
                 ok = False
             print(f"[{mark}] {label}: {text}", file=out)
 
-        line("agent", None, f"pet-venue-agent {AGENT_VERSION} on {self.hostname}, event {self.cfg.event}")
+        line("agent", None, f"dial-venue-agent {AGENT_VERSION} on {self.hostname}, event {self.cfg.event}")
         line("state", None, f"{self.state.dir} version={self.state.version or '<none>'} "
                             f"cached_snapshot={'yes' if self.state.load_snapshot() else 'no'}")
         try:
             schema_sql = self.client.fetch_schema()
-            line("PET schema", True, f"{self.cfg.pet_url} ({schema_sql.count(';')} statement(s))")
+            line("DIAL schema", True, f"{self.cfg.dial_url} ({schema_sql.count(';')} statement(s))")
         except AgentError as exc:
-            line("PET schema", False, str(exc))
+            line("DIAL schema", False, str(exc))
         try:
             snapshot = self.client.fetch_snapshot("")
             tables = snapshot.get("tables") or {}
             rows = ", ".join(f"{t}={len((s or {}).get('rows') or [])}" for t, s in tables.items())
-            line("PET snapshot", True, f"version {str(snapshot.get('version'))[:12]} "
+            line("DIAL snapshot", True, f"version {str(snapshot.get('version'))[:12]} "
                                        f"poll_interval={snapshot.get('poll_interval')} ({rows})")
         except NotModified:
-            line("PET snapshot", True, "304 not modified")
+            line("DIAL snapshot", True, "304 not modified")
         except AgentError as exc:
-            line("PET snapshot", False, str(exc))
+            line("DIAL snapshot", False, str(exc))
         try:
             conn = self.db()
             columns = self.local_columns(refresh=True)
@@ -814,10 +814,10 @@ class Agent:
 
 # ----------------------------------------------------------------------------- main
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="PET venue agent: mirror PBX snapshots into a local PostgreSQL")
+    parser = argparse.ArgumentParser(description="DIAL venue agent: mirror PBX snapshots into a local PostgreSQL")
     parser.add_argument("--once", action="store_true", help="run one cycle and exit (cron style)")
     parser.add_argument("--check", action="store_true", help="print connectivity / database / schema status and exit")
-    parser.add_argument("--version", action="version", version=f"pet-venue-agent {AGENT_VERSION}")
+    parser.add_argument("--version", action="version", version=f"dial-venue-agent {AGENT_VERSION}")
     args = parser.parse_args(argv)
 
     level = (os.environ.get("LOG_LEVEL") or "INFO").upper()

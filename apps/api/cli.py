@@ -1,33 +1,33 @@
-"""``pet`` - a thin command-line client for the PET REST API.
+"""``dial`` - a thin command-line client for the DIAL REST API.
 
-Configuration comes from ``--url`` / ``--token`` or the environment variables ``PET_URL`` and
-``PET_TOKEN`` (a service-account token minted with ``manage.py pet_token`` or in the portal).
+Configuration comes from ``--url`` / ``--token`` or the environment variables ``DIAL_URL`` and
+``DIAL_TOKEN`` (a service-account token minted with ``manage.py dial_token`` or in the portal).
 
 Examples::
 
-    export PET_URL=http://localhost:8000 PET_TOKEN=pet_...
-    pet health [--event demo]
-    pet events list
-    pet events transition demo live
-    pet events export demo > demo-backup.json
-    pet extensions list --event demo --state requested
-    pet extensions create --event demo --number 4242 --type sip
-    pet extensions create --event demo --number 4700 --type trunk --block-digits 2
-    pet extensions approve <id>
-    pet queue --event demo
-    pet phonebook --event demo --format csv
-    pet phonebook directory --event demo [--rotate]
-    pet dect rfps --event demo
-    pet resync --event demo
-    pet pbx outbox --event demo [--retry-dead]
-    pet pbx connection show --event demo
-    pet pbx connection set --event demo --pbx '{"backend":"asterisk","ari_url":"http://10.1.1.5:8088/ari", ...}'
-    pet pbx connection reset --event demo [--part pbx|dect|all]
-    pet pbx connection set --event demo --provisioning agent --agent-poll-interval 15
-    pet pbx agent status --event demo
-    pet pbx snapshot --event demo [--out snapshot.json]
-    pet pages list --event demo
-    pet pages show --event demo <page-slug>
+    export DIAL_URL=http://localhost:8000 DIAL_TOKEN=dial_...
+    dial health [--event demo]
+    dial events list
+    dial events transition demo live
+    dial events export demo > demo-backup.json
+    dial extensions list --event demo --state requested
+    dial extensions create --event demo --number 4242 --type sip
+    dial extensions create --event demo --number 4700 --type trunk --block-digits 2
+    dial extensions approve <id>
+    dial queue --event demo
+    dial phonebook --event demo --format csv
+    dial phonebook directory --event demo [--rotate]
+    dial dect rfps --event demo
+    dial resync --event demo
+    dial pbx outbox --event demo [--retry-dead]
+    dial pbx connection show --event demo
+    dial pbx connection set --event demo --pbx '{"backend":"asterisk","ari_url":"http://10.1.1.5:8088/ari", ...}'
+    dial pbx connection reset --event demo [--part pbx|dect|all]
+    dial pbx connection set --event demo --provisioning agent --agent-poll-interval 15
+    dial pbx agent status --event demo
+    dial pbx snapshot --event demo [--out snapshot.json]
+    dial pages list --event demo
+    dial pages show --event demo <page-slug>
 
 Only ``requests`` (already a project dependency) is used; table output is plain text.
 """
@@ -113,7 +113,7 @@ class Client:
         self.base = url.rstrip("/")
         self.session = requests.Session()
         self.session.headers["Accept"] = "application/json"
-        self.session.headers["User-Agent"] = "pet-cli/1.0"
+        self.session.headers["User-Agent"] = "dial-cli/1.0"
         if token:
             self.session.headers["Authorization"] = f"Bearer {token}"
         self.timeout = timeout
@@ -479,18 +479,18 @@ def cmd_pages(client: Client, args) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="pet", description="Command-line client for the PET REST API.")
+    p = argparse.ArgumentParser(prog="dial", description="Command-line client for the DIAL REST API.")
     p.add_argument(
-        "--url", default=None, help="Base URL of PET (default: $PET_URL or http://localhost:8000)"
+        "--url", default=None, help="Base URL of DIAL (default: $DIAL_URL or http://localhost:8000)"
     )
-    p.add_argument("--token", default=None, help="Service token pet_... (default: $PET_TOKEN)")
+    p.add_argument("--token", default=None, help="Service token dial_... (default: $DIAL_TOKEN)")
     p.add_argument(
         "--format", choices=["table", "csv", "json"], default="table", help="Output format"
     )
     p.add_argument("--timeout", type=float, default=15.0)
     sub = p.add_subparsers(dest="command", required=True)
 
-    sub.add_parser("health", help="Health of PET, PBX and DECT backends").set_defaults(
+    sub.add_parser("health", help="Health of DIAL, PBX and DECT backends").set_defaults(
         func=cmd_health
     )
     sub.choices["health"].add_argument("--event", help="check this event's venue PBX/DECT, not the server default")
@@ -612,8 +612,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def make_client(args) -> Client:
-    url = args.url or os.environ.get("PET_URL") or DEFAULT_URL
-    token = args.token or os.environ.get("PET_TOKEN")
+    url = args.url or os.environ.get("DIAL_URL") or DEFAULT_URL
+    token = args.token or os.environ.get("DIAL_TOKEN")
     return Client(url, token, timeout=args.timeout)
 
 

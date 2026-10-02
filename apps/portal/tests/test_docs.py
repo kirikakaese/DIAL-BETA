@@ -31,7 +31,7 @@ def test_unknown_guide_404(client):
 
 def test_event_guide_features(client):
     r = docs.get("event-guide")
-    assert r.title.startswith("PET Event Guide")
+    assert r.title.startswith("DIAL Event Guide")
     assert 'href="/docs/operator-handbook/"' in r.body  # OPERATOR_HANDBOOK.md -> portal page
     assert ".md" not in "".join(h for h in r.body.split('href="')[1:] if h.startswith("/docs"))
     assert '<pre class="mermaid">stateDiagram-v2' in r.body and r.has_mermaid

@@ -1,7 +1,7 @@
-"""``manage.py pet_dect_vendors`` - load the built-in DECT vendor (EMC) table. Idempotent.
+"""``manage.py dial_dect_vendors`` - load the built-in DECT vendor (EMC) table. Idempotent.
 
-    manage.py pet_dect_vendors            # insert missing rows
-    manage.py pet_dect_vendors --update   # also refresh names of built-in rows (never user rows)
+    manage.py dial_dect_vendors            # insert missing rows
+    manage.py dial_dect_vendors --update   # also refresh names of built-in rows (never user rows)
 """
 from __future__ import annotations
 

@@ -13,7 +13,7 @@ in the response, which we use to correlate replies and skip unsolicited event me
 Attribute names below were derived from the AXI reference of SIP-DECT 7.x/8.x and verified
 against a 9.x OMM where noted. Where OMM releases differ, the affected XML is isolated in
 small ``_build_*`` / ``_parse_*`` methods so an operator can subclass ``MitelOMM`` and set
-``PET_DECT_BACKEND`` to the subclass. Only the Python standard library is used.
+``DIAL_DECT_BACKEND`` to the subclass. Only the Python standard library is used.
 
 Messages used:
 
@@ -192,7 +192,7 @@ class MitelOMM(DECTAdapter):
         self.conn = AXIConnection(
             cfg.get("HOST", ""), int(cfg.get("PORT") or 12622), cfg.get("USER", "omm"), cfg.get("PASSWORD", ""),
             verify_tls=bool(cfg.get("VERIFY_TLS", False)),
-            timeout=float(getattr(settings, "PET_OMM_TIMEOUT", 10)),
+            timeout=float(getattr(settings, "DIAL_OMM_TIMEOUT", 10)),
             sock_factory=sock_factory,
         )
 

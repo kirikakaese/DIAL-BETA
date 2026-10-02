@@ -1,9 +1,9 @@
 {% load i18n %}{% autoescape off %}{% blocktrans with u=user.username %}Hello {{ u }},
 
-the e-mail address of your PET account was just changed from {{ old_email }} to {{ new_email }}.
+the e-mail address of your DIAL account was just changed from {{ old_email }} to {{ new_email }}.
 From now on, please log in with the new address.{% endblocktrans %}
 
 {% trans "If you did not do this, contact your event's helpdesk immediately." %}
 
--- PET · Portable Event Telephone
+-- DIAL · DECT & IP Administration Layer
 {% endautoescape %}

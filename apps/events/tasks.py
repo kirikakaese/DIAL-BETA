@@ -5,7 +5,7 @@ from celery import shared_task
 from django.db.models import Q
 from django.utils import timezone
 
-log = logging.getLogger("pet.events")
+log = logging.getLogger("dial.events")
 
 
 def _advance(event, target: str, due) -> None:

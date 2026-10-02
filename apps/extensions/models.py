@@ -22,7 +22,7 @@ class ExtensionType(models.TextChoices):
     CONFERENCE = "conference", _("Conference room")
     VOICEMAIL = "voicemail", _("Voicemail box")
     APP = "app", _("Application / service")
-    FEDERATION = "federation", _("Federation trunk (PET-VPN)")
+    FEDERATION = "federation", _("Federation trunk (DIAL-VPN)")
     BREAKOUT = "breakout", _("PSTN breakout")
     TRUNK = "trunk", _("SIP trunk (number block)")
 
@@ -45,7 +45,7 @@ ENDPOINT_TYPES = [
 
 
 # Announcement / prompt language of an extension (Asterisk sound pack). "" = use the event default.
-LANGUAGE_CHOICES = [("", _("Event default")), *settings.PET_PBX_LANGUAGES]
+LANGUAGE_CHOICES = [("", _("Event default")), *settings.DIAL_PBX_LANGUAGES]
 
 
 def _new_token():
@@ -295,7 +295,7 @@ class Extension(TimeStampedModel):
     @property
     def ringback_class(self):
         """Asterisk music-on-hold class name used for ``Dial(...,m(<class>))``."""
-        return f"pet-{self.event.slug}-{self.number}"
+        return f"dial-{self.event.slug}-{self.number}"
 
     @property
     def caller_id_display(self):
@@ -311,8 +311,9 @@ class Extension(TimeStampedModel):
         return self.claim_token
 
     def _unique_dial_code(self, field: str) -> str:
-        """Random digit code (``PET_DECT_CLAIM_CODE_LENGTH``) unique for ``field`` among the event's live extensions."""
-        length = getattr(settings, "PET_DECT_CLAIM_CODE_LENGTH", 6)
+        """Random digit code (``DIAL_DECT_CLAIM_CODE_LENGTH``) unique for ``field`` among the event's live
+        extensions."""
+        length = getattr(settings, "DIAL_DECT_CLAIM_CODE_LENGTH", 6)
         live = Extension.objects.filter(event_id=self.event_id, state__in=["requested", "active", "suspended"])
         for _attempt in range(50):
             code = "".join(secrets.choice("0123456789") for _ in range(length))

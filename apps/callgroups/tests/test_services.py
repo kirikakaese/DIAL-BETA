@@ -111,7 +111,7 @@ def test_wrap_up_skips_recent_answerers(full_group, user):
 def test_dial_targets_degrades(event, ext_alice, settings):
     assert services.dial_targets(ext_alice) == []  # not a group
     assert services.dial_targets(None) == []
-    settings.PET_FEATURES = dict(settings.PET_FEATURES, callgroups=False)
+    settings.DIAL_FEATURES = dict(settings.DIAL_FEATURES, callgroups=False)
     assert services.dial_targets(ext_alice) == []
 
 
@@ -144,7 +144,7 @@ def test_feature_codes(full_group, event, user):
 
 
 def test_feature_code_flag_off(full_group, event, settings):
-    settings.PET_FEATURES = dict(settings.PET_FEATURES, callgroups=False)
+    settings.DIAL_FEATURES = dict(settings.DIAL_FEATURES, callgroups=False)
     assert services.handle_feature_code(event, "4242", "*72", "4400") is False
 
 
@@ -185,7 +185,7 @@ def test_pbx_route_uses_dial_targets(client, full_group, event, user):
 
     services.update_group(full_group, user, strategy="roundrobin")
     services.record_call(full_group, "4242")
-    r = client.get("/api/v1/pbx/route/?event=demo&number=4400", HTTP_X_PET_PBX_SECRET=hook_secret())
+    r = client.get("/api/v1/pbx/route/?event=demo&number=4400", HTTP_X_DIAL_PBX_SECRET=hook_secret())
     d = r.json()
     assert d["type"] == "group" and d["strategy"] == "serial"
-    assert d["targets"] == ["Local/4300@pet-demo", "Local/4301@pet-demo", "Local/4242@pet-demo"]
+    assert d["targets"] == ["Local/4300@dial-demo", "Local/4301@dial-demo", "Local/4242@dial-demo"]

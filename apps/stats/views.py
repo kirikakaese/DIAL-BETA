@@ -72,7 +72,7 @@ def mine(request, slug, *, event):
 def gdpr_export(request, slug, *, event):
     data = services.gdpr_export(request.user)
     resp = JsonResponse(data, json_dumps_params={"indent": 2, "ensure_ascii": False})
-    resp["Content-Disposition"] = f'attachment; filename="pet-calls-{request.user.username}.json"'
+    resp["Content-Disposition"] = f'attachment; filename="dial-calls-{request.user.username}.json"'
     return resp
 
 

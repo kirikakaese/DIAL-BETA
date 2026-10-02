@@ -40,7 +40,7 @@ class Migration(migrations.Migration):
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('created_at', models.DateTimeField(auto_now_add=True, db_index=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('direction', models.CharField(choices=[('out', 'Outbound (PET → handset)'), ('in', 'Inbound (handset → PET)')], default='out', max_length=3)),
+                ('direction', models.CharField(choices=[('out', 'Outbound (DIAL → handset)'), ('in', 'Inbound (handset → DIAL)')], default='out', max_length=3)),
                 ('text', models.CharField(max_length=480)),
                 ('state', models.CharField(choices=[('queued', 'Queued'), ('sent', 'Sent'), ('failed', 'Failed'), ('delivered', 'Delivered')], db_index=True, default='queued', max_length=10)),
                 ('sent_at', models.DateTimeField(blank=True, null=True)),

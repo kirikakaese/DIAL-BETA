@@ -57,7 +57,7 @@
 
   <section class="card">
     <div class="card-header"><h2>{% trans "Test ringback" %}</h2></div>
-    <p class="muted small">{% trans "PET calls your handset back after the chosen delay - handy to check DECT coverage or a new phone." %}</p>
+    <p class="muted small">{% trans "DIAL calls your handset back after the chosen delay - handy to check DECT coverage or a new phone." %}</p>
     {% if my_extensions %}
     <form method="post" action="{% url 'callback:ringback' event.slug %}">{% csrf_token %}
       <div class="form-row">

@@ -1,4 +1,4 @@
-"""Tests for the PET venue agent (pytest + unittest.mock, no database / network needed).
+"""Tests for the DIAL venue agent (pytest + unittest.mock, no database / network needed).
 
 Run from the repository root:
     .venv/bin/python -m pytest -p no:cacheprovider -p no:warnings -o addopts="" -q deploy/venue-agent
@@ -14,16 +14,16 @@ from contextlib import contextmanager
 from pathlib import Path
 from unittest import mock
 
-import pet_venue_agent as agent_mod
+import dial_venue_agent as agent_mod
 import pytest
-from pet_venue_agent import (
+from dial_venue_agent import (
     AMI,
     Agent,
     Backoff,
     Config,
     NotModified,
-    PetClient,
-    PetHTTPError,
+    DialClient,
+    DialHTTPError,
     Reloader,
     ReloadError,
     plan_tables,
@@ -114,10 +114,10 @@ class FakeConn:
 
 def make_config(tmp_path: Path, **overrides) -> Config:
     values = {
-        "pet_url": "https://pet.example.org",
+        "dial_url": "https://dial.example.org",
         "event": "demo",
         "hook_secret": "s3cret",
-        "conninfo": "host=venue-db dbname=pet",
+        "conninfo": "host=venue-db dbname=dial",
         "state_dir": tmp_path / "state",
         "reload_cmd": "true",
     }
@@ -128,7 +128,7 @@ def make_config(tmp_path: Path, **overrides) -> Config:
 def make_agent(tmp_path: Path, conn: FakeConn | None = None, snapshot=None, **cfg_overrides):
     cfg = make_config(tmp_path, **cfg_overrides)
     conn = conn or FakeConn()
-    client = mock.MagicMock(spec=PetClient)
+    client = mock.MagicMock(spec=DialClient)
     client.fetch_schema.return_value = "CREATE TABLE IF NOT EXISTS ps_endpoints (id varchar(40));"
     client.heartbeat.return_value = {"ok": True, "current_version": "", "behind": False}
     if snapshot is not None:
@@ -145,22 +145,22 @@ def sample_snapshot(version="abc123def456", **extra_tables) -> dict:
     tables = {
         "ps_endpoints": {"key": "id", "rows": [
             {"id": "demo-aaaa", "transport": "transport-udp", "aors": "demo-aaaa", "auth": "demo-aaaa",
-             "context": "pet-demo", "disallow": "all", "allow": "alaw,ulaw", "callerid": None,
-             "set_var": "PET_EVENT=demo"},
+             "context": "dial-demo", "disallow": "all", "allow": "alaw,ulaw", "callerid": None,
+             "set_var": "DIAL_EVENT=demo"},
         ]},
         "ps_auths": {"key": "id", "rows": [
             {"id": "demo-aaaa", "auth_type": "userpass", "username": "demo-aaaa", "password": "pw"},
         ]},
-        "ps_aors": {"key": "id", "rows": [{"id": "demo-aaaa", "max_contacts": 1, "mailboxes": "4242@pet-demo"}]},
+        "ps_aors": {"key": "id", "rows": [{"id": "demo-aaaa", "max_contacts": 1, "mailboxes": "4242@dial-demo"}]},
         "ps_endpoint_id_ips": {"key": "id", "rows": []},
         "extensions": {"key": "id", "rows": [
-            {"id": 1, "context": "pet-demo", "exten": "4242", "priority": 1, "app": "Set",
-             "appdata": "__PET_EVENT=demo"},
-            {"id": 2, "context": "pet-demo", "exten": "4242", "priority": 2, "app": "Dial",
+            {"id": 1, "context": "dial-demo", "exten": "4242", "priority": 1, "app": "Set",
+             "appdata": "__DIAL_EVENT=demo"},
+            {"id": 2, "context": "dial-demo", "exten": "4242", "priority": 2, "app": "Dial",
              "appdata": "PJSIP/demo-aaaa,30,tT"},
         ]},
         "voicemail_users": {"key": "id", "rows": [
-            {"id": 1, "context": "pet-demo", "mailbox": "4242", "password": "1234", "fullname": "Alice"},
+            {"id": 1, "context": "dial-demo", "mailbox": "4242", "password": "1234", "fullname": "Alice"},
         ]},
     }
     tables.update(extra_tables)
@@ -171,25 +171,25 @@ def sample_snapshot(version="abc123def456", **extra_tables) -> dict:
 # ----------------------------------------------------------------------------- config
 def test_config_from_env_builds_conninfo_and_defaults():
     cfg = Config.from_env({
-        "PET_URL": "https://pet.example.org/", "PET_EVENT": "demo", "PET_PBX_HOOK_SECRET": "x",
+        "DIAL_URL": "https://dial.example.org/", "DIAL_EVENT": "demo", "DIAL_PBX_HOOK_SECRET": "x",
         "DB_HOST": "venue-db", "DB_PORT": "5433", "DB_NAME": "asterisk", "DB_USER": "ast", "DB_PASSWORD": "p'w",
-        "AMI_HOST": "asterisk", "AMI_USER": "pet", "AMI_PASSWORD": "pet",
+        "AMI_HOST": "asterisk", "AMI_USER": "dial", "AMI_PASSWORD": "dial",
     })
-    assert cfg.pet_url == "https://pet.example.org"  # trailing slash stripped
+    assert cfg.dial_url == "https://dial.example.org"  # trailing slash stripped
     assert cfg.poll_interval is None  # follow the server
     assert "host='venue-db'" in cfg.conninfo and "port='5433'" in cfg.conninfo
     assert "dbname='asterisk'" in cfg.conninfo and "password='p\\'w'" in cfg.conninfo
     assert cfg.reload_cmd == agent_mod.DEFAULT_RELOAD_CMD
     assert cfg.ami_host == "asterisk" and cfg.ami_port == 5038
-    assert cfg.state_dir == Path("/var/lib/pet-venue-agent")
+    assert cfg.state_dir == Path("/var/lib/dial-venue-agent")
 
 
 def test_config_requires_url_event_and_credentials():
-    with pytest.raises(agent_mod.ConfigError, match="PET_URL, PET_EVENT"):
+    with pytest.raises(agent_mod.ConfigError, match="DIAL_URL, DIAL_EVENT"):
         Config.from_env({})
-    with pytest.raises(agent_mod.ConfigError, match="PET_PBX_HOOK_SECRET"):
-        Config.from_env({"PET_URL": "https://x", "PET_EVENT": "demo"})
-    cfg = Config.from_env({"PET_URL": "https://x", "PET_EVENT": "demo", "PET_SYNC_TOKEN": "tok",
+    with pytest.raises(agent_mod.ConfigError, match="DIAL_PBX_HOOK_SECRET"):
+        Config.from_env({"DIAL_URL": "https://x", "DIAL_EVENT": "demo"})
+    cfg = Config.from_env({"DIAL_URL": "https://x", "DIAL_EVENT": "demo", "DIAL_SYNC_TOKEN": "tok",
                            "DATABASE_URL": "postgres://a:b@c/d", "ASTERISK_RELOAD": "", "POLL_INTERVAL": "7"})
     assert cfg.conninfo == "postgres://a:b@c/d" and cfg.reload_cmd == "" and cfg.poll_interval == 7
 
@@ -207,7 +207,7 @@ class _Response(io.BytesIO):
 
 def test_client_sends_auth_headers_and_if_none_match(tmp_path):
     cfg = make_config(tmp_path, sync_token="tok")
-    client = PetClient(cfg)
+    client = DialClient(cfg)
     seen = {}
 
     def fake_open(request, timeout):
@@ -218,23 +218,23 @@ def test_client_sends_auth_headers_and_if_none_match(tmp_path):
         snapshot = client.fetch_snapshot("v1")
     request = seen["request"]
     assert snapshot["version"] == "v2"
-    assert request.full_url == "https://pet.example.org/api/v1/pbx/snapshot/?event=demo"
-    assert request.get_header("X-pet-pbx-secret") == "s3cret"
+    assert request.full_url == "https://dial.example.org/api/v1/pbx/snapshot/?event=demo"
+    assert request.get_header("X-dial-pbx-secret") == "s3cret"
     assert request.get_header("Authorization") == "Bearer tok"
     assert request.get_header("If-none-match") == '"v1"'
 
 
 def test_client_translates_304_and_errors(tmp_path):
-    client = PetClient(make_config(tmp_path))
+    client = DialClient(make_config(tmp_path))
     not_modified = urllib.error.HTTPError("u", 304, "Not Modified", {}, None)
     with mock.patch.object(client, "_open", side_effect=not_modified), pytest.raises(NotModified):
         client.fetch_snapshot("v1")
     forbidden = urllib.error.HTTPError("u", 403, "Forbidden", {}, io.BytesIO(b'{"detail":"bad secret"}'))
-    with mock.patch.object(client, "_open", side_effect=forbidden), pytest.raises(PetHTTPError) as info:
+    with mock.patch.object(client, "_open", side_effect=forbidden), pytest.raises(DialHTTPError) as info:
         client.fetch_schema()
     assert info.value.status == 403 and "bad secret" in str(info.value)
     with mock.patch.object(client, "_open", side_effect=urllib.error.URLError("refused")), \
-            pytest.raises(PetHTTPError) as info:
+            pytest.raises(DialHTTPError) as info:
         client.heartbeat({})
     assert info.value.status is None
 
@@ -253,8 +253,8 @@ def test_apply_snapshot_builds_sql_in_one_transaction(tmp_path):
     inserts = {sql: rows for sql, rows in writes if sql.startswith("INSERT")}
     ep_sql = ('INSERT INTO "ps_endpoints" ("id", "transport", "aors", "auth", "context", "disallow", "allow", '
               '"callerid", "set_var") VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)')
-    assert inserts[ep_sql] == [("demo-aaaa", "transport-udp", "demo-aaaa", "demo-aaaa", "pet-demo", "all",
-                                "alaw,ulaw", None, "PET_EVENT=demo")]
+    assert inserts[ep_sql] == [("demo-aaaa", "transport-udp", "demo-aaaa", "demo-aaaa", "dial-demo", "all",
+                                "alaw,ulaw", None, "DIAL_EVENT=demo")]
     ext_sql = ('INSERT INTO "extensions" ("id", "context", "exten", "priority", "app", "appdata") '
                'VALUES (%s, %s, %s, %s, %s, %s)')
     assert len(inserts[ext_sql]) == 2 and inserts[ext_sql][1][4] == "Dial"
@@ -305,7 +305,7 @@ def test_unknown_column_dropped_after_one_schema_refresh(tmp_path, caplog):
     assert len(conn.statements("SELECT table_name")) == 2
     aor_inserts = [(sql, rows) for sql, rows in conn.writes() if '"ps_aors"' in sql and sql.startswith("INSERT")]
     assert aor_inserts == [('INSERT INTO "ps_aors" ("id", "max_contacts", "mailboxes") VALUES (%s, %s, %s)',
-                            [("demo-aaaa", 1, "4242@pet-demo")])]
+                            [("demo-aaaa", 1, "4242@dial-demo")])]
     assert "dropping column(s) qualify_frequency from ps_aors" in caplog.text
 
 
@@ -337,7 +337,7 @@ def test_plan_tables_rejects_weird_identifiers():
 # ----------------------------------------------------------------------------- cycle / state
 def test_cycle_applies_reloads_saves_state_and_heartbeats(tmp_path, caplog):
     agent, conn, client, reloader = make_agent(tmp_path, snapshot=sample_snapshot("v1"))
-    with caplog.at_level(logging.INFO, logger="pet.venue_agent"):
+    with caplog.at_level(logging.INFO, logger="dial.venue_agent"):
         changed = agent.cycle()
     assert changed is True
     client.fetch_snapshot.assert_called_once_with("")  # nothing applied yet -> no If-None-Match
@@ -355,7 +355,7 @@ def test_cycle_304_keeps_database_untouched_but_heartbeats(tmp_path, caplog):
     agent, conn, client, reloader = make_agent(tmp_path)
     agent.state.save(sample_snapshot("v1"))
     client.fetch_snapshot.side_effect = NotModified()
-    with caplog.at_level(logging.DEBUG, logger="pet.venue_agent"):
+    with caplog.at_level(logging.DEBUG, logger="dial.venue_agent"):
         changed = agent.cycle()
     assert changed is False
     client.fetch_snapshot.assert_called_once_with("v1")
@@ -387,14 +387,14 @@ def test_heartbeat_response_updates_poll_interval_and_behind(tmp_path):
     client.heartbeat.return_value = {"ok": True, "current_version": "v2", "poll_interval": 42, "behind": True}
     agent.heartbeat()
     assert agent.poll_interval == 42 and agent.behind is True
-    client.heartbeat.side_effect = PetHTTPError(503, "u")
+    client.heartbeat.side_effect = DialHTTPError(503, "u")
     assert agent.heartbeat() is None  # never raises
 
 
 def test_startup_reapplies_cached_snapshot_when_db_is_empty(tmp_path):
     agent, conn, client, reloader = make_agent(tmp_path)
     agent.state.save(sample_snapshot("cached"))
-    client.fetch_schema.side_effect = PetHTTPError(None, "u", "offline")  # PET unreachable
+    client.fetch_schema.side_effect = DialHTTPError(None, "u", "offline")  # DIAL unreachable
     agent.startup()
     assert [sql for sql, _ in conn.writes() if sql.startswith("DELETE")]  # re-applied
     reloader.reload.assert_called_once()
@@ -412,12 +412,12 @@ def test_run_once_exit_codes_and_error_heartbeat(tmp_path):
     agent, conn, client, _ = make_agent(tmp_path, snapshot=sample_snapshot("v1"))
     assert agent.run(once=True) == 0
     agent, conn, client, _ = make_agent(tmp_path)
-    client.fetch_snapshot.side_effect = PetHTTPError(500, "u", "boom")
+    client.fetch_snapshot.side_effect = DialHTTPError(500, "u", "boom")
     assert agent.run(once=True) == 1
-    # PET was reachable (a status code came back) -> the error is reported through the heartbeat
+    # DIAL was reachable (a status code came back) -> the error is reported through the heartbeat
     assert client.heartbeat.call_args.args[0]["message"].startswith("HTTP 500")
     agent, conn, client, _ = make_agent(tmp_path)
-    client.fetch_snapshot.side_effect = PetHTTPError(None, "u", "refused")
+    client.fetch_snapshot.side_effect = DialHTTPError(None, "u", "refused")
     assert agent.run(once=True) == 1
     client.heartbeat.assert_not_called()  # unreachable: pointless
 
@@ -432,7 +432,7 @@ def test_backoff_progression():
 
 def test_run_loop_backs_off_and_stops_on_sigterm(tmp_path):
     agent, conn, client, _ = make_agent(tmp_path)
-    client.fetch_snapshot.side_effect = PetHTTPError(None, "u", "refused")
+    client.fetch_snapshot.side_effect = DialHTTPError(None, "u", "refused")
     delays = []
 
     def fake_wait(delay):
@@ -482,13 +482,13 @@ def _ami_factory(sock: FakeSocket):
 
 def test_ami_reload_sends_login_reload_per_module_and_logoff(tmp_path):
     sock = FakeSocket()
-    cfg = make_config(tmp_path, ami_host="asterisk", ami_user="pet", ami_password="pw", reload_cmd="echo no")
+    cfg = make_config(tmp_path, ami_host="asterisk", ami_user="dial", ami_password="pw", reload_cmd="echo no")
     reloader = Reloader(cfg, ami_factory=_ami_factory(sock))
     assert reloader.mode == "ami"  # AMI wins over ASTERISK_RELOAD
     assert reloader.reload() == "AMI reload of res_pjsip.so, pbx_config.so, app_voicemail.so"
     actions = [re.search(r"Action: (\w+)", p).group(1) for p in sock.sent]
     assert actions == ["Login", "Reload", "Reload", "Reload", "Logoff"]
-    assert "Username: pet\r\nSecret: pw\r\n" in sock.sent[0]
+    assert "Username: dial\r\nSecret: pw\r\n" in sock.sent[0]
     modules = [re.search(r"Module: (\S+)", p).group(1) for p in sock.sent if "Module:" in p]
     assert modules == ["res_pjsip.so", "pbx_config.so", "app_voicemail.so"]
     assert all(p.endswith("\r\n\r\n") for p in sock.sent)
@@ -496,7 +496,7 @@ def test_ami_reload_sends_login_reload_per_module_and_logoff(tmp_path):
 
 
 def test_ami_reload_failure_and_probe(tmp_path):
-    cfg = make_config(tmp_path, ami_host="asterisk", ami_user="pet", ami_password="pw")
+    cfg = make_config(tmp_path, ami_host="asterisk", ami_user="dial", ami_password="pw")
     reloader = Reloader(cfg, ami_factory=_ami_factory(FakeSocket(fail_modules={"app_voicemail.so"})))
     with pytest.raises(ReloadError, match="app_voicemail.so"):
         reloader.reload()
@@ -535,7 +535,7 @@ def test_check_reports_ok(tmp_path):
     out = io.StringIO()
     assert agent.check(out=out) == 0
     text = out.getvalue()
-    assert "[OK  ] PET schema" in text and "[OK  ] PET snapshot: version v7" in text
+    assert "[OK  ] DIAL schema" in text and "[OK  ] DIAL snapshot: version v7" in text
     assert "[OK  ] database: connected (8 table(s)" in text
     assert "[OK  ] realtime tables: ps_endpoints=2" in text
     assert "[OK  ] asterisk: reload mode cli, probe ok" in text
@@ -545,23 +545,23 @@ def test_check_reports_ok(tmp_path):
 def test_check_reports_failures(tmp_path):
     conn = FakeConn(columns={"ps_endpoints": ["id"]})
     agent, conn, client, reloader = make_agent(tmp_path, conn=conn)
-    client.fetch_schema.side_effect = PetHTTPError(401, "https://pet.example.org/...", "bad secret")
-    client.fetch_snapshot.side_effect = PetHTTPError(None, "https://pet.example.org/...", "refused")
+    client.fetch_schema.side_effect = DialHTTPError(401, "https://dial.example.org/...", "bad secret")
+    client.fetch_snapshot.side_effect = DialHTTPError(None, "https://dial.example.org/...", "refused")
     reloader.probe.return_value = None
     out = io.StringIO()
     assert agent.check(out=out) == 1
     text = out.getvalue()
-    assert "[FAIL] PET schema: HTTP 401" in text and "[FAIL] PET snapshot: connection failed" in text
+    assert "[FAIL] DIAL schema: HTTP 401" in text and "[FAIL] DIAL snapshot: connection failed" in text
     assert "[FAIL] realtime tables: ps_endpoints=0; MISSING: ps_auths" in text
     assert "[--  ] asterisk: reload mode cli, probe not possible" in text
 
 
 def test_main_check_exit_code_and_config_error(tmp_path, monkeypatch):
-    monkeypatch.delenv("PET_URL", raising=False)
+    monkeypatch.delenv("DIAL_URL", raising=False)
     assert agent_mod.main(["--check"]) == 2  # missing config
-    monkeypatch.setenv("PET_URL", "https://pet.example.org")
-    monkeypatch.setenv("PET_EVENT", "demo")
-    monkeypatch.setenv("PET_PBX_HOOK_SECRET", "x")
+    monkeypatch.setenv("DIAL_URL", "https://dial.example.org")
+    monkeypatch.setenv("DIAL_EVENT", "demo")
+    monkeypatch.setenv("DIAL_PBX_HOOK_SECRET", "x")
     monkeypatch.setenv("STATE_DIR", str(tmp_path))
     fake_agent = mock.MagicMock()
     fake_agent.check.return_value = 0

@@ -157,7 +157,8 @@ def find_user_by_email(email: str):
 
 
 def claim_redeem_url(claim: ExtensionClaim) -> str:
-    return settings.PET_PUBLIC_URL.rstrip("/") + reverse("numbering:claim_redeem", args=[claim.event.slug, claim.token])
+    path = reverse("numbering:claim_redeem", args=[claim.event.slug, claim.token])
+    return settings.DIAL_PUBLIC_URL.rstrip("/") + path
 
 
 def send_claim_invite(claim: ExtensionClaim) -> bool:
@@ -174,7 +175,7 @@ def send_claim_invite(claim: ExtensionClaim) -> bool:
         "until": timezone.localtime(claim.valid_until).strftime("%Y-%m-%d %H:%M"),
         "url": claim_redeem_url(claim), "note": claim.note,
     }
-    send_mail(f"[PET] Extension {claim.number} reserved for you at {event.name}", body.rstrip() + "\n",
+    send_mail(f"[DIAL] Extension {claim.number} reserved for you at {event.name}", body.rstrip() + "\n",
               settings.DEFAULT_FROM_EMAIL, [to], fail_silently=True)
     return True
 

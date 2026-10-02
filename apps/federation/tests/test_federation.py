@@ -31,7 +31,7 @@ def test_route_longest_prefix_wins(event, orga, peer):
 
 
 def test_flag_off(event, peer, settings):
-    settings.PET_FEATURES = {**settings.PET_FEATURES, "federation": False}
+    settings.DIAL_FEATURES = {**settings.DIAL_FEATURES, "federation": False}
     assert services.route(event, "81234") is None
     with pytest.raises(services.FederationError):
         services.register_peer(event, None, name="x", remote_prefix="7", sip_host="x")
@@ -55,17 +55,17 @@ def test_pjsip_config(peer):
 
 
 def test_publish_and_fetch_directory(event, settings):
-    settings.PET_PUBLIC_URL = "https://pet.demo.example"
+    settings.DIAL_PUBLIC_URL = "https://dial.demo.example"
     event.dial_prefix = "7"
     event.save()
     entry = services.publish_directory_entry(event)
-    assert entry["event_slug"] == "demo" and entry["dial_prefix"] == "7" and entry["sip_host"] == "demo.pet.local"
+    assert entry["event_slug"] == "demo" and entry["dial_prefix"] == "7" and entry["sip_host"] == "demo.dial.local"
 
     fake = mock.Mock()
     fake.json.return_value = [entry, {"bogus": True}]
     fake.raise_for_status.return_value = None
     with mock.patch("requests.get", return_value=fake) as get:
-        rows = services.fetch_directory("https://pet.demo.example/api/v1/federation/directory/")
+        rows = services.fetch_directory("https://dial.demo.example/api/v1/federation/directory/")
     assert get.call_count == 1 and len(rows) == 1
     assert FederationDirectoryEntry.objects.get().event_name == "Demo Camp"
 
@@ -76,8 +76,8 @@ def test_publish_and_fetch_directory(event, settings):
 
 
 def test_pbx_route_api(client, event, peer, settings):
-    settings.PET_PBX_HOOK_SECRET = "s3cret"
-    d = client.get("/api/v1/pbx/route/?event=demo&number=81234", HTTP_X_PET_PBX_SECRET="s3cret").json()
+    settings.DIAL_PBX_HOOK_SECRET = "s3cret"
+    d = client.get("/api/v1/pbx/route/?event=demo&number=81234", HTTP_X_DIAL_PBX_SECRET="s3cret").json()
     assert d["type"] == "federation" and d["targets"] == [f"PJSIP/1234@fed-{peer.pk}"]
 
 
@@ -107,4 +107,4 @@ def test_api(client, event, user, orga, member, peer):
     assert len(rows) == 1 and "auth_password" not in rows[0]
     r = client.post("/api/v1/federation/peers/", {"event": "demo", "name": "C4", "remote_prefix": "6", "sip_host": "h"})
     assert r.status_code == 201
-    assert client.get(f"/api/v1/federation/peers/{peer.pk}/pjsip/").json()["config"].startswith("; PET federation")
+    assert client.get(f"/api/v1/federation/peers/{peer.pk}/pjsip/").json()["config"].startswith("; DIAL federation")
