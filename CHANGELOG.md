@@ -5,6 +5,13 @@ All notable changes to DIAL are documented here. The format follows
 
 ## Unreleased
 
+### Added — early-access gate
+
+- `DIAL_EARLY_ACCESS_PASSWORD` puts a shared password in front of every page and the API while DIAL runs
+  on its public domain before launch (`/early-access/`, signed cookie bound to the current password, rate
+  limited). Phones, PBX hooks, the venue agent, the remote phonebook, the federation directory and
+  `dial_` service tokens are exempt. Same contract as EVAC's gate.
+
 ### Changed — renamed PET to DIAL
 
 - The project is now **DIAL - DECT & IP Administration Layer** (formerly PET - Portable Event Telephone).

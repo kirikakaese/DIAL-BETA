@@ -11,6 +11,7 @@ RATE_LIMITED_PATHS = {
     "/accounts/register/": "register",
     "/accounts/password/reset/": "password_reset",
     "/api/v1/availability/": "availability",
+    "/early-access/": "early_access",
 }
 
 

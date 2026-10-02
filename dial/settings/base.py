@@ -12,6 +12,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 env = environ.Env(
     DEBUG=(bool, False),
+    DIAL_EARLY_ACCESS_PASSWORD=(str, ""),
+    DIAL_EARLY_ACCESS_DAYS=(int, 30),
+    DIAL_EARLY_ACCESS_MESSAGE=(str, ""),
     ALLOWED_HOSTS=(list, ["*"]),
     CSRF_TRUSTED_ORIGINS=(list, []),
     DATABASE_URL=(str, f"sqlite:///{BASE_DIR / 'dial.sqlite3'}"),
@@ -139,6 +142,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "apps.core.middleware.RateLimitMiddleware",
+    "apps.core.early_access.EarlyAccessMiddleware",
     "apps.core.middleware.CurrentEventMiddleware",
 ]
 
@@ -348,7 +352,13 @@ DIAL_RATE_LIMITS = {
     "register": 10,
     "password_reset": 10,
     "availability": 120,
+    "early_access": 10,
 }
+# Early-access gate: a shared password in front of the whole site while a public server is not ready for
+# everyone (same contract as EVAC ADR-0012). Empty = off. Changing the password locks everybody out again.
+DIAL_EARLY_ACCESS_PASSWORD = env("DIAL_EARLY_ACCESS_PASSWORD")
+DIAL_EARLY_ACCESS_DAYS = env("DIAL_EARLY_ACCESS_DAYS")
+DIAL_EARLY_ACCESS_MESSAGE = env("DIAL_EARLY_ACCESS_MESSAGE")
 # Registration: True = GURU3-style e-mail-first signup (confirm link before the account is created;
 # unverified legacy accounts cannot register extensions); False = one-step signup + verification mail.
 DIAL_REQUIRE_EMAIL_VERIFICATION = env("DIAL_REQUIRE_EMAIL_VERIFICATION")

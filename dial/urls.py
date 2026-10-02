@@ -12,7 +12,10 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
 )
 
+from apps.core.early_access import gate as early_access_gate  # noqa: E402
+
 urlpatterns = [
+    path("early-access/", early_access_gate, name="early_access"),
     path("admin/", admin.site.urls),
     path("accounts/", include("apps.accounts.urls", namespace="accounts")),
     path("api/v1/", include("apps.api.urls", namespace="api")),
