@@ -1,0 +1,96 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Import extensions from CSV" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <p class="eyebrow eyebrow-orga">{% trans "Orga" %} · {% trans "Numbers" %}</p>
+    <h1>{% trans "Import extensions from CSV" %}</h1>
+    <p class="subtitle">{% trans "Bulk-create numbers (and, optionally, their owners) from a spreadsheet export. Numbers are activated immediately; taken, blocked and emergency numbers are skipped." %}</p>
+  </div>
+  <div class="actions">
+    <a class="btn" href="{% url 'portal:orga_import_csv_sample' event.slug %}">{% trans "Download sample CSV" %}</a>
+    <a class="btn" href="{% url 'portal:orga_extensions' event.slug %}">{% trans "All extensions" %}</a>
+  </div>
+</div>
+
+<ol class="steps small muted">
+  <li{% if step == 'upload' %} class="active"{% endif %}>1. {% trans "Upload" %}</li>
+  <li{% if step == 'preview' %} class="active"{% endif %}>2. {% trans "Preview" %}</li>
+  <li{% if step == 'done' %} class="active"{% endif %}>3. {% trans "Result" %}</li>
+</ol>
+
+{% if step == 'upload' %}
+<div class="grid grid-2">
+  <div class="card">
+    <form method="post" enctype="multipart/form-data">{% csrf_token %}
+      <input type="hidden" name="step" value="upload">
+      {% include "portal/_form.html" with form=form %}
+      <div class="form-actions"><button class="btn btn-primary">{% trans "Preview import" %}</button></div>
+    </form>
+  </div>
+  <div class="card">
+    <h2>{% trans "Columns" %}</h2>
+    <p class="small muted">{% trans "Column names are case-insensitive; unknown columns are ignored." %}</p>
+    <div class="table-wrap"><table class="small">
+      <thead><tr><th scope="col">{% trans "Columns" %}</th><th scope="col">{% trans "Description" %}</th></tr></thead>
+      <tbody>
+      <tr><td><code>number</code></td><td>{% trans "Required. The extension number." %}</td></tr>
+      <tr><td><code>type</code></td><td>{% trans "Extension type (dect, sip, webrtc, gsm, analog, group, announcement, ivr, conference, voicemail, app…). Default: dect." %}</td></tr>
+      <tr><td><code>display_name</code></td><td>{% trans "Caller-ID name. Defaults to the owner's nickname." %}</td></tr>
+      <tr><td><code>email</code></td><td>{% trans "Owner's e-mail address. Empty = the number belongs to the event (orga)." %}</td></tr>
+      <tr><td><code>username</code></td><td>{% trans "Nickname for a newly created owner (or lookup by nickname when no e-mail is given)." %}</td></tr>
+      <tr><td><code>description</code>, <code>location</code></td><td>{% trans "Free text shown in the phonebook." %}</td></tr>
+      <tr><td><code>in_phonebook</code></td><td>{% trans "yes/no, 1/0, true/false. Default: yes." %}</td></tr>
+      <tr><td><code>group</code></td><td>{% trans "Slug of a user group of this event; the owner is added to it." %}</td></tr>
+      <tr><td><code>role</code></td><td>{% trans "Event role for the owner: user, helpdesk or orga (existing roles are never downgraded)." %}</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</div>
+{% endif %}
+
+{% if step == 'preview' or step == 'done' %}
+<div class="card">
+  <div class="card-header">
+    <h2>{% if step == 'preview' %}{% trans "Preview" %}{% else %}{% trans "Result" %}{% endif %}</h2>
+    <span class="small muted">
+      {% if step == 'preview' %}
+        {% blocktrans with n=plan.creatable s=plan.skipped e=plan.errors u=plan.new_users %}{{ n }} to create · {{ s }} taken · {{ e }} errors · {{ u }} new users{% endblocktrans %}
+      {% else %}
+        {% blocktrans with n=result.applied u=result.users_created|length e=result.errors|length %}{{ n }} created · {{ u }} new users · {{ e }} skipped/failed{% endblocktrans %}
+      {% endif %}
+    </span>
+  </div>
+  {% if plan.unknown_columns %}<div class="alert alert-info">{% trans "Ignored columns:" %} {% for c in plan.unknown_columns %}<code>{{ c }}</code> {% endfor %}</div>{% endif %}
+  {% if step == 'done' and result.users_created %}<div class="alert alert-info">{% blocktrans with n=result.mails_sent %}{{ n }} invitation mail(s) sent. New accounts have no password until the owner follows the link in the mail.{% endblocktrans %}</div>{% endif %}
+  <div class="table-wrap"><table>
+    <thead><tr><th scope="col">#</th><th scope="col">{% trans "Number" %}</th><th scope="col">{% trans "Type" %}</th><th scope="col">{% trans "Owner" %}</th><th scope="col">{% trans "Action" %}</th><th scope="col">{% trans "Notes" %}</th></tr></thead>
+    <tbody>{% for r in plan.rows %}
+    <tr>
+      <td class="small muted">{{ r.row.line }}</td>
+      <td>{% if r.extension_id %}<a class="number" href="{% url 'portal:extension_detail' event.slug r.extension_id %}">{{ r.row.number }}</a>{% else %}<span class="number">{{ r.row.number }}</span>{% endif %}{% if r.row.display_name %}<div class="small muted">{{ r.row.display_name }}</div>{% endif %}</td>
+      <td class="small">{{ r.row.type }}</td>
+      <td class="small">{% if r.ownerless %}<span class="muted">{% trans "none (orga)" %}</span>{% else %}{{ r.owner_label }}{% if r.create_user %} <span class="badge badge-info">{% trans "new user" %}</span>{% endif %}{% endif %}
+        {% if r.row.group %}<span class="badge badge-muted">{{ r.row.group }}</span>{% endif %}{% if r.row.role %}<span class="badge badge-muted">{{ r.row.role }}</span>{% endif %}</td>
+      <td>{% if r.action == 'create' %}<span class="badge badge-ok">{% trans "create" %}</span>{% elif r.action == 'created' %}<span class="badge badge-active">{% trans "created" %}</span>{% elif r.action == 'skip-taken' %}<span class="badge badge-warn">{% trans "taken" %}</span>{% else %}<span class="badge badge-err">{% trans "error" %}</span>{% endif %}</td>
+      <td class="small">{% for m in r.messages %}<div>{{ m }}</div>{% endfor %}</td>
+    </tr>
+    {% empty %}<tr><td colspan="6" class="empty">{% trans "No data rows found." %}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  <div class="form-actions">
+    {% if step == 'preview' %}
+    <form method="post" class="inline">{% csrf_token %}
+      <input type="hidden" name="step" value="apply">
+      <input type="hidden" name="csv_b64" value="{{ csv_b64 }}">
+      {% if create_users %}<input type="hidden" name="create_users" value="1">{% endif %}
+      <button class="btn btn-primary"{% if not plan.creatable %} disabled{% endif %}>{% blocktrans with n=plan.creatable %}Import {{ n }} extension(s){% endblocktrans %}</button>
+    </form>
+    <a class="btn" href="{% url 'portal:orga_import_csv' event.slug %}">{% trans "Back" %}</a>
+    {% else %}
+    <a class="btn" href="{% url 'portal:orga_import_csv' event.slug %}">{% trans "Import another file" %}</a>
+    <a class="btn" href="{% url 'portal:orga_extensions' event.slug %}">{% trans "All extensions" %}</a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

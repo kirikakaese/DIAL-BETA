@@ -1,0 +1,29 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Sign up" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h1>{% trans "Create your PET account" %}</h1>
+    <p class="subtitle">{% trans "Already registered?" %} <a href="{% url 'accounts:login' %}">{% trans "Log in" %}</a></p>
+  </div>
+</div>
+<div class="card narrow">
+  <p class="muted small">{% trans "One account for every event: your numbers, handsets and settings travel with you." %}</p>
+  {% if oidc_enabled %}
+  <div class="form-actions">
+    <a class="btn{% if not oidc_password_login %} btn-primary{% endif %}" href="{% url 'accounts:oidc_login' %}" data-testid="oidc-register">{% trans "Sign up with SSO" %} ({{ oidc_button_label }})</a>
+  </div>
+  {% if not oidc_password_login %}<p class="small">{% trans "Accounts on this server are created through single sign-on. Log in once and your PET account is ready." %}</p>
+  {% else %}<hr><p class="muted small">{% trans "Or sign up with an e-mail address and password:" %}</p>{% endif %}
+  {% endif %}
+  {% if form %}
+  {% if email_only %}<p class="small">{% trans "Enter your e-mail address and we will send you a link to finish signing up." %}</p>{% endif %}
+  <form method="post" action="{% url 'accounts:register' %}">{% csrf_token %}
+    {% include "portal/_form.html" with form=form %}
+    <div class="form-actions">
+      <button class="btn btn-primary">{% if email_only %}{% trans "Send me a link" %}{% else %}{% trans "Sign up" %}{% endif %}</button>
+    </div>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

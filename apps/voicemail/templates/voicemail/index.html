@@ -1,0 +1,63 @@
+{% extends "base.html" %}{% load i18n tz %}
+{% block title %}{% trans "Voicemail" %}{% endblock %}
+{% block content %}
+{% timezone event.timezone %}
+<div class="page-header">
+  <div class="page-title">
+    <h1>{% trans "Voicemail" %}</h1>
+    <p class="subtitle">{% blocktrans count counter=unread_total %}{{ counter }} unread message{% plural %}{{ counter }} unread messages{% endblocktrans %}
+      {% if plan.voicemail_number %}· {% blocktrans with n=plan.voicemail_number %}dial <code>{{ n }}</code> from your handset to listen{% endblocktrans %}{% endif %}</p>
+  </div>
+  {% if request.event_is_orga %}<div class="actions"><a class="btn" href="{% url 'voicemail:all' event.slug %}">{% trans "Orga overview" %}</a></div>{% endif %}
+</div>
+
+{% if not mailboxes %}
+<div class="alert alert-info">{% trans "You have no active extension in this event yet, so there is no mailbox." %}</div>
+{% endif %}
+
+<div class="grid">
+  {% for mb in mailboxes %}
+  <section class="card">
+    <div class="card-header">
+      <h2><span class="number">{{ mb.number }}</span> <span class="muted small">{{ mb.extension.caller_id_name }}</span></h2>
+      <a class="btn btn-sm" href="{% url 'voicemail:settings' event.slug mb.extension.pk %}">{% trans "Settings" %}</a>
+    </div>
+    <p class="small">
+      {% if mb.enabled %}<span class="badge badge-active">{% trans "enabled" %}</span>{% else %}<span class="badge">{% trans "disabled" %}</span>{% endif %}
+      {% if mb.email_delivery %}<span class="badge">{% trans "e-mail delivery" %}</span>{% endif %}
+      {% if mb.greeting %}<span class="badge">{% trans "custom greeting" %}</span>{% endif %}
+    </p>
+    <div class="stat">{{ mb.unread_count }}</div><div class="stat-label">{% trans "unread" %}</div>
+  </section>
+  {% endfor %}
+</div>
+
+{% if mailboxes %}
+<section class="card" data-refresh="60">
+  <div class="card-header"><h2>{% trans "Messages" %}</h2></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th scope="col">{% trans "Mailbox" %}</th><th scope="col">{% trans "From" %}</th><th scope="col">{% trans "Received" %}</th><th scope="col">{% trans "Length" %}</th><th scope="col">{% trans "Playback" %}</th><th scope="col"><span class="sr-only">{% trans "Actions" %}</span></th></tr></thead>
+    <tbody>
+    {% for m in messages_list %}
+    <tr {% if not m.is_read %}class="unread" aria-label="{% trans 'unread' %}"{% endif %}>
+      <td class="number">{{ m.mailbox.extension.number }}</td>
+      <td>{% if not m.is_read %}<strong>{% endif %}<span class="number">{{ m.caller_number|default:"?" }}</span>{% if m.caller_name %} <span class="muted">{{ m.caller_name }}</span>{% endif %}{% if not m.is_read %}</strong>{% endif %}</td>
+      <td class="small">{{ m.received_at|date:"D H:i" }}</td>
+      <td class="small">{{ m.duration_seconds }} s</td>
+      <td>{% if m.has_audio %}<audio controls preload="none" src="{% url 'voicemail:audio' event.slug m.pk %}" aria-label="{% blocktrans with n=m.caller_number %}Message from {{ n }}{% endblocktrans %}"></audio>{% else %}<span class="muted small">{% trans "audio unavailable" %}</span>{% endif %}
+        {% if m.transcript %}<details class="small"><summary>{% trans "Transcript" %}</summary>{{ m.transcript }}</details>{% endif %}</td>
+      <td class="actions">
+        <form method="post" action="{% url 'voicemail:mark_read' event.slug m.pk %}" class="inline">{% csrf_token %}
+          {% if m.is_read %}<input type="hidden" name="unread" value="1"><button class="btn btn-sm">{% trans "Mark unread" %}</button>{% else %}<button class="btn btn-sm btn-ok">{% trans "Mark read" %}</button>{% endif %}
+        </form>
+        <form method="post" action="{% url 'voicemail:delete' event.slug m.pk %}" class="inline" data-confirm="{% trans 'Delete this message?' %}">{% csrf_token %}
+          <button class="btn btn-sm btn-danger">{% trans "Delete" %}</button></form>
+      </td>
+    </tr>
+    {% empty %}<tr><td colspan="6" class="empty">{% trans "No messages." %}</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% endif %}
+{% endtimezone %}
+{% endblock %}

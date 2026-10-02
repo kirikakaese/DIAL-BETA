@@ -1,0 +1,55 @@
+{% extends "base.html" %}{% load i18n tz %}
+{% block title %}{% trans "My calls" %}{% endblock %}
+{% block content %}
+{% timezone event.timezone %}
+<div class="page-header">
+  <div class="page-title">
+    <h1>{% trans "My calls" %}</h1>
+    {% if not aggregate_only %}
+    <p class="subtitle">
+      {% if retention_days %}{% blocktrans with d=retention_days %}Call records involving your extensions are deleted automatically after {{ d }} days.{% endblocktrans %}
+      {% else %}{% trans "Call records involving your extensions are kept until you delete them." %}{% endif %}
+    </p>
+    {% endif %}
+  </div>
+  <div class="actions">
+    <a class="btn" href="{% url 'stats:gdpr_export' event.slug %}">{% trans "Download my data (JSON)" %}</a>
+  </div>
+</div>
+{% if request.event_is_helpdesk %}{% include "stats/_nav.html" %}{% endif %}
+
+{% if aggregate_only %}
+<div class="alert alert-info">
+  {% blocktrans %}This event runs in privacy mode: only aggregate statistics are stored, so there is no per-call history to show.{% endblocktrans %}
+</div>
+{% else %}
+<section class="card">
+  <div class="card-header"><h2>{% trans "Recent calls" %}</h2></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th scope="col">{% trans "Started" %}</th><th scope="col">{% trans "From" %}</th><th scope="col">{% trans "To" %}</th>
+      <th scope="col">{% trans "Direction" %}</th><th scope="col">{% trans "Result" %}</th><th scope="col">{% trans "Talk time" %}</th></tr></thead>
+    <tbody>
+    {% for c in calls %}
+    <tr><td class="small">{{ c.started_at|date:"D H:i:s" }}</td>
+      <td class="number">{{ c.src_number }}</td><td class="number">{{ c.dst_number }}</td>
+      <td>{% if c.src_extension and c.src_extension.owner_id == user.pk %}{% trans "outbound" %}{% else %}{% trans "inbound" %}{% endif %}</td>
+      <td><code>{{ c.disposition }}</code></td><td>{{ c.billsec }}s</td></tr>
+    {% empty %}<tr><td colspan="6" class="empty">{% trans "No calls recorded for your extensions." %}</td></tr>{% endfor %}
+    </tbody></table></div>
+</section>
+{% endif %}
+
+<section class="card">
+  <div class="card-header"><h2>{% trans "Your data" %}</h2></div>
+  <p>{% blocktrans %}You can download everything PET's statistics module stores about you (your extensions and call records across all events), or anonymize your call records now. Anonymizing replaces your numbers with "anon" and removes the link to your account; aggregate counters are not affected.{% endblocktrans %}</p>
+  <form method="post" action="{% url 'stats:gdpr_delete' event.slug %}" data-confirm="{% trans 'Anonymize all of your call records now? This cannot be undone.' %}">
+    {% csrf_token %}
+    <div class="field"><label class="checkbox"><input type="checkbox" name="confirm" value="yes" required> {% trans "I understand that this cannot be undone." %}</label></div>
+    <div class="form-actions">
+      <button class="btn btn-danger">{% trans "Anonymize my call records" %}</button>
+      <a class="btn" href="{% url 'stats:gdpr_export' event.slug %}">{% trans "Download my data (JSON)" %}</a>
+    </div>
+  </form>
+</section>
+{% endtimezone %}
+{% endblock %}

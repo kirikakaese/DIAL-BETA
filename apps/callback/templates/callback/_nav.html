@@ -1,0 +1,5 @@
+{% load i18n %}
+<nav class="tabs" aria-label="{% trans 'Callback sections' %}">
+  <a href="{% url 'callback:index' event.slug %}" {% if active == 'index' %}aria-current="page"{% endif %}>{% trans "My callbacks" %}</a>
+  {% if request.event_is_orga %}<a href="{% url 'callback:all' event.slug %}" {% if active == 'all' %}aria-current="page"{% endif %}>{% trans "All (orga)" %}</a>{% endif %}
+</nav>

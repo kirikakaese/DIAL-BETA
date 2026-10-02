@@ -1,0 +1,85 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{{ title }} · {% trans "Docs" %}{% endblock %}
+{% block main_class %}docs docs-page{% endblock %}
+{% block breadcrumbs %}
+<p class="breadcrumbs"><a href="{% url 'portal:docs_index' %}">{% trans "Documentation" %}</a> <span aria-hidden="true">›</span> {{ title }}</p>
+{% endblock %}
+{% block content %}
+<div class="docs-layout">
+  <aside class="docs-aside">
+    <form method="get" action="{% url 'portal:docs_index' %}" class="docs-search docs-search-sm" role="search">
+      <label class="sr-only" for="docs-q">{% trans "Search the documentation" %}</label>
+      <input id="docs-q" type="search" name="q" value="{{ q }}" placeholder="{% trans 'Search docs…' %}" autocomplete="off">
+    </form>
+    <nav class="docs-nav" aria-label="{% trans 'Guides' %}">
+      <p class="sidenav-h">{% trans "Guides" %}</p>
+      <ul>
+        {% for d in docs %}
+        <li><a href="{% url 'portal:docs_page' d.slug %}" {% if d.slug == doc.slug %}aria-current="page"{% endif %}><span aria-hidden="true">{{ d.icon }}</span> {{ d.label }}</a></li>
+        {% endfor %}
+      </ul>
+    </nav>
+    {% if toc %}
+    <details class="docs-toc" open>
+      <summary class="sidenav-h">{% trans "On this page" %}</summary>
+      <ol>
+        {% for t in toc %}
+        <li><a href="#{{ t.id }}">{{ t.name }}</a>
+          {% if t.children %}<ol>{% for c in t.children %}<li><a href="#{{ c.id }}">{{ c.name }}</a></li>{% endfor %}</ol>{% endif %}
+        </li>
+        {% endfor %}
+      </ol>
+    </details>
+    {% endif %}
+  </aside>
+
+  <article class="docs-article">
+    <header class="docs-title">
+      <p class="eyebrow">{{ doc.icon }} {{ doc.audience }}</p>
+      <h1>{{ title }}</h1>
+      <p class="muted">{{ doc.summary }}</p>
+    </header>
+    <div class="doc-body">
+      {{ body|safe }}
+    </div>
+    <footer class="docs-foot">
+      <span class="muted small">{% blocktrans with f=doc.path %}Source: <code>{{ f }}</code> in the PET repository.{% endblocktrans %}</span>
+      <a class="btn btn-sm" href="#main">{% trans "Back to top" %}</a>
+    </footer>
+  </article>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var toc = document.querySelector('.docs-toc');
+  if (toc && window.matchMedia('(max-width: 1000px)').matches) toc.removeAttribute('open');
+  // highlight the TOC entry of the section currently in view
+  var links = Array.prototype.slice.call(document.querySelectorAll('.docs-toc a[href^="#"]'));
+  if (!links.length || !('IntersectionObserver' in window)) return;
+  var byId = {};
+  links.forEach(function (a) { byId[a.getAttribute('href').slice(1)] = a; });
+  var current = null;
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (!e.isIntersecting) return;
+      var a = byId[e.target.id]; if (!a) return;
+      if (current) current.removeAttribute('aria-current');
+      a.setAttribute('aria-current', 'location'); current = a;
+    });
+  }, { rootMargin: '-56px 0px -70% 0px' });
+  Object.keys(byId).forEach(function (id) { var el = document.getElementById(id); if (el) io.observe(el); });
+})();
+</script>
+{% if has_mermaid %}
+<script type="module">
+  // Diagrams stay readable as plain text when the CDN is unreachable (PET runs offline at venues).
+  try {
+    const m = await import("https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs");
+    const dark = document.documentElement.getAttribute("data-theme") !== "light";
+    m.default.initialize({ startOnLoad: false, theme: dark ? "dark" : "default", securityLevel: "strict" });
+    await m.default.run({ querySelector: ".mermaid" });
+  } catch (e) { /* offline: keep the source */ }
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Port my numbers" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h1>{% trans "Re-request my numbers from previous events" %}</h1>
+    {% if portable %}<p class="subtitle">{% trans "Numbers you held in other events and that are still free here. Settings (name, phonebook entry, ring strategy) are copied along." %}</p>{% endif %}
+  </div>
+</div>
+{% if results %}
+<div class="card">
+  <h2>{% trans "Result" %}</h2>
+  <ul>{% for r in results %}
+    <li><span class="number">{{ r.number }}</span> –
+      {% if r.ok %}<span class="badge badge-{{ r.ext.state }}">{{ r.state }}</span> <a href="{% url 'portal:extension_detail' event.slug r.ext.pk %}">{% trans "open" %}</a>
+      {% else %}<span class="badge badge-err">{% trans "failed" %}</span> <span class="small">{{ r.error }}</span>{% endif %}</li>
+  {% endfor %}</ul>
+</div>
+{% endif %}
+<div class="card">
+  {% if portable %}
+  <form method="post">{% csrf_token %}
+    <div class="table-wrap"><table>
+      <thead><tr><th scope="col"><span class="sr-only">{% trans "Select" %}</span></th><th scope="col">{% trans "Number" %}</th><th scope="col">{% trans "Type" %}</th><th scope="col">{% trans "Name" %}</th><th scope="col">{% trans "From event" %}</th></tr></thead>
+      <tbody>{% for e in portable %}
+      <tr><td><input type="checkbox" name="ext" value="{{ e.pk }}" id="ext-{{ e.pk }}" checked aria-label="{{ e.number }}"></td>
+        <td><label for="ext-{{ e.pk }}" class="number">{{ e.number }}</label></td><td>{{ e.get_type_display }}</td><td>{{ e.display_name }}</td><td>{{ e.event.name }}</td></tr>
+      {% endfor %}</tbody></table></div>
+    <div class="form-actions">
+      <button class="btn btn-primary">{% trans "Re-request selected" %}</button>
+      <a class="btn" href="{% url 'portal:event_dashboard' event.slug %}">{% trans "Back" %}</a>
+    </div>
+  </form>
+  {% else %}
+  <div class="empty">
+    <p>{% trans "Nothing to port - all your previous numbers are either already yours here or unavailable." %}</p>
+    <a class="btn btn-primary" href="{% url 'portal:extension_create' event.slug %}">{% trans "Register a new number" %}</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

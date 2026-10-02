@@ -1,0 +1,69 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Call groups" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h1>{% trans "Call groups" %}</h1>
+    <p class="subtitle">{% trans "One number that rings several extensions – for infodesks, helpdesks and teams." %}</p>
+  </div>
+  <div class="actions">
+    <a class="btn" href="{% url 'callgroups:mine' event.slug %}">{% trans "My call groups" %}{% if open_invites %} <span class="badge badge-active">{{ open_invites|length }}</span>{% endif %}</a>
+    <a class="btn btn-primary" href="{% url 'callgroups:create' event.slug %}">{% trans "New group" %}</a>
+  </div>
+</div>
+
+{% if open_invites %}
+<div class="alert alert-info" role="status">{% blocktrans count n=open_invites|length %}You have one open call group invitation.{% plural %}You have {{ n }} open call group invitations.{% endblocktrans %} <a href="{% url 'callgroups:invites' event.slug %}">{% trans "Review" %}</a></div>
+{% endif %}
+
+<div class="grid grid-2">
+  <section class="card" data-refresh="30">
+    <div class="card-header"><h2>{% trans "My memberships" %}</h2></div>
+    {% if my_memberships %}
+    <div class="table-wrap"><table>
+      <thead><tr><th scope="col">{% trans "Group" %}</th><th scope="col">{% trans "My extension" %}</th><th scope="col">{% trans "Status" %}</th><th scope="col"><span class="sr-only">{% trans "Actions" %}</span></th></tr></thead>
+      <tbody>
+      {% for m in my_memberships %}
+      <tr>
+        <td><a href="{% url 'callgroups:detail' event.slug m.group.pk %}">{{ m.group.name }}</a> <span class="number">{{ m.group.number }}</span></td>
+        <td class="number">{{ m.extension.number }}</td>
+        <td>{% if m.logged_in %}<span class="badge badge-active"><span class="dot dot-ok" aria-hidden="true"></span> {% trans "Logged in" %}</span>{% else %}<span class="badge"><span class="dot dot-err" aria-hidden="true"></span> {% trans "Logged out" %}</span>{% endif %}</td>
+        <td class="actions">
+          {% if m.group.allow_self_service %}
+          <form method="post" action="{% url 'callgroups:toggle' event.slug m.group.pk m.pk m.logged_in|yesno:'logout,login' %}" class="inline">{% csrf_token %}
+            <input type="hidden" name="next" value="{% url 'callgroups:index' event.slug %}">
+            {% if m.logged_in %}<button class="btn btn-sm">{% trans "Log out" %}</button>{% else %}<button class="btn btn-sm btn-ok">{% trans "Log in" %}</button>{% endif %}
+          </form>
+          {% else %}<span class="muted small">{% trans "managed by group owner" %}</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    {% else %}
+    <div class="empty"><p>{% trans "You are not a member of any call group. Group owners add members by extension number." %}</p></div>
+    {% endif %}
+    <p class="small muted">{% blocktrans with login=plan.group_login_code logout=plan.group_logout_code %}From your handset: dial <code>{{ login }}</code> + group number to log in, <code>{{ logout }}</code> + group number to log out (without a number: all your groups).{% endblocktrans %}</p>
+  </section>
+
+  <section class="card">
+    <div class="card-header"><h2>{% trans "Groups in this event" %} <span class="count">{{ groups|length }}</span></h2></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th scope="col">{% trans "Number" %}</th><th scope="col">{% trans "Name" %}</th><th scope="col">{% trans "Strategy" %}</th><th scope="col">{% trans "Members" %}</th></tr></thead>
+      <tbody>
+      {% for g in groups %}
+      <tr>
+        <td class="number">{{ g.number }}</td>
+        <td><a href="{% url 'callgroups:detail' event.slug g.pk %}">{{ g.name }}</a>{% if g.shortcode %} <span class="badge">{{ g.shortcode }}</span>{% endif %}{% if g.description %}<div class="muted small">{{ g.description }}</div>{% endif %}</td>
+        <td class="small">{{ g.get_strategy_display }}</td>
+        <td>
+          <span class="badge {% if g.online %}badge-active{% endif %}">{{ g.online }} / {{ g.total }}</span>
+          <span class="sr-only">{% trans "logged in / total" %}</span>
+        </td>
+      </tr>
+      {% empty %}<tr><td colspan="4" class="empty">{% trans "No call groups yet." %}</td></tr>{% endfor %}
+      </tbody>
+    </table></div>
+  </section>
+</div>
+{% endblock %}

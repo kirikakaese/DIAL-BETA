@@ -1,0 +1,16 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Single sign-on failed" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h1>{% trans "Single sign-on failed" %}</h1>
+  </div>
+</div>
+<div class="card narrow">
+  <div class="alert alert-error" role="alert">{{ message }}</div>
+  <div class="actions">
+    <a class="btn btn-primary" href="{% url 'accounts:oidc_login' %}">{% trans "Try again" %}</a>
+    <a class="btn" href="{% url 'accounts:login' %}">{% trans "Log in" %}</a>
+  </div>
+</div>
+{% endblock %}

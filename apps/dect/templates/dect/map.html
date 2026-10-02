@@ -1,0 +1,132 @@
+{% extends "base.html" %}{% load i18n dect_tags %}
+{% block title %}{% trans "Coverage map" %}{% endblock %}
+{% block head %}
+<style>
+  .venue-map { position: relative; display: inline-block; max-width: 100%; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .venue-map img { display: block; max-width: 100%; height: auto; }
+  .venue-map.placing { cursor: crosshair; }
+  .rfp-pin { position: absolute; transform: translate(-50%, -50%); width: 2rem; height: 2rem; border-radius: 50%; border: 2px solid #fff;
+             display: flex; align-items: center; justify-content: center; font-size: .75rem; font-weight: 700; color: #fff; cursor: grab;
+             box-shadow: 0 1px 4px rgba(0,0,0,.5); text-decoration: none; }
+  .rfp-pin.up { background: var(--ok); } .rfp-pin.unsynced { background: var(--warn); } .rfp-pin.down { background: var(--err); } .rfp-pin.inactive { background: var(--fg-muted); }
+  .rfp-pin.selected { outline: 3px solid var(--primary); }
+  .rfp-pin span.label { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); white-space: nowrap; color: var(--fg); font-weight: 400; font-size: .7rem; background: var(--bg-elev); padding: 0 .3rem; border-radius: 3px; }
+  .rfp-list li { display: flex; align-items: center; gap: .5rem; padding: .25rem 0; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <p class="eyebrow eyebrow-orga">{% trans "Orga" %} · {% trans "Infrastructure" %}</p>
+    <h1>{% trans "Coverage map" %}</h1>
+    <p class="subtitle">{% trans "Place base stations on a floor plan to see where coverage is thin." %}</p>
+  </div>
+  {% if maps %}
+  <nav class="actions" aria-label="{% trans 'Venue maps' %}">
+    {% for m in maps %}<a class="btn btn-sm {% if current and m.pk == current.pk %}btn-primary{% endif %}" href="{% dect_url 'map_detail' event.slug m.pk %}"{% if current and m.pk == current.pk %} aria-current="page"{% endif %}>{{ m.name }}</a>{% endfor %}
+  </nav>
+  {% endif %}
+</div>
+{% include "dect/_nav.html" %}
+
+{% if current %}
+<div class="grid grid-2">
+  <section>
+    <p class="muted small" id="map-help">{% trans "Select an RFP on the right, then click on the map to place it. Drag a pin to move it. Changes are saved immediately." %}</p>
+    <div class="venue-map" id="venue-map" data-map="{{ current.pk }}" data-url="{% dect_url 'map_place' event.slug %}" aria-describedby="map-help" role="application" aria-label="{% trans 'Venue map with RFP positions' %}">
+      <img src="{{ current.image.url }}" alt="{{ current.name }}" draggable="false">
+      {% for rfp in placed %}
+      <a class="rfp-pin {{ rfp.status }}" href="{% dect_url 'rfp_edit' event.slug rfp.pk %}" data-rfp="{{ rfp.pk }}" style="left:{{ rfp.pos_x|stringformat:'.2f' }}%;top:{{ rfp.pos_y|stringformat:'.2f' }}%" draggable="false"
+         title="{{ rfp.name }} – {{ rfp.status }} – {% blocktrans count n=rfp.n_handsets %}{{ n }} handset{% plural %}{{ n }} handsets{% endblocktrans %}"
+         aria-label="{{ rfp.name }}: {{ rfp.status }}, {{ rfp.n_handsets }} {% trans 'handsets' %}">{{ rfp.n_handsets }}<span class="label">{{ rfp.name }}</span></a>
+      {% endfor %}
+    </div>
+    <p class="small" role="status" aria-live="polite" id="map-status"></p>
+  </section>
+  <section class="card">
+    <div class="card-header"><h2>{% trans "RFPs" %}</h2></div>
+    <p class="muted small">{% trans "Pin colour: green = up, yellow = unsynced, red = down. Number = handsets currently served." %}</p>
+    <h3>{% trans "On this map" %}</h3>
+    <ul class="rfp-list" id="placed-list">
+      {% for rfp in placed %}<li><button type="button" class="btn btn-sm select-rfp" data-rfp="{{ rfp.pk }}" aria-pressed="false">{% trans "Move" %}</button> {% include "dect/_status.html" %} {{ rfp.name }}
+        <button type="button" class="btn btn-sm btn-danger remove-rfp" data-rfp="{{ rfp.pk }}" aria-label="{% trans 'Remove from map' %} {{ rfp.name }}">×</button></li>{% empty %}<li class="muted">{% trans "No RFPs placed on this map yet." %}</li>{% endfor %}
+    </ul>
+    <h3>{% trans "Not placed" %}</h3>
+    <ul class="rfp-list">
+      {% for rfp in unplaced %}<li><button type="button" class="btn btn-sm select-rfp" data-rfp="{{ rfp.pk }}" aria-pressed="false">{% trans "Place" %}</button> {% include "dect/_status.html" %} {{ rfp.name }} <span class="muted small">{{ rfp.location }}</span></li>{% empty %}<li class="muted">{% trans "All RFPs are placed." %}</li>{% endfor %}
+    </ul>
+  </section>
+</div>
+{% else %}
+<div class="empty">
+  <p>{% trans "No venue map uploaded yet. Upload a floor plan or site map (PNG/JPG) below, then place your RFPs on it." %}</p>
+</div>
+{% endif %}
+
+<section class="card">
+  <div class="card-header"><h2>{% trans "Upload a map" %}</h2></div>
+  <form method="post" enctype="multipart/form-data" action="{% dect_url 'map' event.slug %}">{% csrf_token %}
+    <div class="form-row">
+      <div class="field"><label for="{{ form.name.id_for_label }}">{% trans "Name" %}</label>{{ form.name }}{{ form.name.errors }}</div>
+      <div class="field"><label for="{{ form.image.id_for_label }}">{% trans "Image" %}</label>{{ form.image }}{{ form.image.errors }}</div>
+      <div class="field"><label class="checkbox">{{ form.is_default }} {% trans "Default map" %}</label></div>
+    </div>
+    <div class="form-actions"><button class="btn btn-primary">{% trans "Upload" %}</button></div>
+  </form>
+</section>
+{% endblock %}
+{% block scripts %}
+{% if current %}
+<script>
+(function () {
+  const map = document.getElementById('venue-map');
+  const status = document.getElementById('map-status');
+  const csrf = document.querySelector('input[name=csrfmiddlewaretoken]').value;
+  let selected = null, dragging = null;
+
+  function pct(evt) {
+    const r = map.getBoundingClientRect();
+    return { x: Math.max(0, Math.min(100, (evt.clientX - r.left) / r.width * 100)),
+             y: Math.max(0, Math.min(100, (evt.clientY - r.top) / r.height * 100)) };
+  }
+  function save(rfp, x, y, remove) {
+    const body = new URLSearchParams({ rfp: rfp, map: map.dataset.map, x: x, y: y });
+    if (remove) body.set('remove', '1');
+    return fetch(map.dataset.url, { method: 'POST', headers: { 'X-CSRFToken': csrf }, body: body })
+      .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(d => { status.textContent = remove ? '{% trans "Removed." %}' : '{% trans "Saved." %}'; return d; })
+      .catch(() => { status.textContent = '{% trans "Saving failed." %}'; });
+  }
+  function select(id) {
+    selected = id;
+    document.querySelectorAll('.select-rfp').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.rfp === id)));
+    document.querySelectorAll('.rfp-pin').forEach(p => p.classList.toggle('selected', p.dataset.rfp === id));
+    map.classList.toggle('placing', !!id);
+    status.textContent = id ? '{% trans "Click on the map to place the selected RFP." %}' : '';
+  }
+  document.querySelectorAll('.select-rfp').forEach(b => b.addEventListener('click', () => select(selected === b.dataset.rfp ? null : b.dataset.rfp)));
+  document.querySelectorAll('.remove-rfp').forEach(b => b.addEventListener('click', () => save(b.dataset.rfp, 0, 0, true).then(() => location.reload())));
+
+  map.addEventListener('click', evt => {
+    if (evt.target.closest('.rfp-pin')) { if (selected || dragging) evt.preventDefault(); return; }
+    if (!selected) return;
+    const p = pct(evt);
+    save(selected, p.x.toFixed(2), p.y.toFixed(2)).then(() => location.reload());
+  });
+  map.addEventListener('pointerdown', evt => {
+    const pin = evt.target.closest('.rfp-pin'); if (!pin) return;
+    dragging = { pin: pin, moved: false }; pin.setPointerCapture(evt.pointerId);
+  });
+  map.addEventListener('pointermove', evt => {
+    if (!dragging) return; dragging.moved = true;
+    const p = pct(evt); dragging.pin.style.left = p.x + '%'; dragging.pin.style.top = p.y + '%';
+  });
+  map.addEventListener('pointerup', evt => {
+    if (!dragging) return;
+    const d = dragging; dragging = null;
+    if (d.moved) { evt.preventDefault(); const p = pct(evt); save(d.pin.dataset.rfp, p.x.toFixed(2), p.y.toFixed(2)); d.pin.addEventListener('click', e => e.preventDefault(), { once: true }); }
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

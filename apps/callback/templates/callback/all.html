@@ -1,0 +1,99 @@
+{% extends "base.html" %}{% load i18n tz %}
+{% block title %}{% trans "All callbacks (orga)" %}{% endblock %}
+{% block content %}
+{% timezone event.timezone %}
+<div class="page-header">
+  <div class="page-title">
+    <p class="eyebrow eyebrow-orga">{% trans "Orga" %} · {% trans "Services" %}</p>
+    <h1>{% trans "All callbacks & scheduled calls" %}</h1>
+    <p class="subtitle">{% if state == 'open' %}{% trans "Open requests only." %}{% else %}{% trans "All requests, including finished and expired ones." %}{% endif %}</p>
+  </div>
+  <div class="actions">
+    {% if state == 'open' %}<a class="btn" href="{% url 'callback:all' event.slug %}">{% trans "Show all" %}</a>
+    {% else %}<a class="btn" href="{% url 'callback:all' event.slug %}?state=open">{% trans "Open only" %}</a>{% endif %}
+  </div>
+</div>
+{% include "callback/_nav.html" %}
+
+<section class="card" data-refresh="15">
+  <div class="card-header"><h2>{% trans "Callback requests" %} <span class="count">{{ callbacks|length }}</span></h2></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th scope="col">#</th><th scope="col">{% trans "Kind" %}</th><th scope="col">{% trans "From" %}</th><th scope="col">{% trans "To" %}</th>
+      <th scope="col">{% trans "State" %}</th><th scope="col">{% trans "Attempts" %}</th><th scope="col">{% trans "Created" %}</th>
+      <th scope="col">{% trans "Expires" %}</th><th scope="col">{% trans "Note" %}</th><th scope="col"><span class="sr-only">{% trans "Actions" %}</span></th></tr></thead>
+    <tbody>
+    {% for r in callbacks %}
+    <tr>
+      <td class="small">{{ r.pk }}</td>
+      <td><code>{{ r.kind|upper }}</code></td>
+      <td class="number">{{ r.requester_number }} <span class="muted small">{{ r.requester.owner.username|default:"" }}</span></td>
+      <td class="number">{{ r.target_number }} <span class="muted small">{{ r.target.owner.username|default:"" }}</span></td>
+      <td><span class="badge badge-{{ r.state }}">{{ r.get_state_display }}</span></td>
+      <td>{{ r.attempts }}{% if r.next_attempt_at %}<div class="small muted">{% trans "retry" %} {{ r.next_attempt_at|date:"H:i" }}</div>{% endif %}</td>
+      <td class="small">{{ r.created_at|date:"D H:i" }}</td>
+      <td class="small">{{ r.expires_at|date:"D H:i" }}</td>
+      <td class="small">{{ r.note }}</td>
+      <td class="actions">{% if r.is_open %}
+        <form method="post" action="{% url 'callback:fire_now' event.slug 'callback' r.pk %}" class="inline">{% csrf_token %}
+          <button class="btn btn-sm btn-ok">{% trans "Fire now" %}</button></form>
+        <form method="post" action="{% url 'callback:cancel' event.slug r.pk %}" class="inline">{% csrf_token %}
+          <input type="hidden" name="next" value="{% url 'callback:all' event.slug %}">
+          <button class="btn btn-sm btn-danger">{% trans "Cancel" %}</button></form>{% endif %}</td>
+    </tr>
+    {% empty %}<tr><td colspan="10" class="empty">{% trans "No callback requests." %}</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+</section>
+
+<section class="card">
+  <div class="card-header"><h2>{% trans "Scheduled / wake-up calls" %} <span class="count">{{ scheduled|length }}</span></h2></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th scope="col">#</th><th scope="col">{% trans "When" %}</th><th scope="col">{% trans "Extension" %}</th><th scope="col">{% trans "Owner" %}</th>
+      <th scope="col">{% trans "Repeat" %}</th><th scope="col">{% trans "State" %}</th><th scope="col">{% trans "Attempts" %}</th>
+      <th scope="col">{% trans "Last result" %}</th><th scope="col"><span class="sr-only">{% trans "Actions" %}</span></th></tr></thead>
+    <tbody>
+    {% for c in scheduled %}
+    <tr>
+      <td class="small">{{ c.pk }}</td>
+      <td>{{ c.scheduled_for|date:"D d.m. H:i" }}{% if c.next_attempt_at %}<div class="small muted">{% trans "next" %} {{ c.next_attempt_at|date:"D H:i" }}</div>{% endif %}</td>
+      <td class="number">{{ c.extension.number }}</td>
+      <td>{{ c.owner.username|default:"–" }}</td>
+      <td>{{ c.get_repeat_display }}</td>
+      <td><span class="badge badge-{{ c.state }}">{{ c.get_state_display }}</span></td>
+      <td>{{ c.attempts }} / {{ c.max_retries|add:1 }}</td>
+      <td class="small">{{ c.last_result }}</td>
+      <td class="actions">
+        {% if c.state != 'dialing' %}<form method="post" action="{% url 'callback:fire_now' event.slug 'wakeup' c.pk %}" class="inline">{% csrf_token %}
+          <button class="btn btn-sm btn-ok">{% trans "Fire now" %}</button></form>{% endif %}
+        {% if c.is_open %}<form method="post" action="{% url 'callback:wakeup_cancel' event.slug c.pk %}" class="inline">{% csrf_token %}
+          <input type="hidden" name="next" value="{% url 'callback:all' event.slug %}">
+          <button class="btn btn-sm btn-danger">{% trans "Cancel" %}</button></form>{% endif %}
+      </td>
+    </tr>
+    {% empty %}<tr><td colspan="9" class="empty">{% trans "No scheduled calls." %}</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+</section>
+
+<section class="card">
+  <div class="card-header"><h2>{% trans "Test ringbacks" %} <span class="count">{{ ringbacks|length }}</span></h2></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th scope="col">#</th><th scope="col">{% trans "Caller" %}</th><th scope="col">{% trans "Requested" %}</th>
+      <th scope="col">{% trans "Delay" %}</th><th scope="col">{% trans "State" %}</th><th scope="col"><span class="sr-only">{% trans "Actions" %}</span></th></tr></thead>
+    <tbody>
+    {% for rb in ringbacks %}
+    <tr>
+      <td class="small">{{ rb.pk }}</td>
+      <td class="number">{{ rb.caller_number }}</td>
+      <td class="small">{{ rb.requested_at|date:"D H:i:s" }}</td>
+      <td>{{ rb.delay_seconds }} s</td>
+      <td><span class="badge badge-{{ rb.state }}">{{ rb.get_state_display }}</span></td>
+      <td class="actions"><form method="post" action="{% url 'callback:fire_now' event.slug 'ringback' rb.pk %}" class="inline">{% csrf_token %}
+        <button class="btn btn-sm btn-ok">{% trans "Fire now" %}</button></form></td>
+    </tr>
+    {% empty %}<tr><td colspan="6" class="empty">{% trans "No test ringbacks yet." %}</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% endtimezone %}
+{% endblock %}

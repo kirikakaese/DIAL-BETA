@@ -1,0 +1,23 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Audit log" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <p class="eyebrow eyebrow-orga">{% trans "Orga" %} · {% trans "Event" %}</p>
+    <h1>{% trans "Audit log" %} <span class="count">{{ page.paginator.count }}</span></h1>
+  </div>
+</div>
+<form method="get" class="form-row filters">
+  <div class="field"><label for="f-q">{% trans "Search" %}</label><input id="f-q" type="search" name="q" value="{{ q }}" placeholder="{% trans 'message, target, actor' %}"></div>
+  <div class="field"><label for="f-action">{% trans "Action" %}</label><select id="f-action" name="action"><option value="">{% trans "all" %}</option>{% for v, l in actions %}<option value="{{ v }}" {% if v == action %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+  <div class="field field-submit"><button class="btn">{% trans "Filter" %}</button></div>
+</form>
+<div class="table-wrap"><table class="small">
+  <thead><tr><th scope="col">{% trans "When" %}</th><th scope="col">{% trans "Actor" %}</th><th scope="col">{% trans "Action" %}</th><th scope="col">{% trans "Target" %}</th><th scope="col">{% trans "Message" %}</th><th scope="col">{% trans "Changes" %}</th><th scope="col">IP</th></tr></thead>
+  <tbody>{% for a in page %}
+  <tr><td>{{ a.created_at|date:"Y-m-d H:i:s" }}</td><td>{{ a.actor_repr }}</td><td><span class="badge badge-{% if a.action == 'delete' or a.action == 'reject' %}err{% elif a.action == 'approve' or a.action == 'create' %}ok{% elif a.action == 'impersonate' %}warn{% else %}muted{% endif %}">{{ a.get_action_display }}</span></td>
+    <td><code>{{ a.target_repr|truncatechars:50 }}</code></td><td>{{ a.message }}</td><td><code class="muted">{% if a.changes %}{{ a.changes }}{% endif %}</code></td><td class="muted">{{ a.ip_address|default:"" }}</td></tr>
+  {% empty %}<tr><td colspan="7" class="empty">{% trans "No entries." %}</td></tr>{% endfor %}</tbody>
+</table></div>
+{% include "portal/orga/_pagination.html" %}
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Numbering settings" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <p class="eyebrow eyebrow-orga">{% trans "Orga" %} · {% trans "Numbers" %}</p>
+    <h1>{% trans "Numbering settings" %}</h1>
+    <p class="subtitle">{% trans "Length limits, ranges and service numbers are edited on the number plan page." %}</p>
+  </div>
+  <div class="actions">
+    <a class="btn" href="{% url 'numbering:pools' event.slug %}">{% trans "Pools" %} <span class="badge">{{ pool_count }}</span></a>
+    <a class="btn" href="{% url 'numbering:claims' event.slug %}">{% trans "Claims" %} <span class="badge">{{ open_claims }}</span></a>
+  </div>
+</div>
+<div class="grid grid-2">
+  <form method="post" class="card" novalidate>{% csrf_token %}
+    <h2>{% trans "Variable-length numbers" %}</h2>
+    {% include "portal/_form.html" with form=form %}
+    <div class="form-actions"><button class="btn btn-primary">{% trans "Save" %}</button></div>
+  </form>
+  <aside class="card">
+    <h2>{% trans "How prefix-free numbering works" %}</h2>
+    <p class="small">{% blocktrans with min=plan.min_length max=plan.max_length %}The plan allows {{ min }}–{{ max }} digits. With prefix-free numbering enabled no live extension may be a prefix of another one: if <code>23</code> exists, <code>2323</code> is blocked and vice versa. This keeps every number dialable without an inter-digit timeout.{% endblocktrans %}</p>
+    <p class="small">{% trans "Digit-only service numbers, emergency numbers and feature codes of this plan count as taken prefixes as well:" %}
+      {% for n in reserved %}<span class="number">{{ n }}</span>{% if not forloop.last %}, {% endif %}{% empty %}<span class="muted">—</span>{% endfor %}</p>
+  </aside>
+</div>
+{% endblock %}

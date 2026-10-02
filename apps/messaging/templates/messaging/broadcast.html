@@ -1,0 +1,39 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Broadcast message" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <p class="eyebrow eyebrow-orga">{% trans "Orga" %} · {% trans "Services" %}</p>
+    <h1>{% trans "Broadcast message" %}</h1>
+    <p class="subtitle">{% trans "Push a text message to every handset at the event or to a single group." %}</p>
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <section class="card">
+    <div class="card-header"><h2>{% trans "New broadcast" %}</h2></div>
+    <form method="post">{% csrf_token %}
+      {% if form.non_field_errors %}<div class="alert alert-error" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+      {% include "portal/_field.html" with field=form.target %}
+      {% include "portal/_field.html" with field=form.group %}
+      {% include "portal/_field.html" with field=form.text %}
+      <div class="help">{% trans "max." %} {{ max_text }}</div>
+      <div class="form-actions">
+        <button class="btn btn-danger" data-confirm="{% trans 'Send this message to all selected handsets?' %}">{% trans "Send broadcast" %}</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="card">
+    <div class="card-header"><h2>{% trans "Recent broadcasts" %}</h2></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th scope="col">{% trans "When" %}</th><th scope="col">{% trans "Target" %}</th><th scope="col">{% trans "Text" %}</th><th scope="col" class="num">{% trans "Sent / failed" %}</th></tr></thead>
+      <tbody>
+      {% for b in history %}
+      <tr><td class="small">{{ b.created_at|date:"D H:i" }}</td><td>{{ b.get_target_display }}{% if b.group %} ({{ b.group.name }}){% endif %}</td>
+        <td>{{ b.text }}</td><td class="num">{{ b.sent_count }} / {{ b.failed_count }}</td></tr>
+      {% empty %}<tr><td colspan="4" class="empty">{% trans "No broadcasts yet." %}</td></tr>{% endfor %}
+      </tbody></table></div>
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,18 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Import event" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <p class="eyebrow eyebrow-orga">{% trans "Orga" %} · {% trans "Event" %}</p>
+    <h1>{% trans "Import an event from JSON" %}</h1>
+    <p class="subtitle">{% trans "Upload a file created with 'Export'. Users are matched by e-mail address; unknown users are created without a password." %}</p>
+    <p class="small muted">{% trans "For a spreadsheet of numbers use the CSV import instead:" %} <a href="{% url 'portal:orga_import_csv' event.slug %}">{% trans "Import extensions from CSV" %}</a></p>
+  </div>
+</div>
+<div class="card narrow">
+  <form method="post" enctype="multipart/form-data">{% csrf_token %}
+    {% include "portal/_form.html" with form=form %}
+    <div class="form-actions"><button class="btn btn-primary">{% trans "Import" %}</button><a class="btn" href="{% url 'portal:orga_event_settings' event.slug %}">{% trans "Cancel" %}</a></div>
+  </form>
+</div>
+{% endblock %}

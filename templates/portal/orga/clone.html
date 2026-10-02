@@ -1,0 +1,17 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Clone event" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <p class="eyebrow eyebrow-orga">{% trans "Orga" %} · {% trans "Event" %}</p>
+    <h1>{% trans "Clone event" %}</h1>
+    <p class="subtitle">{% trans "Copies number plan, ranges, groups, branding and the orga team into a new draft event. Extensions are not copied - users re-request their numbers themselves." %}</p>
+  </div>
+</div>
+<div class="card narrow">
+  <form method="post">{% csrf_token %}
+    {% include "portal/_form.html" with form=form %}
+    <div class="form-actions"><button class="btn btn-primary">{% trans "Clone" %}</button><a class="btn" href="{% url 'portal:orga_event_settings' event.slug %}">{% trans "Cancel" %}</a></div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,75 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "My extensions" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h1>{% trans "My extensions" %}</h1>
+  </div>
+</div>
+
+{% if transfers %}
+<div class="card">
+  <h2>{% trans "Transfers waiting for you" %}</h2>
+  <ul>{% for t in transfers %}
+    <li><span class="number">{{ t.extension.number }}</span> {% trans "in" %} {{ t.extension.event.name }} {% trans "from" %} {{ t.from_user }} ·
+      <a class="btn btn-sm btn-primary" href="{% url 'portal:accept_transfer' t.token %}">{% trans "Review & accept" %}</a></li>
+  {% endfor %}</ul>
+</div>
+{% endif %}
+
+{% if portable %}
+<div class="alert alert-info">
+  {% trans "You have numbers from previous events that you could re-request:" %}
+  {% for ev in portable %}<a class="btn btn-sm" href="{% url 'portal:extension_port' ev.slug %}">{{ ev.name }}</a> {% endfor %}
+</div>
+{% endif %}
+
+{% for ev, exts in by_event.items %}
+<section class="card">
+  <div class="card-header">
+    <h2><a href="{% url 'portal:event_dashboard' ev.slug %}">{{ ev.name }}</a> <span class="badge badge-{{ ev.state }}">{{ ev.get_state_display }}</span></h2>
+    {% if ev.registration_open %}<a class="btn btn-sm btn-primary" href="{% url 'portal:extension_create' ev.slug %}">{% trans "Register extension" %}</a>{% endif %}
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th scope="col">{% trans "Number" %}</th><th scope="col">{% trans "Type" %}</th><th scope="col">{% trans "Name" %}</th><th scope="col">{% trans "State" %}</th><th scope="col">{% trans "Devices" %}</th><th scope="col"><span class="sr-only">{% trans "Actions" %}</span></th></tr></thead>
+    <tbody>{% for e in exts %}
+    <tr>
+      <td><a class="number" href="{% url 'portal:extension_detail' ev.slug e.pk %}">{{ e.number }}</a></td>
+      <td>{{ e.get_type_display }}</td>
+      <td>{{ e.display_name }}</td>
+      <td><span class="badge badge-{{ e.state }}">{{ e.get_state_display }}</span></td>
+      <td>{{ e.device_count }}{% if e.is_endpoint and e.device_count == 0 and e.is_active %} <span class="badge badge-warn">{% trans "none yet" %}</span>{% endif %}</td>
+      <td><a class="btn btn-sm" href="{% url 'portal:extension_detail' ev.slug e.pk %}">{% trans "Details" %}</a></td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% empty %}
+<div class="card">
+  <div class="empty">
+    <p><strong>{% trans "No extensions yet" %}</strong></p>
+    <p>{% trans "Pick an event below, join it and register your first number." %}</p>
+  </div>
+</div>
+{% endfor %}
+
+{% if my_events %}
+<h2>{% trans "My events" %}</h2>
+<div class="grid grid-2">{% for e in my_events %}
+  <a class="card event-card" href="{% url 'portal:event_dashboard' e.slug %}">
+    <div class="card-header"><h3>{{ e.name }}</h3><span class="badge badge-{{ e.state }}">{{ e.get_state_display }}</span></div>
+    <p class="muted small">{{ e.start_date|date:"j M" }} – {{ e.end_date|date:"j M Y" }}</p>
+  </a>
+{% endfor %}</div>
+{% endif %}
+
+{% if joinable %}
+<h2>{% trans "Events you can join" %}</h2>
+<div class="grid grid-2">{% for e in joinable %}
+  <div class="card">
+    <div class="card-header"><h3><a href="{% url 'portal:event_dashboard' e.slug %}">{{ e.name }}</a></h3><span class="badge badge-{{ e.state }}">{{ e.get_state_display }}</span></div>
+    <p class="muted small">{{ e.start_date|date:"j M" }} – {{ e.end_date|date:"j M Y" }}{% if e.location %} · {{ e.location }}{% endif %}</p>
+    <form method="post" action="{% url 'portal:event_join' e.slug %}">{% csrf_token %}<button class="btn btn-sm btn-primary">{% trans "Join" %}</button></form>
+  </div>
+{% endfor %}</div>
+{% endif %}
+{% endblock %}

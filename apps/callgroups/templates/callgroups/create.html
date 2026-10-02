@@ -1,0 +1,21 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "New call group" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h1>{% trans "New call group" %}</h1>
+    <p class="subtitle">{% trans "A call group rings several extensions under one number." %}</p>
+  </div>
+</div>
+<form method="post" class="card" novalidate>{% csrf_token %}
+  {% if form.non_field_errors %}<div class="alert alert-error" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+  {% for field in form %}
+  {% include "portal/_field.html" with field=field %}
+  {% if field.name == "number" %}<div id="availability" class="avail" aria-live="polite"></div>{% endif %}
+  {% endfor %}
+  <div class="form-actions">
+    <button class="btn btn-primary">{% trans "Create group" %}</button>
+    <a class="btn" href="{% url 'callgroups:index' event.slug %}">{% trans "Cancel" %}</a>
+  </div>
+</form>
+{% endblock %}

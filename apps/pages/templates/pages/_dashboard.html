@@ -1,0 +1,10 @@
+{% load i18n %}{% if pages %}
+<section class="card dashboard-pages">
+  <div class="card-header"><h2>{% trans "Info pages" %}</h2><a class="small" href="{% url 'pages:index' event.slug %}">{% trans "all" %}</a></div>
+  <ul class="dashboard-page-list">
+    {% for p in pages %}
+    <li><a href="{% url 'pages:show' event.slug p.slug %}">{{ p.title }}</a>{% if not p.published %} <span class="badge badge-warn">{% trans "unpublished" %}</span>{% endif %}{% if p.excerpt %}<div class="muted small">{{ p.excerpt }}</div>{% endif %}</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}

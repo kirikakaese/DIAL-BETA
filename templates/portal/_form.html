@@ -1,0 +1,10 @@
+{% load i18n %}{% comment %}
+Render a whole form: {% include "portal/_form.html" with form=form %}
+Outputs non-field errors, hidden fields and one .field block per visible field (see portal/_field.html) with
+label, help text and errors wired to the widget via aria-describedby / aria-invalid.
+Optional: form_fields=<list of bound fields> renders only those fields (to split a form into groups);
+bare=True skips the non-field errors / hidden fields (for the second and later groups).
+{% endcomment %}
+{% if not bare %}{% if form.non_field_errors %}<div class="alert alert-error" role="alert">{% for e in form.non_field_errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
+{% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}{% endif %}
+{% for field in form_fields|default:form.visible_fields %}{% include "portal/_field.html" with field=field %}{% endfor %}

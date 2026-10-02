@@ -1,0 +1,110 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "PBX & DECT connection" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <p class="eyebrow eyebrow-orga">{% trans "Orga" %} · {% trans "Infrastructure" %}</p>
+    <h1>{% trans "PBX & DECT connection" %}</h1>
+    <p class="subtitle">{% trans "PET is one central service; every event brings its own phone system. Tell PET how to reach the Asterisk and the DECT controller (OMM) at your venue." %}</p>
+  </div>
+  <div class="actions">
+    <form method="post" class="inline">{% csrf_token %}<input type="hidden" name="action" value="test">
+      <button class="btn btn-primary">{% trans "Test connections" %}</button>
+    </form>
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <div class="card-header"><h2>{% trans "Current status" %}</h2></div>
+    <dl class="kv">
+      <dt>{% trans "PBX" %}</dt>
+      <dd>{% if pbx_conn %}<strong>{{ pbx_conn.backend_label }}</strong> <span class="muted small">{{ pbx_conn.ari_url|default:pbx_conn.ami_host }}</span>
+          {% else %}<span class="badge badge-warn">{% trans "server default" %}</span> <span class="muted small">{{ default_pbx }}</span>{% endif %}
+          {% if health %}{% if health.pbx.ok %}<span class="badge badge-ok">{% trans "reachable" %}</span>{% else %}<span class="badge badge-err">{% trans "unreachable" %}</span> <span class="muted small">{{ health.pbx.error }}</span>{% endif %}{% endif %}</dd>
+      <dt>{% trans "DECT" %}</dt>
+      <dd>{% if dect_conn %}<strong>{{ dect_conn.backend_label }}</strong> <span class="muted small">{{ dect_conn.host }}</span>
+          {% else %}<span class="badge badge-warn">{% trans "server default" %}</span> <span class="muted small">{{ default_dect }}</span>{% endif %}
+          {% if health %}{% if health.dect.ok %}<span class="badge badge-ok">{% trans "reachable" %}</span>{% if health.dect.version %} <span class="muted small">v{{ health.dect.version }}, {{ health.dect.rfps_connected }}/{{ health.dect.rfps }} RFPs</span>{% endif %}{% else %}<span class="badge badge-err">{% trans "unreachable" %}</span> <span class="muted small">{{ health.dect.error }}</span>{% endif %}{% endif %}</dd>
+      <dt>{% trans "SIP domain" %}</dt><dd><code>{{ sip_domain }}</code> <span class="muted small">({% trans "event settings" %})</span></dd>
+    </dl>
+    {% if not pbx_conn or not dect_conn %}
+    <div class="alert alert-warning">{% trans "Without its own connection this event uses whatever the server was started with - on a shared PET server that is usually a simulator or another event's box. Configure both before opening registration." %}</div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2>{% trans "For the venue Asterisk" %}</h2></div>
+    <p class="small muted">{% trans "Put these into the Asterisk container's environment (deploy/asterisk). The venue box must reach PET over HTTPS and PET's PostgreSQL (realtime tables) - typically through a VPN." %}</p>
+    <pre class="mono small">PET_API_URL={{ public_url }}
+PET_EVENTS={{ event.slug }}
+PET_PBX_HOOK_SECRET=&lt;{% trans "hook secret from the PBX form" %}&gt;
+SIP_DOMAIN={{ sip_domain }}
+ARI_USER / ARI_PASSWORD, AMI_USER / AMI_PASSWORD = {% trans "same as below" %}</pre>
+    <dl class="kv small">
+      <dt>{% trans "Hooks" %}</dt><dd><code>{{ hook_url }}&lt;kind&gt;/</code></dd>
+      <dt>{% trans "Route lookup" %}</dt><dd><code>{{ route_url }}?event={{ event.slug }}&amp;number=…</code></dd>
+      <dt>{% trans "Dialplan" %}</dt><dd><code>{{ dialplan_url }}?event={{ event.slug }}</code></dd>
+    </dl>
+  </div>
+</div>
+
+{% if agent %}
+<section class="card{% if agent.stale or agent.asterisk_ok == False %} card-danger{% endif %}" id="venue-agent">
+  <div class="card-header"><h2>{% trans "Venue agent" %}
+    {% if agent.stale %}<span class="badge badge-err">{% trans "stale" %}</span>{% else %}<span class="badge badge-ok">{% trans "online" %}</span>{% endif %}
+    {% if agent.behind %}<span class="badge badge-warn">{% trans "behind" %}</span>{% else %}<span class="badge badge-ok">{% trans "up to date" %}</span>{% endif %}
+  </h2></div>
+  <div class="grid grid-2">
+    <dl class="kv small">
+      <dt>{% trans "Last seen" %}</dt>
+      <dd>{% if agent.last_seen %}{{ agent.last_seen|date:"Y-m-d H:i:s" }} <span class="muted">({{ agent.last_seen|timesince }} {% trans "ago" %})</span>{% else %}<span class="muted">{% trans "never" %}</span>{% endif %}
+          {% if agent.stale %}<br><span class="badge badge-err">{% trans "No heartbeat for more than three poll intervals - check the agent and the WAN link. The venue keeps running on its last snapshot." %}</span>{% endif %}</dd>
+      <dt>{% trans "Host" %}</dt><dd>{{ agent.host|default:"–" }} <span class="muted">{{ agent.software }}</span></dd>
+      <dt>{% trans "Applied version" %}</dt><dd><code>{{ agent.applied_version|default:"–"|truncatechars:20 }}</code></dd>
+      <dt>{% trans "Current version" %}</dt><dd><code>{{ agent.current_version|truncatechars:20 }}</code>{% if agent.behind %} <span class="badge badge-warn">{% trans "behind" %}</span>{% endif %}</dd>
+      <dt>{% trans "Asterisk" %}</dt>
+      <dd>{% if agent.asterisk_ok is None %}<span class="muted">{% trans "unknown" %}</span>{% elif agent.asterisk_ok %}<span class="badge badge-ok">{% trans "ok" %}</span>{% else %}<span class="badge badge-err">{% trans "down" %}</span>{% endif %}
+          {% if agent.message %}<span class="muted">{{ agent.message }}</span>{% endif %}</dd>
+      <dt>{% trans "Poll interval" %}</dt><dd>{{ agent.poll_interval }} s</dd>
+    </dl>
+    <div>
+      <p class="small muted">{% trans "Environment for the agent next to the venue Asterisk. It pulls snapshots into its local PostgreSQL; Asterisk keeps using realtime against localhost." %}</p>
+<pre class="mono small" id="venue-agent-env">PET_URL={{ public_url }}
+PET_EVENT={{ event.slug }}
+PET_PBX_HOOK_SECRET={% if agent.secret %}{{ agent.secret }}{% else %}&lt;{% trans "…set one above…" %}&gt;{% endif %}</pre>
+      <button type="button" class="btn btn-sm" data-action="copy" data-target="#venue-agent-env" data-copied="{% trans 'Copied' %}">{% trans "Copy" %}</button>
+      <dl class="kv small">
+        <dt>{% trans "Snapshot" %}</dt><dd><code>{{ snapshot_url }}?event={{ event.slug }}</code></dd>
+        <dt>{% trans "Schema" %}</dt><dd><code>{{ schema_url }}?event={{ event.slug }}</code></dd>
+        <dt>{% trans "Heartbeat" %}</dt><dd><code>POST {{ heartbeat_url }}</code></dd>
+      </dl>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<div class="grid grid-2">
+  <div class="card">
+    <div class="card-header"><h2>{% trans "PBX (Asterisk)" %}</h2>
+      {% if pbx_conn %}<form method="post" class="inline" data-confirm="{% trans 'Remove this connection and fall back to the server default?' %}">{% csrf_token %}<input type="hidden" name="action" value="reset-pbx"><button class="btn btn-sm btn-danger">{% trans "Remove" %}</button></form>{% endif %}
+    </div>
+    <p class="small muted">{% trans "ARI is used to originate calls and read channels, AMI (optional) for dialplan reloads and as originate fallback. Both must be reachable from the PET server." %}</p>
+    <form method="post">{% csrf_token %}<input type="hidden" name="action" value="save-pbx">
+      {% include "portal/_form.html" with form=pbx_form %}
+      <div class="form-actions"><button class="btn btn-primary">{% trans "Save PBX connection" %}</button></div>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2>{% trans "DECT (OMM)" %}</h2>
+      {% if dect_conn %}<form method="post" class="inline" data-confirm="{% trans 'Remove this connection and fall back to the server default?' %}">{% csrf_token %}<input type="hidden" name="action" value="reset-dect"><button class="btn btn-sm btn-danger">{% trans "Remove" %}</button></form>{% endif %}
+    </div>
+    <p class="small muted">{% trans "AXI access to the Mitel SIP-DECT OpenMobility Manager. PET polls RFP and handset state every 30 s while the event is in registration or live." %}</p>
+    <form method="post">{% csrf_token %}<input type="hidden" name="action" value="save-dect">
+      {% include "portal/_form.html" with form=dect_form %}
+      <div class="form-actions"><button class="btn btn-primary">{% trans "Save DECT connection" %}</button></div>
+    </form>
+  </div>
+</div>
+{% endblock %}

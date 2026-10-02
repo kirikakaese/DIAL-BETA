@@ -1,0 +1,33 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% if obj %}{% trans "Edit IVR menu" %}{% else %}{% trans "New IVR menu" %}{% endif %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h1>{% if obj %}{% trans "Edit IVR menu" %} <span class="muted number">{{ obj.extension.number }}</span>{% else %}{% trans "New IVR menu" %}{% endif %}</h1>
+    <p class="subtitle">{% trans "Callers hear the prompt and press a digit to reach one of the options below." %}</p>
+  </div>
+</div>
+
+<section class="card">
+  <form method="post" enctype="multipart/form-data">{% csrf_token %}
+    {% include "portal/_form.html" with form=form %}
+
+    <h2>{% trans "Options" %}</h2>
+    <p class="small muted">{% trans "Actions: dial / announcement / menu target another extension number; voicemail targets a mailbox; hangup ends the call." %}</p>
+    {{ formset.management_form }}
+    {% if formset.non_form_errors %}<div class="alert alert-error" role="alert">{{ formset.non_form_errors }}</div>{% endif %}
+    <div class="table-wrap"><table>
+      <thead><tr><th scope="col">{% trans "Digit" %}</th><th scope="col">{% trans "Action" %}</th><th scope="col">{% trans "Target" %}</th><th scope="col">{% trans "Label" %}</th><th scope="col">{% trans "Delete" %}</th></tr></thead>
+      <tbody>
+      {% for f in formset %}
+      <tr><td>{{ f.digit }}{{ f.digit.errors }}</td><td>{{ f.action }}</td><td>{{ f.target }}{{ f.target.errors }}</td><td>{{ f.label }}</td><td>{{ f.DELETE }}</td></tr>
+      {% endfor %}
+      </tbody></table></div>
+
+    <div class="form-actions">
+      <button class="btn btn-primary">{% trans "Save" %}</button>
+      <a class="btn" href="{% url 'ivr:index' event.slug %}">{% trans "Cancel" %}</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

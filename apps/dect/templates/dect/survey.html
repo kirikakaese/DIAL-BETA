@@ -1,0 +1,46 @@
+{% extends "base.html" %}{% load i18n dect_tags %}
+{% block title %}{% trans "Site survey" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <p class="eyebrow eyebrow-orga">{% trans "Orga" %} · {% trans "Infrastructure" %}</p>
+    <h1>{% trans "Site survey (walk test)" %}</h1>
+    <p class="subtitle">{% trans "Check which base station serves a handset at any spot in the venue." %}</p>
+  </div>
+</div>
+{% include "dect/_nav.html" %}
+<div class="grid grid-2">
+  <section class="card">
+    <div class="card-header"><h2>{% trans "How to" %}</h2></div>
+    {% if survey_number %}
+    <ol class="help-steps">
+      <li>{% trans "Take a subscribed DECT handset and walk the venue." %}</li>
+      <li>{% blocktrans with n=survey_number %}At every spot you want to check, dial <strong class="number">{{ n }}</strong>.{% endblocktrans %}</li>
+      <li>{% trans "The PBX announces the name of the base station (RFP) currently serving your handset and PET records it here." %}</li>
+    </ol>
+    {% else %}
+    <p class="alert alert-warning">{% trans "No site survey number is configured in the number plan yet. Set one under Orga → Number plan." %}</p>
+    {% endif %}
+    <p class="muted small">{% trans "Handsets are matched by the calling extension number, so the handset must be bound to an active extension. Use the coverage map to spot RFPs that never show up in survey logs." %}</p>
+  </section>
+  <section class="card">
+    <div class="card-header"><h2>{% trans "Recent survey calls" %}</h2></div>
+    <div class="table-wrap" data-refresh="20" aria-live="polite">
+      <table>
+        <thead><tr><th scope="col">{% trans "When" %}</th><th scope="col">{% trans "Handset" %}</th><th scope="col">{% trans "RFP" %}</th><th scope="col">{% trans "RSSI" %}</th><th scope="col">{% trans "Note" %}</th></tr></thead>
+        <tbody>
+        {% for l in logs %}
+        <tr>
+          <td class="small">{{ l.at|date:"D H:i:s" }}</td>
+          <td>{% if l.device %}<span class="mono">{{ l.device.ipei }}</span> <span class="muted small">{{ l.device.owner.username|default:"" }}</span>{% else %}–{% endif %}</td>
+          <td>{% if l.rfp %}<a href="{% dect_url 'rfp_edit' event.slug l.rfp.pk %}">{{ l.rfp.name }}</a>{% else %}<span class="muted">{% trans "unknown" %}</span>{% endif %}</td>
+          <td>{% if l.rssi is not None %}{{ l.rssi }} dBm{% else %}–{% endif %}</td>
+          <td class="small">{{ l.note }}</td>
+        </tr>
+        {% empty %}<tr><td colspan="5" class="empty">{% trans "No survey calls logged yet." %}</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+{% endblock %}

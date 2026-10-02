@@ -1,0 +1,26 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Event settings" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <p class="eyebrow eyebrow-orga">{% trans "Orga" %} · {% trans "Event" %}</p>
+    <h1>{% trans "Event settings" %} <span class="badge badge-{{ event.state }}">{{ event.get_state_display }}</span></h1>
+    <p class="subtitle">{% trans "Slug:" %} <code>{{ event.slug }}</code></p>
+  </div>
+  <div class="actions">
+    {% for value, label in transitions %}<form method="post" action="{% url 'portal:orga_event_state' event.slug value %}" class="inline" data-confirm="{% blocktrans %}Change event state to '{{ label }}'?{% endblocktrans %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}"><button class="btn">→ {{ label }}</button></form>{% endfor %}
+    {% if user.is_superuser %}<a class="btn" href="{% url 'portal:orga_event_clone' event.slug %}">{% trans "Clone event" %}</a>{% endif %}
+    <a class="btn" href="{% url 'portal:orga_export' event.slug %}">{% trans "Export" %}</a>
+    {% if user.is_superuser %}<a class="btn" href="{% url 'portal:orga_import' event.slug %}">{% trans "Import" %}</a>{% endif %}
+  </div>
+</div>
+<div class="card">
+  <form method="post" enctype="multipart/form-data">{% csrf_token %}
+    <div class="form-cols">{% include "portal/_form.html" with form=form form_fields=form.general_fields %}</div>
+    <h2 id="schedule">{% trans "Schedule" %}</h2>
+    <p class="small muted">{% blocktrans with tz=event.timezone %}Optional: PET changes the event state automatically at these times (event timezone {{ tz }}). Leave empty to switch states by hand.{% endblocktrans %}</p>
+    <div class="form-cols">{% include "portal/_form.html" with form=form form_fields=form.schedule_fields bare=True %}</div>
+    <div class="form-actions"><button class="btn btn-primary">{% trans "Save settings" %}</button></div>
+  </form>
+</div>
+{% endblock %}

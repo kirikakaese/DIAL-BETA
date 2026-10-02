@@ -1,0 +1,42 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Claim extension" %} {{ claim.number }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h1>{% trans "Your reserved extension" %}</h1>
+    <p class="subtitle">{{ event.name }}</p>
+  </div>
+</div>
+<div class="grid grid-2">
+  <section class="card">
+    <p class="number big-number">{{ claim.number }}</p>
+    <p>{{ claim.get_type_display }}{% if claim.note %} · <span class="muted">{{ claim.note }}</span>{% endif %}</p>
+    {% if claim.is_redeemed %}
+      <div class="alert alert-info">{% trans "This claim has already been redeemed." %}
+        {% if claim.redeemed_extension and claim.redeemed_extension.owner_id == request.user.pk %}
+        <a href="{% url 'portal:extension_detail' event.slug claim.redeemed_extension.pk %}">{% trans "Open extension" %}</a>{% endif %}
+      </div>
+    {% elif claim.is_expired %}
+      <div class="alert alert-warning">{% blocktrans with until=claim.valid_until|date:"Y-m-d H:i" %}This claim expired on {{ until }}. Ask the orga team to reserve the number again.{% endblocktrans %}</div>
+    {% elif not is_mine %}
+      <div class="alert alert-error">{% blocktrans with who=claim.claimant_label me=request.user.email %}This number is reserved for {{ who }}. You are logged in as {{ me }} - switch accounts or ask the orga team to change the invite address.{% endblocktrans %}</div>
+    {% else %}
+      <p>{% blocktrans with until=claim.valid_until|date:"Y-m-d H:i" %}The orga team of this event reserved this number for you. Confirm to create an active extension you own (valid until {{ until }}).{% endblocktrans %}</p>
+      <form method="post">{% csrf_token %}
+        <div class="actions">
+          <button class="btn btn-primary">{% trans "Claim" %} {{ claim.number }}</button>
+          <a class="btn" href="{% url 'portal:dashboard' %}">{% trans "Not now" %}</a>
+        </div>
+      </form>
+    {% endif %}
+  </section>
+  <aside class="card">
+    <h2>{% trans "What happens next" %}</h2>
+    <ul class="small">
+      <li>{% trans "The extension is activated immediately - no approval needed." %}</li>
+      <li>{% trans "Afterwards attach a DECT handset (IPEI + PIN) or a SIP softphone (QR code) on the extension page." %}</li>
+      <li>{% trans "Until you claim it the number is blocked for everybody else." %}</li>
+    </ul>
+  </aside>
+</div>
+{% endblock %}

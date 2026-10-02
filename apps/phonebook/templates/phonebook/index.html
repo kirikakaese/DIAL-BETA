@@ -1,0 +1,82 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Phonebook" %}{% endblock %}
+{% block head %}
+<style>
+  @media print {
+    .phonebook-search, .phonebook-exports, .phonebook-actions, .phonebook-row-actions { display: none !important; }
+    .phonebook-table { font-size: 10pt; }
+    .phonebook-table td, .phonebook-table th { padding: 2px 6px; }
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h1>{% trans "Phonebook" %} <span class="count">{{ count }}</span></h1>
+    <p class="subtitle">{% blocktrans count counter=count %}{{ counter }} entry{% plural %}{{ counter }} entries{% endblocktrans %}{% if q or type %} · {% trans "filtered" %}{% endif %}</p>
+  </div>
+  <div class="actions phonebook-actions">
+    <a class="btn btn-sm" href="{% url 'phonebook:pdf' event.slug %}{% if q %}?q={{ q|urlencode }}{% endif %}">{% trans "PDF" %}</a>
+    <a class="btn btn-sm" href="{% url 'phonebook:csv' event.slug %}">CSV</a>
+    <a class="btn btn-sm" href="{% url 'phonebook:vcf' event.slug %}">vCard</a>
+    <a class="btn btn-sm" href="{% url 'phonebook:ldif' event.slug %}">LDIF</a>
+    <button type="button" class="btn btn-sm" data-action="print">{% trans "Print" %}</button>
+    {% if request.event_is_orga %}<a class="btn btn-sm" href="{% url 'phonebook:settings' event.slug %}">{% trans "Settings" %}</a>{% endif %}
+  </div>
+</div>
+
+{% if settings.intro_text %}<div class="alert alert-info">{{ settings.intro_text|linebreaksbr }}</div>{% endif %}
+
+<form method="get" class="form-row filters phonebook-search" role="search">
+  <div class="field">
+    <label for="q">{% trans "Search" %}</label>
+    <input id="q" type="search" name="q" value="{{ q }}" placeholder="{% trans 'Search number, name, owner, location…' %}" autofocus>
+  </div>
+  <div class="field">
+    <label for="type">{% trans "Type" %}</label>
+    <select id="type" name="type">
+      <option value="">{% trans "All types" %}</option>
+      {% for value, label in types %}<option value="{{ value }}" {% if value == type %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="field field-submit">
+    <button class="btn btn-primary">{% trans "Search" %}</button>
+    {% if q or type %}<a class="btn" href="{% url 'phonebook:index' event.slug %}">{% trans "Reset" %}</a>{% endif %}
+  </div>
+</form>
+
+<div class="table-wrap">
+  <table class="phonebook-table">
+    <caption class="sr-only">{% trans "Phonebook entries" %}</caption>
+    <thead><tr>
+      <th scope="col">{% trans "Number" %}</th>
+      <th scope="col">{% trans "Name" %}</th>
+      <th scope="col">{% trans "Type" %}</th>
+      {% if settings.show_owner %}<th scope="col">{% trans "Owner" %}</th>{% endif %}
+      {% if settings.show_location %}<th scope="col">{% trans "Location" %}</th>{% endif %}
+      {% if settings.categories %}<th scope="col">{% trans "Category" %}</th>{% endif %}
+      <th scope="col" class="phonebook-row-actions"><span class="sr-only">{% trans "Actions" %}</span></th>
+    </tr></thead>
+    <tbody>
+    {% for e, cat in rows %}
+      <tr>
+        <td class="number"><a href="tel:{{ e.number }}">{{ e.number_label }}</a></td>
+        <td>{% if e.display_name %}{{ e.display_name }}{% elif e.owner %}{{ e.owner.username }}{% else %}{{ e.number }}{% endif %}{% if e.description %}<div class="muted small">{{ e.description }}</div>{% endif %}</td>
+        <td><span class="badge">{{ e.get_type_display }}</span></td>
+        {% if settings.show_owner %}<td>{% if e.owner %}{{ e.owner.username }}{% else %}—{% endif %}</td>{% endif %}
+        {% if settings.show_location %}<td class="small">{{ e.location_hint }}</td>{% endif %}
+        {% if settings.categories %}<td class="small">{{ cat }}</td>{% endif %}
+        <td class="small phonebook-row-actions"><a href="{% url 'phonebook:vcard_one' event.slug e.number %}" title="{% trans 'Save as contact (vCard)' %}" aria-label="{% blocktrans with n=e.number %}Save {{ n }} as contact (vCard){% endblocktrans %}">📇 <span class="muted">vCard</span></a></td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="7" class="empty">{% trans "No entries match." %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="callout phonebook-exports">
+  <strong>{% trans "Hardphone LDAP directory" %}</strong> — {% trans "Import the LDIF export into your LDAP server and point the phones at base DN" %}
+  <code>{{ base_dn }}</code>. {% trans "Name attributes" %}: <code>cn</code>/<code>sn</code>, {% trans "number attribute" %}: <code>telephoneNumber</code>.
+</div>
+{% endblock %}

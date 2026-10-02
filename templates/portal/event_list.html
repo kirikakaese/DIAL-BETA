@@ -1,0 +1,29 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Events" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h1>{% trans "Events" %}{% if rows %} <span class="count">{{ rows|length }}</span>{% endif %}</h1>
+  </div>
+  {% if user.is_superuser %}<div class="actions"><a class="btn btn-primary" href="{% url 'portal:event_create' %}">{% trans "New event" %}</a></div>{% endif %}
+</div>
+{% if rows %}
+<div class="grid grid-2">{% for r in rows %}
+  <div class="card">
+    <div class="card-header"><h2><a href="{% url 'portal:event_dashboard' r.event.slug %}">{{ r.event.name }}</a></h2>
+      <span class="badge badge-{{ r.event.state }}">{{ r.event.get_state_display }}</span></div>
+    <p class="muted small">{{ r.event.start_date|date:"j M" }} – {{ r.event.end_date|date:"j M Y" }}{% if r.event.location %} · {{ r.event.location }}{% endif %}</p>
+    {% if r.event.description %}<p class="small">{{ r.event.description|truncatewords:25 }}</p>{% endif %}
+    <div class="actions">
+      {% if r.role %}<span class="badge badge-info">{% trans "My role:" %} {{ r.role }}</span>{% elif user.is_authenticated and r.event.is_public and not r.event.is_archived %}
+      <form method="post" action="{% url 'portal:event_join' r.event.slug %}" class="inline">{% csrf_token %}<button class="btn btn-sm btn-primary">{% trans "Join" %}</button></form>{% endif %}
+      <a class="btn btn-sm" href="{% url 'portal:switch_event' r.event.slug %}">{% trans "Open" %}</a>
+    </div>
+  </div>
+{% endfor %}</div>
+{% else %}
+<div class="card">
+  <div class="empty"><p>{% trans "No events visible to you." %}</p></div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Delete my account" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h1>{% trans "Delete my account" %}</h1>
+  </div>
+</div>
+<div class="card narrow">
+  <div class="alert alert-warning">
+    {% blocktrans count n=ext_count %}This will delete your {{ n }} extension, anonymize your call records and permanently deactivate your account.{% plural %}This will delete your {{ n }} extensions, anonymize your call records and permanently deactivate your account.{% endblocktrans %}
+    {% trans "This cannot be undone." %}
+  </div>
+  <form method="post" data-confirm="{% trans 'Really delete your account?' %}">{% csrf_token %}
+    {% include "portal/_form.html" with form=form %}
+    <div class="form-actions">
+      <button class="btn btn-danger">{% trans "Delete everything" %}</button>
+      <a class="btn" href="{% url 'accounts:profile' %}">{% trans "Cancel" %}</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

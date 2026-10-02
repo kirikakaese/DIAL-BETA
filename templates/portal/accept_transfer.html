@@ -1,0 +1,28 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Accept transfer" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h1>{% trans "Extension transfer" %}</h1>
+  </div>
+</div>
+<div class="card narrow">
+  <dl class="kv">
+    <dt>{% trans "Number" %}</dt><dd><span class="number">{{ ext.number }}</span> ({{ ext.get_type_display }})</dd>
+    <dt>{% trans "Event" %}</dt><dd>{{ event.name }}</dd>
+    <dt>{% trans "From" %}</dt><dd>{{ tr.from_user }}</dd>
+    <dt>{% trans "To" %}</dt><dd>{{ tr.to_user }}</dd>
+    <dt>{% trans "Valid until" %}</dt><dd>{{ tr.expires_at|date:"SHORT_DATETIME_FORMAT" }}</dd>
+  </dl>
+  {% if not tr.is_open %}<div class="alert alert-error">{% trans "This transfer has expired or was already accepted." %}</div>
+  {% elif not mine %}<div class="alert alert-warning">{% trans "This transfer is addressed to a different user. Log in with that account to accept it." %}</div>
+  {% else %}
+  <form method="post">{% csrf_token %}
+    <div class="form-actions">
+      <button class="btn btn-primary">{% trans "Accept - make it mine" %}</button>
+      <a class="btn" href="{% url 'portal:dashboard' %}">{% trans "Not now" %}</a>
+    </div>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

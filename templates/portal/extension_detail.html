@@ -1,0 +1,172 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{{ ext.number }}{% endblock %}
+{% block breadcrumbs %}<nav class="breadcrumbs small muted" aria-label="{% trans 'Breadcrumb' %}"><a href="{% url 'portal:event_dashboard' event.slug %}">{{ event.name }}</a> › <a href="{% url 'portal:extension_list' event.slug %}">{% trans "My extensions" %}</a> › {{ ext.number }}</nav>{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h1 class="number big-number">{{ ext.number_label }}</h1>
+    <p class="subtitle">{{ ext.get_type_display }} · <span class="badge badge-{{ ext.state }}">{{ ext.get_state_display }}</span>
+      {% if ext.owner %} · {% trans "Owner:" %} {{ ext.owner }}{% endif %}
+      {% if ext.is_temporary %} · <span class="badge badge-info">{% trans "guest" %}</span>{% endif %}</p>
+  </div>
+  {% if can_edit %}
+  <div class="actions">
+    <a class="btn" href="{% url 'portal:extension_edit' event.slug ext.pk %}">{% trans "Edit" %}</a>
+    <a class="btn" href="{% url 'portal:extension_transfer' event.slug ext.pk %}">{% trans "Transfer" %}</a>
+    <a class="btn btn-danger" href="{% url 'portal:extension_delete' event.slug ext.pk %}">{% trans "Delete" %}</a>
+  </div>
+  {% endif %}
+</div>
+
+{% if ext.state == 'requested' %}<div class="alert alert-warning">{% trans "This number is waiting for approval by the orga team. You will be able to add devices once it is active." %}{% if ext.request_note %}<div class="small muted">{% trans "Your note:" %} {{ ext.request_note }}</div>{% endif %}</div>
+{% elif ext.state == 'rejected' %}<div class="alert alert-error">{% trans "This request was rejected." %}{% if ext.moderation_note %} {{ ext.moderation_note }}{% endif %}</div>
+{% elif ext.state == 'suspended' %}<div class="alert alert-warning">{% trans "This extension is suspended." %}{% if ext.moderation_note %} {{ ext.moderation_note }}{% endif %}</div>{% endif %}
+{% if is_orga and ext.provision_error %}<div class="alert alert-error"><strong>{% trans "Provisioning error:" %}</strong> <code class="small">{{ ext.provision_error|truncatechars:300 }}</code></div>{% endif %}
+
+<div class="grid grid-2">
+  <section class="card">
+    <div class="card-header"><h2>{% if ext.is_trunk %}{% trans "SIP account of your PBX" %}{% else %}{% trans "Devices" %}{% endif %}</h2>
+      {% if can_edit and ext.accepts_devices and ext.state != 'requested' and ext.state != 'rejected' and not trunk_device %}<a class="btn btn-sm btn-primary" href="{% url 'portal:device_add' event.slug ext.pk %}">{% if ext.is_trunk %}{% trans "Create SIP account" %}{% else %}{% trans "Add device" %}{% endif %}</a>{% endif %}</div>
+    {% if not ext.accepts_devices %}<p class="muted small">{% trans "This extension type does not ring physical devices." %}</p>
+    {% elif bindings %}
+    <div class="table-wrap"><table>
+      <thead><tr><th scope="col">{% trans "Device" %}</th><th scope="col">{% trans "Identity" %}</th><th scope="col">{% trans "State" %}</th><th scope="col">{% trans "Last seen" %}</th><th scope="col"><span class="sr-only">{% trans "Actions" %}</span></th></tr></thead>
+      <tbody>{% for b in bindings %}{% with d=b.device %}
+      <tr>
+        <td><a href="{% url 'portal:device_detail' event.slug d.pk %}">{{ d.name|default:d.get_type_display }}</a>{% if d.handset_model %}<div class="small muted">{{ d.handset_model }}</div>{% endif %}</td>
+        <td class="small">{% if d.type == 'dect' %}IPEI <code>{{ d.ipei }}</code>{% else %}SIP <code>{{ d.sip_username }}</code>{% endif %}</td>
+        <td><span class="badge badge-{{ d.state }}">{{ d.get_state_display }}</span>{% if d.type == 'dect' and d.pin_valid %}<div class="small">PIN <code>{{ d.subscription_pin }}</code></div>{% endif %}</td>
+        <td class="small">{% if d.last_seen_rfp %}{{ d.last_seen_rfp.name }}<br>{% endif %}{{ d.last_seen_at|date:"D H:i"|default:"–" }}</td>
+        <td class="actions">
+          {% if can_edit %}
+          {% if d.type == 'dect' %}<form method="post" action="{% url 'portal:device_new_pin' event.slug d.pk %}" class="inline">{% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}"><button class="btn btn-sm">{% trans "New PIN" %}</button></form>{% endif %}
+          <form method="post" action="{% url 'portal:device_unbind' event.slug d.pk ext.pk %}" class="inline" data-confirm="{% trans 'Detach this device from the extension?' %}">{% csrf_token %}<button class="btn btn-sm btn-danger">{% trans "Detach" %}</button></form>
+          {% endif %}
+        </td>
+      </tr>{% endwith %}{% endfor %}</tbody></table></div>
+    {% else %}
+    <p class="muted">{% if ext.is_trunk %}{% trans "No SIP account yet - create one so your PBX can register." %}{% else %}{% trans "No device attached yet - this number will not ring." %}{% endif %}</p>
+    {% endif %}
+
+    {% if ext.is_trunk %}
+    <h3>{% trans "How to connect your PBX" %}</h3>
+    {% with range=ext.block_range %}
+    <ol class="small">
+      <li>{% blocktrans with from=range.0 to=range.1 %}Every call to a number from <strong>{{ from }}</strong> to <strong>{{ to }}</strong> is sent to your PBX; the dialled number arrives unchanged as the request URI user.{% endblocktrans %}</li>
+      {% if trunk_device %}<li>{% blocktrans with user=trunk_device.sip_username domain=trunk_device.sip_domain %}Your PBX must register as <code>{{ user }}@{{ domain }}</code> (password on the device page).{% endblocktrans %}</li>
+      {% else %}<li>{% trans "Create the SIP account above; PET generates the username and password your PBX registers with." %}</li>{% endif %}
+      <li>{% blocktrans with from=range.0 to=range.1 base=ext.number %}Outgoing calls from your PBX are presented with the caller ID {{ base }}. Passing through individual caller IDs from {{ from }}–{{ to }} is not enabled yet.{% endblocktrans %}</li>
+    </ol>
+    {% endwith %}
+    {% endif %}
+
+    {% if ext.is_endpoint and ext.type == 'dect' %}
+    {% if claim_dial %}
+    <div class="claim-box">
+      <h3>{% trans "Claim a handset by dialing" %}</h3>
+      <p class="claim-dial"><span class="number big-number">{{ claim_dial }}</span></p>
+      <ol class="small">
+        <li>{% trans "Subscribe any handset to the event's DECT network (ask the DECT desk for the PIN if your handset is not in the pool yet)." %}</li>
+        <li>{% blocktrans with n=claim_dial %}Dial <strong>{{ n }}</strong> from that handset. PET announces your number - the handset is now yours.{% endblocktrans %}</li>
+        <li>{% trans "Dialing the code from another handset moves the number to that handset." %}</li>
+      </ol>
+      <p class="small muted">{% trans "Anyone who knows this code can take over your number with their handset. Keep it private; get a new one if in doubt." %}
+        {% if can_edit %}<form method="post" action="{% url 'portal:extension_new_claim_code' event.slug ext.pk %}" class="inline">{% csrf_token %}<button class="btn btn-sm">{% trans "New claim code" %}</button></form>{% endif %}</p>
+    </div>
+    <details class="small"><summary>{% trans "How to subscribe a DECT handset" %} ({% trans "manual, with IPEI" %})</summary>
+    {% else %}
+    <h3>{% trans "How to subscribe a DECT handset" %}</h3>
+    {% endif %}
+    <ol class="small">
+      <li>{% trans "Add your handset above with its IPEI (13 digits, printed under the battery or in the handset's menu)." %}</li>
+      <li>{% trans "On the handset: Menu → Settings → Registration → Register new base." %}</li>
+      <li>{% trans "Enter the PIN shown for your device. The PIN is valid for 30 minutes - use 'New PIN' if it expired." %}</li>
+      <li>{% trans "Within a minute the handset shows the network name and your number." %}</li>
+    </ol>
+    {% for d in dect_devices %}{% if d.pin_valid %}<p class="small">{% trans "PIN for" %} <code>{{ d.ipei }}</code>: <strong class="number">{{ d.subscription_pin }}</strong> <span class="muted">({% trans "valid until" %} {{ d.subscription_pin_expires_at|date:"H:i" }})</span></p>{% endif %}{% endfor %}
+    {% if claim_dial %}</details>{% endif %}
+    {% endif %}
+    {% if ext.is_endpoint and ext.type != 'dect' %}
+    <h3>{% trans "How to connect a softphone" %}</h3>
+    <ol class="small">
+      <li>{% trans "Add a SIP device above - PET generates a username and password." %}</li>
+      <li>{% trans "Open the device page and scan the QR code with your softphone (Linphone, Zoiper, Grandstream Wave…) or copy the credentials." %}</li>
+      <li>{% blocktrans with uri=ext.sip_uri %}Your public address is <code>{{ uri }}</code>.{% endblocktrans %}</li>
+    </ol>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <h2>{% trans "Settings" %}</h2>
+    <dl class="kv">
+      {% if ext.is_trunk %}<dt>{% trans "Number block" %}</dt><dd><span class="number">{{ ext.number_label }}</span> <span class="muted small">({% blocktrans count n=ext.block_size %}{{ n }} number{% plural %}{{ n }} numbers{% endblocktrans %})</span></dd>{% endif %}
+      <dt>{% trans "Display name" %}</dt><dd>{{ ext.caller_id_name }}{% if ext.type == 'dect' %}<div class="small muted">{% trans "Shown on handset as:" %} <code>{{ ext.caller_id_name|truncatechars:20 }}</code></div>{% endif %}</dd>
+      {% if ext.description %}<dt>{% trans "Description" %}</dt><dd>{{ ext.description }}</dd>{% endif %}
+      {% if ext.location_hint %}<dt>{% trans "Location" %}</dt><dd>{{ ext.location_hint }}</dd>{% endif %}
+      <dt>{% trans "Phonebook" %}</dt><dd>{% if ext.in_phonebook %}{% trans "listed" %}{% else %}{% trans "hidden" %}{% endif %}</dd>
+      {% if ext.is_endpoint %}<dt>{% trans "Ring strategy" %}</dt><dd>{{ ext.get_ring_strategy_display }} · {{ ext.ring_timeout }} s</dd>{% endif %}
+      {% if ext.is_trunk %}<dt>{% trans "Ring timeout" %}</dt><dd>{{ ext.ring_timeout }} s</dd>{% endif %}
+      {% if ext.is_endpoint %}
+      <dt>{% trans "Call forwarding" %}</dt>
+      <dd>{% if ext.is_forwarding %}{{ ext.get_forward_mode_display }} → <a href="{% url 'portal:extension_detail' event.slug ext.forward_target.pk %}" class="number">{{ ext.forward_target_number }}</a> <span class="muted">{{ ext.forward_target.caller_id_name }}</span>{% if ext.forward_mode == 'delayed' %} · {% blocktrans with s=ext.forward_delay %}after {{ s }} s{% endblocktrans %}{% endif %}
+        {% elif ext.forward_unconditional or ext.forward_busy or ext.forward_noanswer %}{% trans "legacy targets (see below)" %}
+        {% else %}{% trans "off" %}{% endif %}</dd>
+      {% endif %}
+      {% if ext.forward_unconditional and not ext.is_forwarding %}<dt>{% trans "Forward all" %}</dt><dd class="number">{{ ext.forward_unconditional }}</dd>{% endif %}
+      {% if ext.forward_busy and not ext.is_forwarding %}<dt>{% trans "Forward busy" %}</dt><dd class="number">{{ ext.forward_busy }}</dd>{% endif %}
+      {% if ext.forward_noanswer and not ext.is_forwarding %}<dt>{% trans "Forward no answer" %}</dt><dd class="number">{{ ext.forward_noanswer }}</dd>{% endif %}
+      {% if forwarded_from %}<dt>{% trans "Forwarded from" %}</dt><dd>{% for f in forwarded_from %}<span class="number">{{ f.number }}</span>{% if f.owner %} <span class="muted small">({{ f.owner }}, {{ f.get_forward_mode_display|lower }})</span>{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}</dd>{% endif %}
+      <dt>{% trans "Callbacks (CCBS/CCNR)" %}</dt><dd>{% if ext.allow_callback %}{% trans "allowed" %}{% else %}{% trans "off" %}{% endif %}</dd>
+      {% if ext.is_endpoint %}<dt>{% trans "Call waiting" %}</dt><dd>{% if ext.call_waiting %}{% trans "on" %}{% else %}{% trans "off (second caller hears busy)" %}{% endif %}</dd>{% endif %}
+      <dt>{% trans "Caller-ID display" %}</dt><dd>{{ ext.get_display_mode_display }} · <code>{{ ext.caller_id_display }}</code></dd>
+      {% if ext.type == 'dect' %}<dt>{% trans "DECT encryption" %}</dt><dd>{% if ext.dect_encryption %}{% trans "on" %}{% else %}{% trans "off" %}{% endif %}</dd>{% endif %}
+      <dt>{% trans "Announcement language" %}</dt><dd>{% if ext.language %}{{ ext.get_language_display }}{% else %}{% trans "Event default" %} ({{ event.default_language }}){% endif %}</dd>
+      {% if ext.is_endpoint %}
+      <dt>{% trans "Ringback tone" %}</dt>
+      <dd>{% if ext.ringback_tone_status == 'none' or not ext.ringback_tone %}{% trans "standard" %}
+        {% else %}<span class="badge badge-{% if ext.ringback_tone_status == 'ready' %}active{% elif ext.ringback_tone_status == 'failed' %}rejected{% else %}requested{% endif %}">{{ ext.get_ringback_tone_status_display }}</span>
+        {% if ext.has_ringback_tone %}<br><audio controls preload="none" src="{{ ext.ringback_tone_processed.url }}">{% trans "Your browser cannot play audio." %}</audio>
+        {% elif ext.ringback_tone_error %}<br><span class="error small">{{ ext.ringback_tone_error }}</span>{% endif %}
+        {% endif %}</dd>
+      {% endif %}
+      <dt>SIP URI</dt><dd><code>{{ ext.sip_uri }}</code></dd>
+      {% if ext.expires_at %}<dt>{% trans "Expires" %}</dt><dd>{{ ext.expires_at|date:"SHORT_DATETIME_FORMAT" }}</dd>{% endif %}
+      {% if ext.ported_from %}<dt>{% trans "Ported from" %}</dt><dd>{{ ext.ported_from.event.name }}</dd>{% endif %}
+      {% if is_orga %}<dt>{% trans "Provisioned" %}</dt><dd>{{ ext.provisioned_at|date:"SHORT_DATETIME_FORMAT"|default:"–" }}</dd>{% endif %}
+    </dl>
+    {% if transfers %}
+    <h3>{% trans "Pending transfer" %}</h3>
+    <ul class="small">{% for t in transfers %}<li>{% trans "to" %} {{ t.to_user }} · {% trans "expires" %} {{ t.expires_at|date:"SHORT_DATETIME_FORMAT" }}</li>{% endfor %}</ul>
+    {% endif %}
+  </section>
+</div>
+
+{% if ext.state == 'active' and PET_FEATURES.phonebook %}
+<section class="card business-card">
+  <div class="card-header"><h2>{% trans "Business card" %}</h2>
+    <div class="actions">
+      <a class="btn btn-sm" href="{% url 'phonebook:vcard_one' event.slug ext.number %}">{% trans "Download vCard" %}</a>
+      <a class="btn btn-sm" href="{% url 'phonebook:card_print' event.slug ext.number %}" target="_blank" rel="noopener">{% trans "Print card" %}</a>
+    </div>
+  </div>
+  <div class="business-card-body">
+    <img class="qr" src="{% url 'phonebook:card_qr' event.slug ext.number %}" alt="{% trans 'QR code with contact details' %}" width="180" height="180">
+    <div>
+      <p><strong>{% trans "Scan to save this number" %}</strong></p>
+      <p class="small muted">{% trans "The code contains the contact itself (name, number, event) - any phone camera offers to add it, no internet needed." %}</p>
+      {% if not ext.in_phonebook %}<p class="small muted">{% trans "This extension is hidden from the phonebook; only you and the orga team can open these links." %}</p>{% endif %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<section class="card">
+  <h2>{% trans "History" %}</h2>
+  <div class="table-wrap"><table class="small">
+    <thead><tr><th scope="col">{% trans "When" %}</th><th scope="col">{% trans "Who" %}</th><th scope="col">{% trans "Action" %}</th><th scope="col">{% trans "Details" %}</th></tr></thead>
+    <tbody>{% for a in audit %}
+    <tr><td>{{ a.created_at|date:"SHORT_DATETIME_FORMAT" }}</td><td>{{ a.actor_repr }}</td><td>{{ a.get_action_display }}</td>
+      <td>{{ a.message }}{% if a.changes %} <code class="muted">{{ a.changes|truncatechars:120 }}</code>{% endif %}</td></tr>
+    {% empty %}<tr><td colspan="4" class="empty">{% trans "No history yet." %}</td></tr>{% endfor %}</tbody></table></div>
+</section>
+{% endblock %}

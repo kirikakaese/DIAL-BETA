@@ -1,0 +1,41 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Members" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <p class="eyebrow eyebrow-orga">{% trans "Orga" %} · {% trans "People" %}</p>
+    <h1>{% trans "Members" %} <span class="count">{{ rows|length }}</span></h1>
+    <p class="subtitle">{% trans "Users join public events themselves; use this to add helpdesk/orga staff or to change a role." %}</p>
+  </div>
+</div>
+<div class="grid grid-2">
+  <section class="card">
+    <h2>{% trans "Add member" %}</h2>
+    <form method="post" class="form-row">{% csrf_token %}<input type="hidden" name="action" value="add">
+      {% include "portal/_form.html" with form=add_form %}
+      <div class="field field-submit"><button class="btn btn-primary">{% trans "Add" %}</button></div>
+    </form>
+  </section>
+  <section class="card">
+    <h2>{% trans "Search" %}</h2>
+    <form method="get" class="form-row">
+      <div class="field"><label for="q" class="sr-only">{% trans "Search members" %}</label><input id="q" type="search" name="q" value="{{ q }}" placeholder="{% trans 'nickname or e-mail' %}"></div>
+      <div class="field field-submit"><button class="btn">{% trans "Search" %}</button></div>
+    </form>
+  </section>
+</div>
+<div class="table-wrap"><table>
+  <thead><tr><th scope="col">{% trans "User" %}</th><th scope="col">{% trans "Role & groups" %}</th><th scope="col"><span class="sr-only">{% trans "Actions" %}</span></th></tr></thead>
+  <tbody>{% for r in rows %}{% with m=r.m %}
+  <tr>
+    <td><a href="{% url 'portal:helpdesk_lookup' event.slug %}?user={{ m.user.pk }}">{{ m.user.username }}</a>{% if m.user.display_name %} <span class="muted small">{{ m.user.display_name }}</span>{% endif %}<div class="small muted">{{ m.user.email }}</div><span class="badge badge-{% if m.is_orga %}warn{% elif m.role == 'helpdesk' %}info{% else %}muted{% endif %}">{{ m.get_role_display }}</span></td>
+    <td>
+      <form method="post" class="member-form form-row">{% csrf_token %}<input type="hidden" name="action" value="update"><input type="hidden" name="pk" value="{{ m.pk }}">
+        {% include "portal/_form.html" with form=r.form %}
+        <div class="field field-submit"><button class="btn btn-sm">{% trans "Save" %}</button></div>
+      </form>
+    </td>
+    <td><form method="post" class="inline" data-confirm="{% trans 'Remove this member from the event? Their extensions are kept.' %}">{% csrf_token %}<input type="hidden" name="action" value="remove"><input type="hidden" name="pk" value="{{ m.pk }}"><button class="btn btn-sm btn-danger">{% trans "Remove" %}</button></form></td>
+  </tr>{% endwith %}{% empty %}<tr><td colspan="3" class="empty">{% trans "No members." %}</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endblock %}

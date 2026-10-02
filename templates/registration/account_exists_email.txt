@@ -1,0 +1,16 @@
+{% load i18n %}{% autoescape off %}{% blocktrans %}Hello,
+
+someone (hopefully you) tried to sign up for PET with {{ email }} - but this address already has an account.
+
+Log in here:{% endblocktrans %}
+
+{{ login_url }}
+
+{% trans "Forgot your password? Reset it here:" %}
+
+{{ reset_url }}
+
+{% trans "If this was not you, you can safely ignore this e-mail; nothing has changed on your account." %}
+
+-- PET · Portable Event Telephone
+{% endautoescape %}

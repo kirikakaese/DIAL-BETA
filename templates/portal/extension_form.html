@@ -1,0 +1,90 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Register extension" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h1>{% trans "Register an extension" %}</h1>
+  </div>
+</div>
+<div class="grid grid-2">
+  <section class="card">
+    {% if not event.registration_open %}<div class="alert alert-warning">{% trans "Registration is not open for this event." %}</div>{% endif %}
+    <form method="post" novalidate>{% csrf_token %}
+      {% include "portal/_form.html" with form=form %}
+      <div id="availability" class="avail" aria-live="polite"
+           data-msg-free="{% trans 'is available - instant activation' %}"
+           data-msg-approval="{% trans 'is free but needs approval by the orga team' %}"
+           data-msg-suggest="{% trans 'Free nearby:' %}"></div>
+      <p><button type="button" class="btn btn-sm" id="random-number"
+                 data-url="{% url 'numbering:random' event.slug %}"
+                 data-msg-none="{% trans 'No free number found right now - try again or pick one yourself.' %}">🎲 {% trans "Give me a random free number" %}</button></p>
+      {% if failure %}
+        {% if failure.suggestions %}<p class="small">{% trans "Free nearby:" %} {% for s in failure.suggestions %}<a class="number" href="?number={{ s }}&type={{ form.type.value }}">{{ s }}</a> {% endfor %}</p>{% endif %}
+      {% endif %}
+      <div class="form-actions">
+        <button class="btn btn-primary">{% trans "Register" %}</button>
+        <a class="btn" href="{% url 'portal:event_dashboard' event.slug %}">{% trans "Cancel" %}</a>
+      </div>
+    </form>
+    {% if failure and failure.can_waitlist %}
+    <form method="post" action="{% url 'portal:waitlist_join' event.slug %}" class="waitlist">{% csrf_token %}
+      <input type="hidden" name="number" value="{{ form.number.value }}"><input type="hidden" name="type" value="{{ form.type.value }}">
+      <p class="small muted">{% trans "Someone else holds this number. Join the waitlist and we notify you when it becomes free." %}</p>
+      <button class="btn btn-sm">{% trans "Join waitlist for" %} {{ form.number.value }}</button>
+    </form>
+    {% endif %}
+  </section>
+  <aside class="card">
+    <h2>{% trans "How it works" %}</h2>
+    <ul class="small">
+      <li>{% blocktrans with min=plan.min_length max=plan.max_length %}Numbers have {{ min }}–{{ max }} digits. Availability is checked live while you type.{% endblocktrans %}</li>
+      <li>{% trans "Open ranges activate instantly. Vanity numbers and reserved ranges go to the orga queue - add a note to speed things up." %}</li>
+      <li>{% trans "After registering, attach a DECT handset (IPEI + PIN) or a SIP softphone (QR code). One number can ring several devices." %}</li>
+      <li>{% trans "SIP trunk: your own PBX registers with one SIP account and receives every call to a whole block of numbers (e.g. 4700–4799). Trunks are always approved by the orga team." %}</li>
+      <li>{% blocktrans with used=quota_used max=event.max_extensions_per_user %}You are using {{ used }} of {{ max }} extensions in this event.{% endblocktrans %}</li>
+    </ul>
+    {% if plan.emergency_numbers %}<p class="small muted">{% trans "Blocked:" %} {% for n in plan.emergency_numbers %}<span class="number">{{ n }}</span> {% endfor %}{% if plan.test_ringback_number %}<span class="number">{{ plan.test_ringback_number }}</span>{% endif %}</p>{% endif %}
+  </aside>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  // Show the trunk-only "block size" field when the selected type is a SIP trunk
+  var typeSel = document.getElementById("id_type");
+  var block = document.getElementById("id_block_digits");
+  if (typeSel && block) {
+    var wrap = block.closest(".field") || block;
+    var only = block.getAttribute("data-only-for-type") || "trunk";
+    function toggle() { wrap.hidden = typeSel.value !== only; }
+    typeSel.addEventListener("change", toggle);
+    toggle();
+  }
+})();
+(function () {
+  // "Random free number": fill the number input and trigger the live availability checker
+  var btn = document.getElementById("random-number");
+  var input = document.getElementById("id_number");
+  var typeSel = document.getElementById("id_type");
+  if (!btn || !input) return;
+  btn.addEventListener("click", function () {
+    var url = btn.getAttribute("data-url") + (typeSel ? "?type=" + encodeURIComponent(typeSel.value) : "");
+    btn.disabled = true;
+    fetch(url, { credentials: "same-origin", headers: { Accept: "application/json" } })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d.number) {
+          input.value = d.number;
+          input.dispatchEvent(new Event("input", { bubbles: true }));
+          input.focus();
+        } else {
+          var out = document.getElementById("availability");
+          if (out) { out.className = "avail err"; out.textContent = btn.getAttribute("data-msg-none"); }
+        }
+      })
+      .catch(function () {})
+      .then(function () { btn.disabled = false; });
+  });
+})();
+</script>
+{% endblock %}

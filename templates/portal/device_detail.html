@@ -1,0 +1,113 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{{ device }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h1>{{ device.name|default:device.get_type_display }} <span class="badge badge-{{ device.state }}">{{ device.get_state_display }}</span></h1>
+    <p class="subtitle">{{ device.get_type_display }}{% if device.handset_model %} · {{ device.handset_model }}{% endif %}{% if device.owner %} · {{ device.owner }}{% endif %}</p>
+  </div>
+  <div class="actions">{% for b in bindings %}<a class="btn" href="{% url 'portal:extension_detail' event.slug b.extension.pk %}">← <span class="number">{{ b.extension.number }}</span></a>{% endfor %}</div>
+</div>
+{% if provision_error %}<div class="alert alert-error"><strong>{% trans "Provisioning error:" %}</strong> <code class="small">{{ provision_error }}</code></div>{% endif %}
+
+<div class="grid grid-2">
+  {% if device.type == 'dect' %}
+  <section class="card">
+    <h2>{% trans "DECT subscription" %}</h2>
+    <dl class="kv">
+      <dt>IPEI</dt><dd><code>{{ device.ipei }}</code></dd>
+      <dt>{% trans "Vendor" %}</dt><dd>{% with m=device.manufacturer %}{% if m %}{{ m.name }} <span class="small muted">(EMC {{ m.emc }}{% if m.source == 'user' %}, {% trans "user contributed" %}{% endif %})</span>{% else %}<span class="muted">{% trans "unknown" %}{% if device.emc %} (EMC {{ device.emc }}){% endif %}</span>
+        {% if can_edit and device.emc %}<form method="post" action="{% url 'devices:suggest_vendor' event.slug device.pk %}" class="inline form-row">{% csrf_token %}<label class="sr-only" for="vendor-name">{% trans "Vendor" %}</label><input id="vendor-name" name="name" maxlength="80" placeholder="{% trans 'Know the vendor? Tell us' %}"> <button class="btn btn-sm">{% trans "Save" %}</button></form>{% endif %}{% endif %}{% endwith %}</dd>
+      <dt>{% trans "PIN" %}</dt><dd>{% if device.pin_valid %}<strong class="number big-number">{{ device.subscription_pin }}</strong> <span class="small muted">{% trans "valid until" %} {{ device.subscription_pin_expires_at|date:"H:i" }}</span>{% else %}<span class="muted">{% trans "expired / none" %}</span>{% endif %}</dd>
+      {% if device.omm_ppn %}<dt>PPN</dt><dd><code>{{ device.omm_ppn }}</code></dd>{% endif %}
+      <dt>{% trans "Last seen" %}</dt><dd>{% if device.last_seen_rfp %}{{ device.last_seen_rfp.name }} · {% endif %}{{ device.last_seen_at|date:"SHORT_DATETIME_FORMAT"|default:"–" }}</dd>
+      {% if device.battery_percent is not None %}<dt>{% trans "Battery" %}</dt><dd>{{ device.battery_percent }} %</dd>{% endif %}
+    </dl>
+    {% if can_edit %}<form method="post" action="{% url 'portal:device_new_pin' event.slug device.pk %}">{% csrf_token %}<button class="btn btn-primary">{% trans "Issue new PIN" %}</button></form>{% endif %}
+    <p class="small muted">{% trans "On the handset: Menu → Settings → Registration → Register new base → enter the PIN." %}</p>
+    <p class="small"><a href="{% url 'devices:history' event.slug %}">{% trans "My handsets from previous events" %}</a></p>
+  </section>
+  {% elif device.type == 'gsm' %}
+  <section class="card">
+    <h2>{% trans "GSM SIM" %}</h2>
+    <dl class="kv">
+      <dt>IMSI</dt><dd><code>{{ device.imsi|default:"–" }}</code></dd>
+      <dt>MSISDN</dt><dd><code>{{ device.msisdn|default:"–" }}</code></dd>
+      <dt>{% trans "Radio" %}</dt><dd>{{ device.gsm_generations|join:", "|default:"–" }}</dd>
+      <dt>{% trans "Registration" %}</dt><dd>{% if device.gsm_registered_at %}{{ device.gsm_registered_at|date:"SHORT_DATETIME_FORMAT" }}{% elif device.gsm_register_token %}<strong class="number big-number">{{ device.gsm_register_token }}</strong> <span class="small muted">{% trans "dial or text this code on the event's GSM network to link your SIM" %}</span>{% else %}<span class="muted">{% trans "not registered" %}</span>{% endif %}</dd>
+      <dt>{% trans "Trunk" %}</dt><dd><code>{{ event.gsm_trunk|default:"gsm-gateway" }}</code></dd>
+    </dl>
+  </section>
+  {% else %}
+  {% if device.type == 'sip' %}
+  <section class="card qr-card softphone-setup">
+    <h2>{% trans "Set up your softphone" %}</h2>
+    <p class="small muted">{% trans "Pick your app and scan one code - the account is created with no typing." %}</p>
+    {% with links=device.softphone_links %}
+    <details class="softphone-option" name="softphone-client" open>
+      <summary class="btn">Linphone</summary>
+      <img class="qr" src="{% url 'portal:device_qr' event.slug device.pk %}?client=linphone" alt="{% trans 'QR code for Linphone remote provisioning' %}" width="240" height="240">
+      <p class="small">{% trans "Linphone → Assistant → Fetch remote configuration → scan this code." %}</p>
+      <details class="reveal"><summary class="btn btn-sm">{% trans "Show provisioning URL" %}</summary><code class="token">{{ links.linphone }}</code></details>
+    </details>
+    <details class="softphone-option" name="softphone-client">
+      <summary class="btn">Groundwire / Acrobits</summary>
+      <img class="qr" src="{% url 'portal:device_qr' event.slug device.pk %}?client=acrobits" alt="{% trans 'QR code for Groundwire / Acrobits provisioning' %}" width="240" height="240">
+      <p class="small">{% trans "Groundwire, Cloud Softphone or Acrobits Softphone → Settings → Scan QR code." %}</p>
+      <details class="reveal"><summary class="btn btn-sm">{% trans "Show provisioning URL" %}</summary><code class="token">{{ links.acrobits }}</code></details>
+    </details>
+    <details class="softphone-option" name="softphone-client">
+      <summary class="btn">{% trans "Other softphone (SIP URI)" %}</summary>
+      <img class="qr" src="{% url 'portal:device_qr' event.slug device.pk %}?client=generic" alt="{% trans 'QR code with SIP credentials' %}" width="240" height="240">
+      <p class="small">{% trans "Grandstream Wave and other clients that accept a sip: URI with credentials; otherwise use the manual settings." %}</p>
+      <details class="reveal"><summary class="btn btn-sm">{% trans "Show softphone deep link" %}</summary><code class="token">{{ links.generic }}</code></details>
+    </details>
+    {% endwith %}
+    <p class="small muted">{% trans "Each code contains your SIP password (or a link that serves it) - do not share screenshots." %}</p>
+  </section>
+  {% endif %}
+  <section class="card">
+    <h2>{% if device.type == 'sip' %}{% trans "Manual settings" %}{% else %}{% trans "SIP credentials" %}{% endif %}</h2>
+    {% if device.type == 'sip' %}<p class="small muted">{% trans "For Zoiper, desk phones and any other SIP client. Zoiper's QR setup needs Zoiper's paid OEM service, so enter these values by hand (Settings → Accounts → Add)." %}</p>{% endif %}
+    <dl class="kv">
+      <dt>{% trans "Server / realm" %}</dt><dd><code>{{ device.sip_domain }}</code></dd>
+      <dt>{% trans "Port" %}</dt><dd><code>{{ device.sip_port }}</code></dd>
+      <dt>{% trans "Username" %}</dt><dd><code>{{ device.sip_username }}</code></dd>
+      <dt>{% trans "Password" %}</dt><dd><details class="reveal"><summary class="btn btn-sm">{% trans "Reveal" %}</summary><code class="token">{{ device.sip_password }}</code></details></dd>
+      <dt>{% trans "Transport" %}</dt><dd>{{ device.get_sip_transport_display }}</dd>
+      <dt>{% trans "Display name" %}</dt><dd>{{ device.sip_display_name }}</dd>
+      <dt>SIP URI</dt><dd><code>{{ device.sip_uri }}</code></dd>
+      {% if device.sip_registered_at %}<dt>{% trans "Registered" %}</dt><dd>{{ device.sip_registered_at|date:"SHORT_DATETIME_FORMAT" }}{% if device.sip_user_agent %} · <span class="small muted">{{ device.sip_user_agent }}</span>{% endif %}</dd>{% endif %}
+      {% if device.mac_address %}<dt>MAC</dt><dd><code>{{ device.mac_address }}</code></dd>{% endif %}
+      {% if device.provisioning_token %}<dt>{% trans "Autoprovisioning token" %}</dt><dd><details class="reveal"><summary class="btn btn-sm">{% trans "Reveal" %}</summary><code class="token">{{ device.provisioning_token }}</code></details><div class="small muted">{% trans "Hard phones fetch their config from the provisioning server using this token; see the event's dialing help." %}</div></dd>{% endif %}
+      {% if device.provisioning_profile %}<dt>{% trans "Provisioning URL" %}</dt><dd><details class="reveal"><summary class="btn btn-sm">{% trans "Reveal" %}</summary><code class="token">{{ device.provisioning_url }}</code></details><div class="small muted">{{ device.provisioning_profile.name }} · {% trans "enter this URL as the phone's provisioning server; it contains the secret token, so keep it private." %}</div></dd>{% endif %}
+    </dl>
+    {% if device.type != 'sip' %}<details class="reveal"><summary class="btn btn-sm">{% trans "Show softphone deep link" %}</summary><code class="token">{{ device.softphone_deeplink }}</code></details>{% endif %}
+    {% if can_edit %}<form method="post" action="{% url 'portal:device_rotate_sip' event.slug device.pk %}" data-confirm="{% trans 'Rotate the SIP password? Configured softphones will need the new one.' %}">{% csrf_token %}<button class="btn">{% trans "Rotate password" %}</button></form>{% endif %}
+  </section>
+  {% if device.type != 'sip' %}
+  <section class="card qr-card">
+    <h2>{% trans "Scan with your softphone" %}</h2>
+    <img class="qr" src="{% url 'portal:device_qr' event.slug device.pk %}" alt="{% trans 'QR code with SIP credentials' %}" width="240" height="240">
+    <p class="small muted">{% trans "Works with Linphone, Zoiper, Grandstream Wave and other clients that understand sip: URIs with credentials." %}</p>
+  </section>
+  {% endif %}
+  {% endif %}
+
+  <section class="card">
+    <h2>{% trans "Bound to" %}</h2>
+    <ul>{% for b in bindings %}<li><a class="number" href="{% url 'portal:extension_detail' event.slug b.extension.pk %}">{{ b.extension.number }}</a> <span class="badge badge-{{ b.extension.state }}">{{ b.extension.get_state_display }}</span> <span class="small muted">{% trans "priority" %} {{ b.priority }}</span></li>{% empty %}<li class="muted">{% trans "Not bound to any extension." %}</li>{% endfor %}</ul>
+    {% if can_edit %}
+    <h3>{% trans "Label" %}</h3>
+    <form method="post">{% csrf_token %}
+      {% include "portal/_form.html" with form=form %}
+      <div class="form-actions"><button class="btn">{% trans "Save" %}</button></div>
+    </form>
+    {% endif %}
+    {% if audit %}
+    <h3>{% trans "History" %}</h3>
+    <ul class="small">{% for a in audit %}<li>{{ a.created_at|date:"SHORT_DATETIME_FORMAT" }} · {{ a.actor_repr }} · {{ a.get_action_display }} {{ a.message }}</li>{% endfor %}</ul>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

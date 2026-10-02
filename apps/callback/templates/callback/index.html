@@ -1,0 +1,119 @@
+{% extends "base.html" %}{% load i18n tz %}
+{% block title %}{% trans "Callbacks & wake-up calls" %}{% endblock %}
+{% block content %}
+{% timezone event.timezone %}
+<div class="page-header">
+  <div class="page-title">
+    <h1>{% trans "Callbacks & wake-up calls" %}</h1>
+    <p class="subtitle">{% trans "Get rung back when a busy extension is free, schedule wake-up calls or test your handset." %}</p>
+  </div>
+</div>
+{% if request.event_is_orga %}{% include "callback/_nav.html" %}{% endif %}
+
+{% if not my_extensions %}
+<div class="alert alert-info">{% trans "You have no active extension in this event yet. Register one to use callbacks, wake-up calls and the test ringback." %}</div>
+{% endif %}
+
+<div class="grid grid-2">
+  <section class="card" data-refresh="30">
+    <div class="card-header"><h2>{% trans "Pending callbacks" %}</h2></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th scope="col">{% trans "Kind" %}</th><th scope="col">{% trans "From" %}</th><th scope="col">{% trans "To" %}</th>
+        <th scope="col">{% trans "State" %}</th><th scope="col">{% trans "Expires" %}</th><th scope="col"><span class="sr-only">{% trans "Actions" %}</span></th></tr></thead>
+      <tbody>
+      {% for r in pending %}
+      <tr>
+        <td><code>{{ r.kind|upper }}</code></td>
+        <td class="number">{{ r.requester_number }}</td>
+        <td class="number">{{ r.target_number }}</td>
+        <td><span class="badge badge-{{ r.state }}">{{ r.get_state_display }}</span></td>
+        <td class="small">{{ r.expires_at|date:"D H:i" }}</td>
+        <td class="actions"><form method="post" action="{% url 'callback:cancel' event.slug r.pk %}" class="inline">{% csrf_token %}
+          <button class="btn btn-sm btn-danger">{% trans "Cancel" %}</button></form></td>
+      </tr>
+      {% empty %}<tr><td colspan="6" class="empty">{% trans "No pending callbacks." %}</td></tr>{% endfor %}
+      </tbody>
+    </table></div>
+    {% if history %}
+    <h3>{% trans "Recent" %}</h3>
+    <ul class="small">
+      {% for r in history %}<li><span class="number">{{ r.requester_number }}</span> → <span class="number">{{ r.target_number }}</span>
+        <span class="badge badge-{{ r.state }}">{{ r.get_state_display }}</span> <span class="muted">{{ r.created_at|date:"D H:i" }}</span></li>{% endfor %}
+    </ul>
+    {% endif %}
+
+    {% if my_extensions %}
+    <h3>{% trans "Request a callback" %}</h3>
+    <form method="post" action="{% url 'callback:request' event.slug %}">{% csrf_token %}
+      <div class="form-row">
+        {% for field in callback_form %}{% include "callback/_field.html" %}{% endfor %}
+      </div>
+      <div class="form-actions"><button class="btn btn-primary">{% trans "Request callback" %}</button></div>
+    </form>
+    {% endif %}
+  </section>
+
+  {% include "callback/_help.html" %}
+
+  <section class="card">
+    <div class="card-header"><h2>{% trans "Test ringback" %}</h2></div>
+    <p class="muted small">{% trans "PET calls your handset back after the chosen delay - handy to check DECT coverage or a new phone." %}</p>
+    {% if my_extensions %}
+    <form method="post" action="{% url 'callback:ringback' event.slug %}">{% csrf_token %}
+      <div class="form-row">
+        {% for field in ringback_form %}{% include "callback/_field.html" %}{% endfor %}
+      </div>
+      <div class="form-actions"><button class="btn btn-primary">{% trans "Call me back" %}</button></div>
+    </form>
+    {% endif %}
+    {% if ringbacks %}
+    <h3>{% trans "Recent" %}</h3>
+    <ul class="small">{% for rb in ringbacks %}<li><span class="number">{{ rb.caller_number }}</span> {{ rb.requested_at|date:"D H:i:s" }}
+      <span class="badge badge-{{ rb.state }}">{{ rb.get_state_display }}</span></li>{% endfor %}</ul>
+    {% endif %}
+  </section>
+
+  <section class="card" data-refresh="30">
+    <div class="card-header"><h2>{% trans "Wake-up & scheduled calls" %}</h2></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th scope="col">{% trans "When" %}</th><th scope="col">{% trans "Extension" %}</th><th scope="col">{% trans "Repeat" %}</th>
+        <th scope="col">{% trans "State" %}</th><th scope="col"><span class="sr-only">{% trans "Actions" %}</span></th></tr></thead>
+      <tbody>
+      {% for c in scheduled %}
+      <tr>
+        <td>{{ c.scheduled_for|date:"D d.m. H:i" }}{% if c.next_attempt_at and c.next_attempt_at != c.scheduled_for %}<div class="small muted">{% trans "next try" %} {{ c.next_attempt_at|date:"H:i" }}</div>{% endif %}</td>
+        <td class="number">{{ c.extension.number }}</td>
+        <td>{{ c.get_repeat_display }}</td>
+        <td><span class="badge badge-{{ c.state }}">{{ c.get_state_display }}</span>{% if c.attempts %} <span class="small muted">({{ c.attempts }}×)</span>{% endif %}</td>
+        <td class="actions">
+          <form method="post" action="{% url 'callback:wakeup_snooze' event.slug c.pk %}" class="inline">{% csrf_token %}
+            <button class="btn btn-sm">{% trans "Snooze" %}</button></form>
+          <form method="post" action="{% url 'callback:wakeup_cancel' event.slug c.pk %}" class="inline">{% csrf_token %}
+            <button class="btn btn-sm btn-danger">{% trans "Cancel" %}</button></form>
+        </td>
+      </tr>
+      {% empty %}<tr><td colspan="5" class="empty">{% trans "No scheduled calls." %}</td></tr>{% endfor %}
+      </tbody>
+    </table></div>
+    {% if scheduled_done %}
+    <h3>{% trans "Recent" %}</h3>
+    <ul class="small">{% for c in scheduled_done %}<li>{{ c.scheduled_for|date:"D H:i" }} <span class="number">{{ c.extension.number }}</span>
+      <span class="badge badge-{{ c.state }}">{{ c.get_state_display }}</span>
+      {% if c.state == 'answered' %}<form method="post" action="{% url 'callback:wakeup_snooze' event.slug c.pk %}" class="inline">{% csrf_token %}
+        <button class="btn btn-sm">{% trans "Snooze" %}</button></form>{% endif %}</li>{% endfor %}</ul>
+    {% endif %}
+
+    {% if my_extensions %}
+    <h3>{% trans "Schedule a wake-up call" %}</h3>
+    <form method="post" action="{% url 'callback:wakeup_new' event.slug %}" enctype="multipart/form-data">{% csrf_token %}
+      {{ wakeup_form.non_field_errors }}
+      <div class="form-row">
+        {% for field in wakeup_form %}{% include "callback/_field.html" %}{% endfor %}
+      </div>
+      <div class="form-actions"><button class="btn btn-primary">{% translate "Schedule" context "verb: create the wake-up call" %}</button></div>
+    </form>
+    {% endif %}
+  </section>
+</div>
+{% endtimezone %}
+{% endblock %}

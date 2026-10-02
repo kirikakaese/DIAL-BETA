@@ -1,0 +1,12 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Access denied" %}{% endblock %}
+{% block content %}
+<div class="card error-page">
+  <h1>403 · {% trans "Access denied" %}</h1>
+  <p class="muted">{% trans "You do not have permission to view this page. If you think you should, ask the orga team of the event." %}</p>
+  <div class="actions">
+    <a class="btn btn-primary" href="{% url 'portal:home' %}">{% trans "Back to start" %}</a>
+    {% if not user.is_authenticated %}<a class="btn" href="{% url 'accounts:login' %}?next={{ request.path }}">{% trans "Log in" %}</a>{% endif %}
+  </div>
+</div>
+{% endblock %}

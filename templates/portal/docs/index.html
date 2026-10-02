@@ -1,0 +1,70 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Documentation" %}{% endblock %}
+{% block main_class %}docs{% endblock %}
+{% block content %}
+<section class="docs-hero">
+  <p class="eyebrow">{% trans "Documentation" %}</p>
+  <h1>{% trans "How PET works - for attendees, orga and developers" %}</h1>
+  <p class="lead">{% trans "Everything from picking your first number to running the number plan of a whole event. Pick a guide or search across all of them." %}</p>
+  <form method="get" action="{% url 'portal:docs_index' %}" class="docs-search" role="search">
+    <label class="sr-only" for="docs-q">{% trans "Search the documentation" %}</label>
+    <input id="docs-q" type="search" name="q" value="{{ q }}" placeholder="{% trans 'Search the documentation… e.g. DECT, number plan, orga' %}" autocomplete="off" {% if not q %}autofocus{% endif %}>
+    <button class="btn btn-primary">{% trans "Search" %}</button>
+  </form>
+</section>
+
+{% if results is not None %}
+<section class="card docs-results" aria-live="polite">
+  <div class="card-header">
+    <h2>{% blocktrans count n=results|length with q=q %}{{ n }} result for “{{ q }}”{% plural %}{{ n }} results for “{{ q }}”{% endblocktrans %}</h2>
+    <a class="btn btn-sm" href="{% url 'portal:docs_index' %}">{% trans "Clear" %}</a>
+  </div>
+  {% if results %}
+  <ol class="docs-result-list">
+    {% for r in results %}
+    <li>
+      <a href="{% url 'portal:docs_page' r.doc.slug %}{% if r.anchor %}#{{ r.anchor }}{% endif %}">
+        <span class="docs-result-crumb">{{ r.doc.icon }} {{ r.title }}{% if r.heading %} <span aria-hidden="true">›</span> {{ r.heading }}{% endif %}</span>
+        <span class="docs-result-snippet">{{ r.snippet|safe }}</span>
+      </a>
+    </li>
+    {% endfor %}
+  </ol>
+  {% else %}
+  <div class="empty"><p>{% trans "Nothing found. Try a shorter word or a different spelling." %}</p></div>
+  {% endif %}
+</section>
+{% endif %}
+
+<div class="grid grid-2 docs-cards">
+  {% for c in cards %}
+  <a class="card docs-card" href="{% url 'portal:docs_page' c.doc.slug %}">
+    <div class="docs-card-head">
+      <span class="docs-card-icon" aria-hidden="true">{{ c.doc.icon }}</span>
+      <div>
+        <p class="eyebrow">{{ c.doc.audience }}</p>
+        <h2>{{ c.title }}</h2>
+      </div>
+    </div>
+    <p class="muted">{{ c.doc.summary }}</p>
+    {% if c.sections %}
+    <ul class="docs-card-sections">
+      {% for anchor, name in c.sections %}<li>{{ name }}</li>{% endfor %}
+      {% if c.more %}<li class="muted">{% blocktrans with n=c.more %}+ {{ n }} more{% endblocktrans %}</li>{% endif %}
+    </ul>
+    {% endif %}
+  </a>
+  {% endfor %}
+</div>
+
+<section class="docs-more">
+  <div class="card">
+    <h2>{% trans "Also available" %}</h2>
+    <ul class="docs-links">
+      <li><a href="/api/docs/">{% trans "Interactive API explorer (Swagger UI)" %}</a></li>
+      <li><a href="{% url 'redoc' %}">{% trans "API reference (ReDoc)" %}</a></li>
+      <li><a href="{% url 'schema' %}">{% trans "OpenAPI schema (YAML)" %}</a></li>
+    </ul>
+  </div>
+</section>
+{% endblock %}

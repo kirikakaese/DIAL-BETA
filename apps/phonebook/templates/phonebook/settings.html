@@ -1,0 +1,53 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Phonebook settings" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <p class="eyebrow eyebrow-orga">{% trans "Orga" %} · {% trans "Numbers" %}</p>
+    <h1>{% trans "Phonebook settings" %}</h1>
+    <p class="subtitle">{% trans "Intro text and which columns the public phonebook shows." %}</p>
+  </div>
+  <div class="actions"><a class="btn" href="{% url 'phonebook:index' event.slug %}">{% trans "Back to phonebook" %}</a></div>
+</div>
+
+<section class="card">
+  <form method="post">{% csrf_token %}
+    {% include "portal/_form.html" with form=form %}
+    <div class="form-actions">
+      <button class="btn btn-primary">{% trans "Save" %}</button>
+      <a class="btn" href="{% url 'phonebook:index' event.slug %}">{% trans "Cancel" %}</a>
+    </div>
+  </form>
+</section>
+
+<section class="card">
+  <h2>{% trans "Remote directory for phones" %}</h2>
+  <p class="muted">{% trans "Desk phones and the DECT OMM fetch the phonebook from these URLs; the token in the path is the only credential, so treat the URLs like a password. Autoprovisioned phones get the directory via their own provisioning token instead." %}</p>
+  {% if not directory.enabled %}<div class="alert alert-warning">{% trans "The remote directory is disabled: every URL below and the LDAP bind answer 404 / invalid credentials until you enable it above." %}</div>{% endif %}
+  <div class="table-wrap"><table class="table remote-directory">
+    <thead><tr><th scope="col">{% trans "Phone" %}</th><th scope="col">URL</th></tr></thead>
+    <tbody>
+    {% for vendor, label, url in vendor_urls %}
+      <tr><td>{{ label }}</td><td><code class="token">{{ url }}</code></td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  <p class="small muted">{% trans "Grandstream phones expect the folder and append phonebook.xml themselves - see the Operator Handbook. Add ?q=name to any URL to filter." %}</p>
+
+  <h3>LDAP</h3>
+  <dl class="dl-inline">
+    <dt>{% trans "Server" %}</dt><dd><code>{{ directory.ldap.host }}</code> : <code>{{ directory.ldap.port }}</code></dd>
+    <dt>{% trans "Base DN" %}</dt><dd><code>{{ directory.ldap.base_dn }}</code></dd>
+    <dt>{% trans "Bind DN" %}</dt><dd><code>{{ directory.ldap.bind_dn }}</code></dd>
+    <dt>{% trans "Password" %}</dt><dd><details class="reveal"><summary class="btn btn-sm">{% trans "Reveal" %}</summary><code class="token">{{ directory.token }}</code></details></dd>
+    <dt>{% trans "Attributes" %}</dt><dd>{% trans "name" %}: <code>cn</code>/<code>sn</code>, {% trans "number" %}: <code>telephoneNumber</code></dd>
+  </dl>
+
+  {% trans "Rotate the token? Every phone, OMM and LDAP client keeps working only after it gets the new URL / password." as confirm_msg %}
+  <form method="post" action="{% url 'phonebook:rotate_directory_token' event.slug %}" class="form-actions"
+        data-confirm="{{ confirm_msg }}">
+    {% csrf_token %}
+    <button class="btn btn-danger">{% trans "Rotate token" %}</button>
+  </form>
+</section>
+{% endblock %}

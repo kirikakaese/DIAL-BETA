@@ -1,0 +1,43 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Extension pools" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <p class="eyebrow eyebrow-orga">{% trans "Orga" %} · {% trans "Numbers" %}</p>
+    <h1>{% trans "Extension pools" %} <span class="count">{{ pools|length }}</span></h1>
+    <p class="subtitle">{% trans "Users who click “Give me a random free number” get a number from an active pool that the number plan allows instantly (no approval)." %}</p>
+  </div>
+  <div class="actions">
+    <a class="btn" href="{% url 'numbering:settings' event.slug %}">{% trans "Numbering settings" %}</a>
+    <a class="btn" href="{% url 'numbering:claims' event.slug %}">{% trans "Claims" %}</a>
+  </div>
+</div>
+<div class="grid grid-2">
+  <section class="card">
+    <h2>{% trans "Pools" %}</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th scope="col">{% trans "Name" %}</th><th scope="col">{% trans "Numbers" %}</th><th scope="col">{% trans "Size" %}</th><th scope="col">{% trans "Active" %}</th><th scope="col"><span class="sr-only">{% trans "Actions" %}</span></th></tr></thead>
+      <tbody>
+      {% for p in pools %}
+      <tr>
+        <td>{{ p.name }}{% if p.description %}<div class="muted small">{{ p.description }}</div>{% endif %}</td>
+        <td class="number">{{ p.mask }}</td>
+        <td>{{ p.size }}</td>
+        <td>{% if p.is_active %}<span class="badge badge-active">{% trans "yes" %}</span>{% else %}<span class="badge badge-muted">{% trans "no" %}</span>{% endif %}</td>
+        <td class="actions">
+          <form method="post" action="{% url 'numbering:pool_delete' event.slug p.pk %}" class="inline" data-confirm="{% trans 'Delete this pool?' %}">{% csrf_token %}
+            <button class="btn btn-sm btn-danger">{% trans "Delete" %}</button></form>
+        </td>
+      </tr>
+      {% empty %}<tr><td colspan="5" class="empty">{% blocktrans with min=plan.min_length max=plan.max_length %}No pools yet - random numbers are drawn from the plan's default length range ({{ min }}–{{ max }} digits).{% endblocktrans %}</td></tr>{% endfor %}
+      </tbody>
+    </table></div>
+    {% if sample %}<p class="small muted">{% trans "Currently free (sample):" %} {% for n in sample %}<span class="number">{{ n }}</span> {% endfor %}</p>{% endif %}
+  </section>
+  <form method="post" class="card" novalidate>{% csrf_token %}
+    <h2>{% trans "New pool" %}</h2>
+    {% include "portal/_form.html" with form=form %}
+    <div class="form-actions"><button class="btn btn-primary">{% trans "Create pool" %}</button></div>
+  </form>
+</div>
+{% endblock %}

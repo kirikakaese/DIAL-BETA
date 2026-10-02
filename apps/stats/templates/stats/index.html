@@ -1,0 +1,118 @@
+{% extends "base.html" %}{% load i18n tz static %}
+{% block title %}{% trans "Statistics" %}{% endblock %}
+{% block content %}
+{% timezone event.timezone %}
+<div class="page-header">
+  <div class="page-title">
+    <p class="eyebrow eyebrow-orga">{% trans "Orga" %} · {% trans "Infrastructure" %}</p>
+    <h1>{% trans "Call statistics" %}</h1>
+    {% if not data.aggregate_only %}
+    <p class="subtitle">
+      {% if data.retention_days %}{% blocktrans with d=data.retention_days n=data.records_kept %}Per-call records are kept for {{ d }} days ({{ n }} records currently stored).{% endblocktrans %}
+      {% else %}{% blocktrans with n=data.records_kept %}Per-call records are kept indefinitely ({{ n }} records currently stored).{% endblocktrans %}{% endif %}
+    </p>
+    {% endif %}
+  </div>
+  <div class="actions">
+    <form method="get" class="inline">
+      <label class="sr-only" for="hours">{% trans "Time window" %}</label>
+      <select id="hours" name="hours" data-action="submit">
+        {% for h in hours_choices %}<option value="{{ h }}" {% if h == hours %}selected{% endif %}>{% blocktrans with h=h %}last {{ h }}h{% endblocktrans %}</option>{% endfor %}
+      </select>
+    </form>
+    {% if request.event_is_orga %}<a class="btn" href="{% url 'stats:export_csv' event.slug %}">{% trans "Export CSV" %}</a>{% endif %}
+  </div>
+</div>
+{% include "stats/_nav.html" %}
+
+{% if data.aggregate_only %}
+<div class="alert alert-info">
+  {% blocktrans %}Privacy mode: this event stores <strong>aggregate statistics only</strong>. No per-call records (who called whom) are kept.{% endblocktrans %}
+</div>
+{% endif %}
+
+<div class="grid stats-grid" data-refresh="60">
+  <div class="card stat-card"><div class="stat">{{ data.totals.calls }}</div><div class="stat-label">{% blocktrans with h=hours %}calls, last {{ h }}h{% endblocktrans %}</div></div>
+  <div class="card stat-card"><div class="stat">{{ data.totals.answer_rate }}%</div><div class="stat-label">{% trans "answered" %} <span class="muted">({{ data.totals.answered }})</span></div></div>
+  <div class="card stat-card"><div class="stat">{{ data.totals.avg_duration }}s</div><div class="stat-label">{% trans "avg. talk time" %}</div></div>
+  <div class="card stat-card"><div class="stat">{{ active_extensions }}</div><div class="stat-label">{% trans "active extensions" %} <span class="muted">· {{ data.totals.unique_callers }} {% trans "callers" %}</span></div></div>
+</div>
+
+<section class="card">
+  <div class="card-header"><h2>{% trans "Calls per hour" %}</h2></div>
+  <canvas id="calls-chart" data-chart="chart-data" width="960" height="260" role="img"
+          aria-label="{% trans 'Bar chart: calls and answered calls per hour' %}"></canvas>
+  {{ chart|json_script:"chart-data" }}
+  <noscript><div class="table-wrap"><table><thead><tr><th scope="col">{% trans "Hour" %}</th><th scope="col">{% trans "Calls" %}</th><th scope="col">{% trans "Answered" %}</th></tr></thead>
+    <tbody>{% for p in data.series %}<tr><td>{{ p.label }}</td><td>{{ p.calls }}</td><td>{{ p.answered }}</td></tr>{% endfor %}</tbody></table></div></noscript>
+</section>
+
+<div class="grid grid-2">
+  <section class="card">
+    <div class="card-header"><h2>{% trans "Busiest extensions" %}</h2></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th scope="col">{% trans "Extension" %}</th><th scope="col">{% trans "Type" %}</th><th scope="col">{% trans "In" %}</th>
+        <th scope="col">{% trans "Out" %}</th><th scope="col">{% trans "Total" %}</th><th scope="col">{% trans "Answered" %}</th><th scope="col">{% trans "Talk time" %}</th></tr></thead>
+      <tbody>
+      {% for x in data.top_extensions %}
+      <tr><td class="number">{% if x.private %}<span class="muted">{% trans "private" %}</span>{% else %}{{ x.label }}{% endif %}</td>
+        <td><code>{{ x.type }}</code></td><td>{{ x.inbound }}</td><td>{{ x.outbound }}</td><td><strong>{{ x.total }}</strong></td>
+        <td>{{ x.answered }}</td><td>{{ x.billsec }}s</td></tr>
+      {% empty %}<tr><td colspan="7" class="empty">{% trans "No extension activity in this window." %}</td></tr>{% endfor %}
+      </tbody></table></div>
+  </section>
+
+  <section class="card">
+    <div class="card-header"><h2>{% trans "Dispositions" %}</h2></div>
+    <ul class="progress-list">
+      {% for name, n in data.dispositions.items %}
+      <li><span class="small" style="min-width:7rem"><code>{{ name }}</code></span>
+        <div class="bar"><span style="width:{% widthratio n data.totals.calls 100 %}%"></span></div>
+        <span class="small">{{ n }}</span></li>
+      {% empty %}<li class="muted">{% trans "No calls yet." %}</li>{% endfor %}
+    </ul>
+    <h3>{% trans "By destination type" %}</h3>
+    <ul class="progress-list">
+      {% for name, n in data.by_type.items %}
+      <li><span class="small" style="min-width:7rem"><code>{{ name }}</code></span>
+        <div class="bar"><span style="width:{% widthratio n data.totals.calls 100 %}%"></span></div>
+        <span class="small">{{ n }}</span></li>
+      {% empty %}<li class="muted">{% trans "No calls yet." %}</li>{% endfor %}
+    </ul>
+  </section>
+</div>
+
+<div class="grid grid-2">
+  <section class="card">
+    <div class="card-header"><h2>{% trans "DECT base stations (erlang)" %}</h2></div>
+    <p class="muted small">{% trans "Erlang = average number of simultaneous calls. From CDRs (talk time / hour) and, where available, from OMM load samples." %}</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th scope="col">{% trans "RFP" %}</th><th scope="col">{% trans "Status" %}</th><th scope="col">{% trans "Calls" %}</th>
+        <th scope="col">{% trans "Erlang avg" %}</th><th scope="col">{% trans "OMM avg" %}</th><th scope="col">{% trans "Peak" %}</th><th scope="col" style="width:30%">{% trans "Load" %}</th></tr></thead>
+      <tbody>
+      {% for r in data.rfps %}
+      <tr><td>{{ r.name }}{% if r.location %} <span class="muted small">{{ r.location }}</span>{% endif %}</td>
+        <td><span class="badge badge-{{ r.status }}">{{ r.status }}</span></td><td>{{ r.calls }}</td>
+        <td>{{ r.erlang_avg }}</td><td>{% if r.erlang_dect_avg is not None %}{{ r.erlang_dect_avg }}{% else %}<span class="muted">–</span>{% endif %}</td>
+        <td>{{ r.erlang_max }}</td>
+        <td><div class="bar" title="{{ r.load_pct }}%"><span style="width:{{ r.load_pct }}%"></span></div></td></tr>
+      {% empty %}<tr><td colspan="7" class="empty">{% trans "No RFPs configured for this event." %}</td></tr>{% endfor %}
+      </tbody></table></div>
+  </section>
+
+  <section class="card">
+    <div class="card-header"><h2>{% trans "Roaming heatmap" %}</h2></div>
+    <p class="muted small">{% trans "Where handsets are: currently registered handsets, site-survey pings and calls per base station." %}</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th scope="col">{% trans "RFP" %}</th><th scope="col">{% trans "Handsets" %}</th><th scope="col">{% trans "Surveys" %}</th><th scope="col">{% trans "Calls" %}</th><th scope="col" style="width:30%">{% trans "Intensity" %}</th></tr></thead>
+      <tbody>
+      {% for r in data.heatmap %}
+      <tr><td>{{ r.name }}</td><td>{{ r.handsets }}</td><td>{{ r.surveys }}</td><td>{{ r.calls }}</td>
+        <td><div class="bar"><span style="width:{% widthratio r.intensity 1 100 %}%;background:var(--accent)"></span></div></td></tr>
+      {% empty %}<tr><td colspan="5" class="empty">{% trans "No RFPs configured for this event." %}</td></tr>{% endfor %}
+      </tbody></table></div>
+  </section>
+</div>
+{% endtimezone %}
+{% endblock %}
+{% block scripts %}<script src="{% static 'stats/charts.js' %}" defer></script>{% endblock %}

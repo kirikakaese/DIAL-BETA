@@ -1,0 +1,83 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Emergency" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <p class="eyebrow eyebrow-orga">{% trans "Orga" %} · {% trans "Services" %}</p>
+    <h1>{% trans "Emergency & priority" %}</h1>
+    <p class="subtitle">{% trans "Emergency numbers, incident log, priority broadcast and call preemption." %}</p>
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <section class="card card-danger">
+    <div class="card-header"><h2>🚨 {% trans "Emergency broadcast" %}</h2></div>
+    <p class="muted small">{% trans "Rings every active handset (or the selected group) with priority 10 and plays the announcement. A text message is pushed as well when messaging is enabled." %}</p>
+    <form method="post" action="{% url 'emergency:broadcast' event.slug %}" data-confirm="{% trans 'REALLY start the emergency broadcast to all handsets?' %}">{% csrf_token %}
+      {% include "portal/_form.html" with form=broadcast_form %}
+      <div class="form-actions">
+        <button class="btn btn-danger btn-lg">🚨 {% trans "START EMERGENCY BROADCAST" %}</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="card">
+    <div class="card-header"><h2>{% trans "Past emergency broadcasts" %}</h2></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th scope="col">{% trans "When" %}</th><th scope="col">{% trans "By" %}</th><th scope="col">{% trans "Targets" %}</th><th scope="col">{% trans "Text" %}</th></tr></thead>
+      <tbody>
+      {% for b in broadcasts %}<tr><td class="small">{{ b.sent_at|date:"D H:i" }}</td><td>{{ b.sent_by.username|default:"–" }}</td><td>{{ b.targets }}{% if b.results.error %} <span class="badge badge-rejected">{{ b.results.error }}</span>{% endif %}</td><td>{{ b.text|truncatechars:80 }}</td></tr>
+      {% empty %}<tr><td colspan="4" class="empty">{% trans "No emergency broadcasts so far." %}</td></tr>{% endfor %}
+      </tbody></table></div>
+  </section>
+</div>
+
+<div class="grid grid-2">
+  <section class="card">
+    <div class="card-header"><h2>{% trans "Emergency numbers" %}</h2><span class="small muted number">{{ numbers|join:", " }}</span></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th scope="col">{% trans "Number" %}</th><th scope="col">{% trans "Label" %}</th><th scope="col">{% trans "Destination" %}</th><th scope="col">{% trans "Fallback" %}</th><th scope="col"><span class="sr-only">{% trans "Actions" %}</span></th></tr></thead>
+      <tbody>
+      {% for t in targets %}
+      <tr><td class="number">{{ t.number }}</td><td>{{ t.label }}</td>
+        <td>{% if t.destination_extension %}<span class="number">{{ t.destination_extension.number }}</span> {{ t.destination_extension.display_name }}{% else %}–{% endif %}</td>
+        <td class="number">{{ t.fallback_number|default:"–" }}</td>
+        <td class="actions"><form method="post" action="{% url 'emergency:target_delete' event.slug t.pk %}" class="inline">{% csrf_token %}<button class="btn btn-sm btn-danger" aria-label="{% trans 'Delete target' %}">×</button></form></td></tr>
+      {% empty %}<tr><td colspan="5" class="empty">{% trans "No targets configured - emergency numbers will not route!" %}</td></tr>{% endfor %}
+      </tbody></table></div>
+    <h3>{% trans "Add or update target" %}</h3>
+    <form method="post" action="{% url 'emergency:target_save' event.slug %}">{% csrf_token %}
+      {% include "portal/_form.html" with form=target_form %}
+      <div class="form-actions"><button class="btn btn-primary">{% trans "Save target" %}</button></div>
+    </form>
+  </section>
+
+  <section class="card" data-refresh="30">
+    <div class="card-header"><h2>{% trans "Incidents" %}</h2></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th scope="col">{% trans "When" %}</th><th scope="col">{% trans "Number" %}</th><th scope="col">{% trans "Caller" %}</th><th scope="col">{% trans "State" %}</th><th scope="col"><span class="sr-only">{% trans "Actions" %}</span></th></tr></thead>
+      <tbody>
+      {% for i in incidents %}
+      <tr><td class="small">{{ i.at|date:"D H:i:s" }}</td><td class="number">{{ i.number }}</td>
+        <td class="number">{{ i.caller_number|default:"?" }}{% if i.caller_extension.location_hint %} <span class="small muted">{{ i.caller_extension.location_hint }}</span>{% endif %}</td>
+        <td>{% if i.is_open %}<span class="badge badge-requested">{% trans "open" %}</span>{% else %}<span class="badge badge-active">{% trans "resolved" %}</span> <span class="small muted">{{ i.handled_by.username }}</span>{% endif %}</td>
+        <td class="actions">{% if i.is_open %}<form method="post" action="{% url 'emergency:incident_resolve' event.slug i.pk %}" class="moderate">{% csrf_token %}
+          <input type="text" name="notes" placeholder="{% trans 'notes' %}" size="12" aria-label="{% trans 'notes' %}"><button class="btn btn-sm btn-ok">{% trans "Resolve" %}</button></form>{% endif %}</td></tr>
+      {% empty %}<tr><td colspan="5" class="empty">{% trans "No incidents." %}</td></tr>{% endfor %}
+      </tbody></table></div>
+  </section>
+</div>
+
+<section class="card">
+  <div class="card-header"><h2>{% trans "Extension priorities" %}</h2><span class="small muted">{% trans "(0 = normal, higher preempts)" %}</span></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th scope="col">{% trans "Number" %}</th><th scope="col">{% trans "Owner" %}</th><th scope="col" class="num">{% trans "Priority" %}</th><th scope="col"><span class="sr-only">{% trans "Actions" %}</span></th></tr></thead>
+    <tbody>
+    {% for e in candidates %}
+    <tr><td class="number">{{ e.number }}</td><td>{{ e.owner.username|default:"–" }}</td><td class="num">{{ e.priority }}</td>
+      <td class="actions"><form method="post" action="{% url 'emergency:priority' event.slug e.pk %}" class="moderate">{% csrf_token %}
+        <input type="number" name="level" min="0" max="100" value="{{ e.priority }}" aria-label="{% trans 'Priority' %}"><button class="btn btn-sm">{% trans "Set" %}</button></form></td></tr>
+    {% empty %}<tr><td colspan="4" class="empty">{% trans "No active endpoint extensions." %}</td></tr>{% endfor %}
+    </tbody></table></div>
+</section>
+{% endblock %}

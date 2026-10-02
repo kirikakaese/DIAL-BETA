@@ -1,0 +1,87 @@
+{% extends "base.html" %}{% load i18n pages_tags %}
+{% block title %}{{ event.name }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h1>{% if event.logo %}<img src="{{ event.logo.url }}" alt="" height="40" class="event-logo"> {% endif %}{{ event.name }} <span class="badge badge-{{ event.state }}">{{ event.get_state_display }}</span></h1>
+    <p class="subtitle">{{ event.start_date|date:"j M" }} – {{ event.end_date|date:"j M Y" }}{% if event.location %} · {{ event.location }}{% endif %}{% if event.sip_domain %} · <code>{{ event.sip_domain }}</code>{% endif %}</p>
+  </div>
+  {% if user.is_authenticated and event.registration_open %}
+  <div class="actions">
+    <a class="btn btn-primary" href="{% url 'portal:extension_create' event.slug %}">{% trans "Register extension" %}</a>
+    {% if portable_count %}<a class="btn" href="{% url 'portal:extension_port' event.slug %}">{% trans "Port from previous event" %} ({{ portable_count }})</a>{% endif %}
+  </div>
+  {% elif not user.is_authenticated %}
+  <div class="actions">
+    <a class="btn btn-primary" href="{% url 'accounts:login' %}?next={{ request.path }}">{% trans "Log in to register a number" %}</a>
+  </div>
+  {% endif %}
+</div>
+
+{% if event.announcement %}<div class="alert alert-info announcement">{{ event.announcement|linebreaksbr }}</div>{% endif %}
+{% if event.description %}<p>{{ event.description|linebreaksbr }}</p>{% endif %}
+{% dashboard_pages event %}
+
+{% if user.is_authenticated and not is_member and event.is_public and not event.is_archived %}
+<div class="card">
+  <h2>{% trans "Join this event" %}</h2>
+  <p class="muted small">{% trans "Joining lets the orga team see you as a participant and unlocks group-restricted number ranges." %}</p>
+  <form method="post" action="{% url 'portal:event_join' event.slug %}" class="form-row">{% csrf_token %}
+    {% include "portal/_form.html" with form=join_form %}
+    <div class="field field-submit"><button class="btn btn-primary">{% trans "Join" %}</button></div>
+  </form>
+</div>
+{% endif %}
+
+{% if pending_transfers %}<div class="alert alert-warning">{% blocktrans count n=pending_transfers %}{{ n }} extension transfer is waiting for you.{% plural %}{{ n }} extension transfers are waiting for you.{% endblocktrans %} <a href="{% url 'portal:dashboard' %}">{% trans "Review" %}</a></div>{% endif %}
+
+<div class="grid grid-2">
+  <section class="card">
+    <div class="card-header"><h2>{% trans "My extensions here" %}</h2>{% if my_extensions %}<a class="small" href="{% url 'portal:extension_list' event.slug %}">{% trans "all" %}</a>{% endif %}</div>
+    {% if my_extensions %}
+    <div class="table-wrap"><table>
+      <thead><tr><th scope="col">{% trans "Number" %}</th><th scope="col">{% trans "Type" %}</th><th scope="col">{% trans "State" %}</th><th scope="col">{% trans "Devices" %}</th></tr></thead>
+      <tbody>{% for e in my_extensions %}
+      <tr><td><a class="number" href="{% url 'portal:extension_detail' event.slug e.pk %}">{{ e.number }}</a><div class="small muted">{{ e.display_name }}</div></td>
+        <td>{{ e.get_type_display }}</td>
+        <td><span class="badge badge-{{ e.state }}">{{ e.get_state_display }}</span></td>
+        <td class="small">{% for b in e.bindings.all %}<span class="dot dot-{% if b.device.state == 'subscribed' %}ok{% elif b.device.state == 'pending' or b.device.state == 'new' %}warn{% else %}err{% endif %}" title="{{ b.device.get_state_display }}"></span> {{ b.device }}<br>{% empty %}{% if e.is_endpoint %}<a href="{% url 'portal:device_add' event.slug e.pk %}">{% trans "add device" %}</a>{% else %}–{% endif %}{% endfor %}</td></tr>
+      {% endfor %}</tbody></table></div>
+    {% elif user.is_authenticated %}
+    <div class="empty">
+      <p>{% trans "You have no extension in this event yet." %}</p>
+      {% if event.registration_open %}<a class="btn btn-primary" href="{% url 'portal:extension_create' event.slug %}">{% trans "Register your number" %}</a>{% else %}<p class="small">{% trans "Registration is not open." %}</p>{% endif %}
+    </div>
+    {% else %}
+    <div class="empty">
+      <p>{% trans "Log in to see and manage your extensions." %}</p>
+    </div>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <h2>{% trans "Dialing help" %}</h2>
+    <dl class="kv">
+      {% if plan.test_ringback_number %}<dt>{% trans "Test ringback" %}</dt><dd><span class="number">{{ plan.test_ringback_number }}</span></dd>{% endif %}
+      {% if plan.echo_test_number %}<dt>{% trans "Echo test" %}</dt><dd><span class="number">{{ plan.echo_test_number }}</span></dd>{% endif %}
+      {% if plan.wakeup_service_number %}<dt>{% trans "Wake-up service" %}</dt><dd><span class="number">{{ plan.wakeup_service_number }}</span></dd>{% endif %}
+      {% if plan.site_survey_number %}<dt>{% trans "Site survey" %}</dt><dd><span class="number">{{ plan.site_survey_number }}</span></dd>{% endif %}
+      {% if plan.voicemail_number %}<dt>{% trans "Voicemail" %}</dt><dd><span class="number">{{ plan.voicemail_number }}</span></dd>{% endif %}
+      {% if plan.dect_claim_number %}<dt>{% trans "Claim handset" %}</dt><dd><span class="number">{{ plan.dect_claim_number }}</span> + {% trans "claim code" %} <span class="muted small">({% trans "shown on your extension page" %})</span></dd>{% endif %}
+      {% if plan.announcement_record_number %}<dt>{% trans "Record announcement" %}</dt><dd><span class="number">{{ plan.announcement_record_number }}</span> + {% trans "recording code" %} <span class="muted small">({% trans "shown on your announcement page" %})</span></dd>{% endif %}
+      <dt>{% trans "Callback when busy" %}</dt><dd><span class="number">{{ plan.callback_request_code }}</span> / {% trans "cancel" %} <span class="number">{{ plan.callback_cancel_code }}</span></dd>
+      {% if plan.forward_set_code or plan.forward_clear_code %}<dt>{% trans "Call forwarding" %}</dt><dd>{% if plan.forward_set_code %}{% trans "always" %} <span class="number">{{ plan.forward_set_code }}</span>&lt;{% trans "number" %}&gt;{% endif %}{% if plan.forward_busy_code %} · {% trans "busy" %} <span class="number">{{ plan.forward_busy_code }}</span>&lt;{% trans "number" %}&gt;{% endif %}{% if plan.forward_noanswer_code %} · {% trans "no answer" %} <span class="number">{{ plan.forward_noanswer_code }}</span>&lt;{% trans "number" %}&gt;{% endif %}{% if plan.forward_clear_code %} · {% trans "off" %} <span class="number">{{ plan.forward_clear_code }}</span>{% endif %}</dd>{% endif %}
+      {% if PET_FEATURES.callgroups %}<dt>{% trans "Group login / logout" %}</dt><dd><span class="number">{{ plan.group_login_code }}</span> / <span class="number">{{ plan.group_logout_code }}</span></dd>{% endif %}
+      {% if plan.emergency_numbers %}<dt>{% trans "Emergency" %}</dt><dd>{% for n in plan.emergency_numbers %}<span class="number">{{ n }}</span> {% endfor %}</dd>{% endif %}
+      <dt>{% trans "Extension length" %}</dt><dd>{% if plan.min_length == plan.max_length %}{{ plan.min_length }}{% else %}{{ plan.min_length }}–{{ plan.max_length }}{% endif %} {% trans "digits" %}</dd>
+    </dl>
+  </section>
+</div>
+
+{% if user.is_authenticated and cards %}
+<h2>{% trans "Features" %}</h2>
+<div class="grid grid-2 features">
+  {% for c in cards %}<a class="card event-card" href="{{ c.url }}"><h3>{{ c.label }}</h3><p class="muted small">{{ c.description }}</p></a>{% endfor %}
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,57 @@
+{% extends "base.html" %}{% load i18n dect_tags %}
+{% block title %}{% trans "DECT handsets" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <p class="eyebrow eyebrow-orga">{% trans "Orga" %} · {% trans "Infrastructure" %}</p>
+    <h1>{% trans "DECT handsets" %} <span class="count">{{ devices|length }}</span></h1>
+    {% if q %}<p class="subtitle">{% blocktrans with q=q %}Filtered by “{{ q }}”.{% endblocktrans %} <a href="{% dect_url 'handsets' event.slug %}">{% trans "Clear" %}</a></p>{% endif %}
+  </div>
+  <form method="get" class="actions" role="search">
+    <label class="sr-only" for="q">{% trans "Search handsets" %}</label>
+    <input type="search" id="q" name="q" value="{{ q }}" placeholder="{% trans 'IPEI, owner, number, RFP…' %}">
+    <button class="btn">{% trans "Search" %}</button>
+  </form>
+</div>
+{% include "dect/_nav.html" %}
+<section class="card">
+  <div class="card-header"><h2>{% trans "Claim pool" %} <span class="count">{{ unclaimed }}</span></h2></div>
+  {% if claim_number %}
+  <p class="small muted">{% blocktrans with n=claim_number %}Pool handsets are subscribed but belong to nobody yet. Users dial <strong>{{ n }}</strong> + the claim code from their extension page to take one over. Handsets the DECT system auto-creates on subscription are adopted into the pool automatically on the next sync.{% endblocktrans %}</p>
+  {% else %}
+  <p class="small muted">{% trans "Dial-to-claim is off: set a DECT claim number in the number plan to let users bind handsets by dialing a code." %} <a href="{% url 'portal:orga_numberplan' event.slug %}">{% trans "Number plan" %}</a></p>
+  {% endif %}
+  <form method="post" action="{% dect_url 'pool_add' event.slug %}" class="form-inline">{% csrf_token %}
+    <label for="id_ipei">IPEI</label> <input type="text" id="id_ipei" name="ipei" inputmode="numeric" pattern="[0-9 ]{13,16}" required placeholder="13 digits">
+    <label for="id_name">{% trans "Label" %}</label> <input type="text" id="id_name" name="name" placeholder="{% trans 'pool #12' %}">
+    <button class="btn btn-primary">{% trans "Add pool handset" %}</button>
+  </form>
+</section>
+<div class="table-wrap" data-refresh="30">
+  <table>
+    <thead><tr>
+      <th scope="col">{% trans "IPEI" %}</th><th scope="col">{% trans "Owner" %}</th><th scope="col">{% trans "Extensions" %}</th>
+      <th scope="col">{% trans "State" %}</th><th scope="col">{% trans "Last seen RFP" %}</th><th scope="col">{% trans "Last seen" %}</th>
+      <th scope="col">{% trans "Battery" %}</th><th scope="col">{% trans "RSSI" %}</th><th scope="col">{% trans "PPN" %}</th>
+    </tr></thead>
+    <tbody>
+    {% for d in devices %}
+    <tr>
+      <td class="mono">{{ d.ipei|default:"–" }}{% if d.name %} <span class="muted small">{{ d.name }}</span>{% endif %}</td>
+      <td>{{ d.owner.username|default:"–" }}{% if d.unclaimed %} <span class="badge badge-info">{% trans "pool" %}</span>{% endif %}</td>
+      <td>{% for b in d.bindings.all %}{% if b.is_active %}<span class="number">{{ b.extension.number }}</span> {% endif %}{% empty %}{% if d.unclaimed and d.config.temp_number %}<span class="muted small">{% trans "temp" %} {{ d.config.temp_number }}</span>{% else %}–{% endif %}{% endfor %}</td>
+      <td><span class="badge badge-{{ d.state }}">{{ d.get_state_display }}</span>
+        {% if d.unclaimed and d.pin_valid %}<span class="small">PIN <code>{{ d.subscription_pin }}</code></span>{% endif %}
+        {% if d.config.provision_error %}<span class="badge badge-err" title="{{ d.config.provision_error }}">{% trans "error" %}</span>{% endif %}</td>
+      <td>{% if d.last_seen_rfp %}<a href="{% dect_url 'rfp_edit' event.slug d.last_seen_rfp.pk %}">{{ d.last_seen_rfp.name }}</a>{% else %}–{% endif %}</td>
+      <td class="small">{% if d.last_seen_at %}{{ d.last_seen_at|timesince }} {% trans "ago" %}{% else %}–{% endif %}</td>
+      <td>{% if d.battery_percent is not None %}{{ d.battery_percent }} %{% else %}–{% endif %}</td>
+      <td>{% if d.rssi is not None %}{{ d.rssi }} dBm{% else %}–{% endif %}</td>
+      <td class="mono small">{{ d.omm_ppn|default:"–" }}
+        {% if d.unclaimed %}<form method="post" action="{% dect_url 'pool_remove' event.slug d.pk %}" class="inline" data-confirm="{% trans 'Remove this pool handset and its subscription?' %}">{% csrf_token %}<button class="btn btn-sm btn-danger">{% trans "Remove" %}</button></form>{% endif %}</td>
+    </tr>
+    {% empty %}<tr><td colspan="9" class="empty">{% if q %}{% trans "No handsets match your search." %}{% else %}{% trans "No DECT handsets registered." %}{% endif %}</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,82 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Extension claims" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <p class="eyebrow eyebrow-orga">{% trans "Orga" %} · {% trans "Numbers" %}</p>
+    <h1>{% trans "Extension claims" %} <span class="count">{{ open_claims|length }}</span></h1>
+    <p class="subtitle">{% trans "While the claim is open the number is blocked for everyone else. The person redeems it via the invite link and gets an active extension immediately - also in ranges normally restricted for them." %}</p>
+  </div>
+  <div class="actions">
+    <a class="btn" href="{% url 'numbering:settings' event.slug %}">{% trans "Numbering settings" %}</a>
+    <a class="btn" href="{% url 'numbering:pools' event.slug %}">{% trans "Pools" %}</a>
+  </div>
+</div>
+<div class="grid grid-2">
+  <div class="stack">
+    <section class="card">
+      <h2>{% trans "Open claims" %}</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th scope="col">{% trans "Number" %}</th><th scope="col">{% trans "For" %}</th><th scope="col">{% trans "Type" %}</th><th scope="col">{% trans "Valid until" %}</th><th scope="col"><span class="sr-only">{% trans "Actions" %}</span></th></tr></thead>
+        <tbody>
+        {% for c in open_claims %}
+        <tr>
+          <td class="number">{{ c.number }}</td>
+          <td>{{ c.claimant_label }}{% if c.user and c.user.email %}<div class="muted small">{{ c.user.email }}</div>{% endif %}{% if c.note %}<div class="muted small">{{ c.note }}</div>{% endif %}</td>
+          <td class="small">{{ c.get_type_display }}</td>
+          <td class="small">{{ c.valid_until|date:"Y-m-d H:i" }}</td>
+          <td class="actions">
+            <a class="btn btn-sm" href="{{ c.redeem_path }}" title="{% trans 'Redeem link' %}">🔗</a>
+            <form method="post" action="{% url 'numbering:claim_resend' event.slug c.pk %}" class="inline">{% csrf_token %}
+              <button class="btn btn-sm">{% trans "Resend invite" %}</button></form>
+            <form method="post" action="{% url 'numbering:claim_delete' event.slug c.pk %}" class="inline" data-confirm="{% trans 'Delete this claim and release the number?' %}">{% csrf_token %}
+              <button class="btn btn-sm btn-danger">{% trans "Delete" %}</button></form>
+          </td>
+        </tr>
+        {% empty %}<tr><td colspan="5" class="empty">{% trans "No open claims." %}</td></tr>{% endfor %}
+        </tbody>
+      </table></div>
+    </section>
+
+    {% if redeemed_claims or expired_claims %}
+    <section class="card">
+      <h2>{% trans "Redeemed / expired" %}</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th scope="col">{% trans "Number" %}</th><th scope="col">{% trans "For" %}</th><th scope="col">{% trans "Status" %}</th><th scope="col"><span class="sr-only">{% trans "Actions" %}</span></th></tr></thead>
+        <tbody>
+        {% for c in redeemed_claims %}
+        <tr>
+          <td class="number">{% if c.redeemed_extension %}<a href="{% url 'portal:extension_detail' event.slug c.redeemed_extension.pk %}">{{ c.number }}</a>{% else %}{{ c.number }}{% endif %}</td>
+          <td>{{ c.claimant_label }}</td>
+          <td><span class="badge badge-active">{% trans "Redeemed" %}</span> <span class="muted small">{{ c.redeemed_at|date:"Y-m-d H:i" }}</span></td>
+          <td class="actions">
+            <form method="post" action="{% url 'numbering:claim_delete' event.slug c.pk %}" class="inline">{% csrf_token %}
+              <button class="btn btn-sm btn-ghost">{% trans "Remove" %}</button></form>
+          </td>
+        </tr>
+        {% endfor %}
+        {% for c in expired_claims %}
+        <tr>
+          <td class="number">{{ c.number }}</td>
+          <td>{{ c.claimant_label }}</td>
+          <td><span class="badge badge-expired">{% trans "Expired" %}</span> <span class="muted small">{{ c.valid_until|date:"Y-m-d H:i" }}</span></td>
+          <td class="actions">
+            <form method="post" action="{% url 'numbering:claim_delete' event.slug c.pk %}" class="inline">{% csrf_token %}
+              <button class="btn btn-sm btn-ghost">{% trans "Remove" %}</button></form>
+          </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+    </section>
+    {% endif %}
+  </div>
+
+  <form method="post" class="card" novalidate>{% csrf_token %}
+    <h2>{% trans "Reserve a number" %}</h2>
+    {% include "portal/_form.html" with form=form %}
+    <div id="availability" class="avail" aria-live="polite"></div>
+    <div class="form-actions"><button class="btn btn-primary">{% trans "Reserve" %}</button></div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Guest extensions" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <p class="eyebrow eyebrow-orga">{% trans "Orga" %} · {% trans "Numbers" %}</p>
+    <h1>{% trans "Guest extensions" %} <span class="count">{{ rows|length }}</span></h1>
+    <p class="subtitle">{% trans "Guest numbers are pre-provisioned and inactive. Hand out the QR code / claim link; the first user to claim it gets the number bound to their account." %}</p>
+  </div>
+  <div class="actions"><a class="btn" href="?print=1" target="_blank" rel="noopener">{% trans "Printable badge sheet" %}</a></div>
+</div>
+<div class="grid grid-2">
+  <div class="stack">
+    <section class="card">
+      <h2>{% trans "Create guest extensions" %}</h2>
+      <form method="post">{% csrf_token %}
+        {% include "portal/_form.html" with form=form %}
+        <div class="form-actions"><button class="btn btn-primary">{% trans "Create" %}</button></div>
+      </form>
+    </section>
+    {% if results %}
+    <section class="card">
+      <h2>{% trans "Result" %}</h2>
+      <ul class="small">{% for r in results %}<li><span class="number">{{ r.number }}</span> {% if r.ok %}<span class="badge badge-ok">{% trans "created" %}</span>{% else %}<span class="badge badge-err">{{ r.error }}</span>{% endif %}</li>{% endfor %}</ul>
+    </section>
+    {% endif %}
+  </div>
+  <section class="card">
+    <h2>{% trans "Guest numbers" %}</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th scope="col">{% trans "Number" %}</th><th scope="col">{% trans "State" %}</th><th scope="col">{% trans "Claimed by" %}</th><th scope="col">{% trans "Claim link" %}</th></tr></thead>
+      <tbody>{% for r in rows %}{% with e=r.ext %}
+      <tr><td><a class="number" href="{% url 'portal:extension_detail' event.slug e.pk %}">{{ e.number }}</a></td>
+        <td><span class="badge badge-{{ e.state }}">{{ e.get_state_display }}</span></td>
+        <td class="small">{{ e.owner|default:"–" }}</td>
+        <td class="small">{% if r.claim_url and not e.owner %}<code>{{ r.claim_url }}</code>{% if r.qr %}<details><summary class="small">QR</summary><img class="qr" src="data:image/png;base64,{{ r.qr }}" alt="{% trans 'Claim QR code' %}" width="132" height="132"></details>{% endif %}{% else %}<span class="muted">–</span>{% endif %}</td></tr>
+      {% endwith %}{% empty %}<tr><td colspan="4" class="empty">{% trans "No guest extensions yet." %}</td></tr>{% endfor %}</tbody></table></div>
+  </section>
+</div>
+{% endblock %}

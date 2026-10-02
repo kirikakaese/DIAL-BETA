@@ -1,0 +1,88 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Helpdesk" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <p class="eyebrow eyebrow-orga">{% if request.event_is_orga %}{% trans "Orga" %} · {% trans "People" %}{% else %}{% trans "Helpdesk" %}{% endif %}</p>
+    <h1>{% trans "Helpdesk lookup" %}</h1>
+    <p class="subtitle">{% trans "Finds users by nickname, e-mail or display name, by extension number, by handset IPEI, SIP username or MAC address. Read-only view of what the user sees - no passwords are shown." %}</p>
+  </div>
+</div>
+<div class="card">
+  <form method="get" class="form-row">
+    {% include "portal/_form.html" with form=form %}
+    <div class="field field-submit"><button class="btn btn-primary">{% trans "Search" %}</button></div>
+  </form>
+</div>
+
+{% if history %}
+<section class="card">
+  <div class="card-header">
+    <h2>{% blocktrans with n=history.number %}History of {{ n }}{% endblocktrans %}</h2>
+    <span class="small muted">{% blocktrans count c=history.extensions|length %}{{ c }} extension{% plural %}{{ c }} extensions{% endblocktrans %}{% if history.other_events %} · {% trans "also in:" %} {% for s in history.other_events %}<span class="badge badge-muted">{{ s }}</span> {% endfor %}{% endif %}</span>
+  </div>
+  <h3>{% trans "Extensions with this number" %}</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th scope="col">{% trans "Event" %}</th><th scope="col">{% trans "Type" %}</th><th scope="col">{% trans "State" %}</th><th scope="col">{% trans "Owner" %}</th><th scope="col">{% trans "Created" %}</th><th scope="col">{% trans "Moderated" %}</th><th scope="col">{% trans "Deleted" %}</th><th scope="col">{% trans "Ported from" %}</th></tr></thead>
+    <tbody>{% for x in history.extensions %}
+    <tr>
+      <td>{% if x.is_current_event %}<a class="number" href="{% url 'portal:extension_detail' event.slug x.id %}">{{ x.number }}</a> <span class="small muted">{{ x.event.slug }}</span>{% else %}<span class="number">{{ x.number }}</span> <span class="badge badge-muted">{{ x.event.slug }}</span>{% endif %}{% if x.display_name %}<div class="small muted">{{ x.display_name }}</div>{% endif %}</td>
+      <td class="small">{{ x.type_label }}{% if x.is_temporary %} <span class="badge badge-info">{% trans "guest" %}</span>{% endif %}</td>
+      <td><span class="badge badge-{{ x.state }}">{{ x.state_label }}</span></td>
+      <td class="small">{% if x.owner %}<a href="{% url 'portal:helpdesk_lookup' event.slug %}?user={{ x.owner.id }}">{{ x.owner.username }}</a><div class="muted">{{ x.owner.email }}</div>{% else %}<span class="muted">–</span>{% endif %}</td>
+      <td class="small">{{ x.created_at|date:"Y-m-d H:i" }}</td>
+      <td class="small">{% if x.moderated_at %}{{ x.moderated_at|date:"Y-m-d H:i" }}{% if x.moderated_by %}<div class="muted">{{ x.moderated_by.username }}</div>{% endif %}{% else %}<span class="muted">–</span>{% endif %}</td>
+      <td class="small">{% if x.deleted_at %}{{ x.deleted_at|date:"Y-m-d H:i" }}{% else %}<span class="muted">–</span>{% endif %}</td>
+      <td class="small">{% if x.ported_from %}<span class="number">{{ x.ported_from.number }}</span> <span class="muted">({{ x.ported_from.event }})</span>{% else %}<span class="muted">–</span>{% endif %}</td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+  <h3>{% trans "Timeline" %}</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th scope="col">{% trans "When" %}</th><th scope="col">{% trans "Event" %}</th><th scope="col">{% trans "Action" %}</th><th scope="col">{% trans "Actor" %}</th><th scope="col">{% trans "Details" %}</th></tr></thead>
+    <tbody>{% for t in history.timeline %}
+    <tr>
+      <td class="small">{{ t.at|date:"Y-m-d H:i" }}</td>
+      <td class="small">{{ t.event.slug }}</td>
+      <td>{% if t.kind == 'extension' %}<span class="badge badge-info">{% trans "extension created" %}</span>{% else %}<span class="badge badge-muted">{{ t.action_label }}</span>{% endif %}</td>
+      <td class="small">{% if t.kind == 'extension' %}{% if t.owner %}{{ t.owner.username }}{% else %}<span class="muted">–</span>{% endif %}{% else %}{{ t.actor_repr }}{% endif %}</td>
+      <td class="small">{% if t.kind == 'extension' %}{{ t.type_label }} · {{ t.state_label }}{% else %}{{ t.message }}{% if t.changes %} <code>{{ t.changes }}</code>{% endif %}{% endif %}</td>
+    </tr>{% empty %}<tr><td colspan="5" class="empty">{% trans "No history." %}</td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endif %}
+
+{% for r in results %}
+<section class="card">
+  <div class="card-header">
+    <h2>{{ r.user.username }} {% if r.user.display_name %}<span class="muted">{{ r.user.display_name }}</span>{% endif %}
+      {% if r.role %}<span class="badge badge-{% if r.role == 'orga' or r.role == 'admin' %}warn{% elif r.role == 'helpdesk' %}info{% else %}muted{% endif %}">{{ r.role }}</span>{% else %}<span class="badge badge-muted">{% trans "not a member" %}</span>{% endif %}
+      {% for g in r.groups %}<span class="badge badge-info">{{ g }}</span>{% endfor %}</h2>
+    <span class="small muted">{{ r.user.email }}{% if not r.user.is_active %} · <span class="badge badge-err">{% trans "inactive" %}</span>{% endif %}</span>
+  </div>
+  <div class="grid grid-2">
+    <div>
+      <h3>{% trans "Extensions in this event" %}</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th scope="col">{% trans "Number" %}</th><th scope="col">{% trans "Type" %}</th><th scope="col">{% trans "State" %}</th><th scope="col">{% trans "Devices" %}</th></tr></thead>
+        <tbody>{% for e in r.extensions %}
+        <tr><td><a class="number" href="{% url 'portal:extension_detail' event.slug e.pk %}">{{ e.number }}</a><div class="small muted">{{ e.display_name }}</div></td><td class="small">{{ e.get_type_display }}</td>
+          <td><span class="badge badge-{{ e.state }}">{{ e.get_state_display }}</span>{% if e.provision_error %} <span class="badge badge-err" title="{{ e.provision_error }}">{% trans "prov. error" %}</span>{% endif %}</td>
+          <td class="small">{% for b in e.bindings.all %}<div>{{ b.device }} <span class="badge badge-{{ b.device.state }}">{{ b.device.get_state_display }}</span>{% if b.device.last_seen_rfp %} <span class="muted">@ {{ b.device.last_seen_rfp.name }}</span>{% endif %}</div>{% empty %}<span class="muted">{% trans "none" %}</span>{% endfor %}</td></tr>
+        {% empty %}<tr><td colspan="4" class="empty">{% trans "No extensions in this event." %}</td></tr>{% endfor %}</tbody></table></div>
+      {% if r.portable %}<p class="small muted">{% trans "Could port from previous events:" %} {% for p in r.portable %}<span class="number">{{ p.number }}</span> ({{ p.event.slug }}) {% endfor %}</p>{% endif %}
+    </div>
+    <div>
+      <h3>{% trans "Devices" %}</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th scope="col">{% trans "Device" %}</th><th scope="col">{% trans "Identity" %}</th><th scope="col">{% trans "State" %}</th><th scope="col"><span class="sr-only">{% trans "Actions" %}</span></th></tr></thead>
+        <tbody>{% for d in r.devices %}
+        <tr><td><a href="{% url 'portal:device_detail' event.slug d.pk %}">{{ d.name|default:d.get_type_display }}</a>{% if d.handset_model %}<div class="small muted">{{ d.handset_model }}</div>{% endif %}</td>
+          <td class="small">{% if d.type == 'dect' %}IPEI <code>{{ d.ipei }}</code>{% else %}<code>{{ d.sip_username }}</code>{% endif %}</td>
+          <td><span class="badge badge-{{ d.state }}">{{ d.get_state_display }}</span>{% if d.type == 'dect' and d.pin_valid %}<div class="small">PIN <code>{{ d.subscription_pin }}</code> {% trans "until" %} {{ d.subscription_pin_expires_at|date:"H:i" }}</div>{% endif %}{% if d.last_seen_rfp %}<div class="small muted">@ {{ d.last_seen_rfp.name }}</div>{% endif %}</td>
+          <td>{% if d.type == 'dect' %}<form method="post" action="{% url 'portal:device_new_pin' event.slug d.pk %}" class="inline" data-confirm="{% trans 'Issue a new subscription PIN on behalf of this user? This is audit-logged.' %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="btn btn-sm">{% trans "New PIN" %}</button></form>{% endif %}</td></tr>
+        {% empty %}<tr><td colspan="4" class="empty">{% trans "No devices." %}</td></tr>{% endfor %}</tbody></table></div>
+    </div>
+  </div>
+</section>
+{% empty %}{% if q %}<div class="empty"><p>{% trans "No matching users." %}</p></div>{% endif %}{% endfor %}
+{% endblock %}

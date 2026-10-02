@@ -1,0 +1,32 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Info pages" %} · {{ event.name }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <p class="eyebrow">{{ event.name }}</p>
+    <h1>{% trans "Info pages" %}</h1>
+    <p class="subtitle">{% trans "Guides and announcements written by the orga team of this event." %}</p>
+  </div>
+  {% if is_orga %}
+  <div class="actions">
+    <a class="btn" href="{% url 'pages:manage' event.slug %}">{% trans "Manage pages" %}</a>
+  </div>
+  {% endif %}
+</div>
+
+{% if pages %}
+<div class="grid grid-2">
+  {% for p in pages %}
+  <a class="card event-card" href="{% url 'pages:show' event.slug p.slug %}">
+    <h2>{{ p.title }}{% if not p.published %} <span class="badge badge-warn">{% trans "unpublished" %}</span>{% endif %}</h2>
+    {% if p.excerpt %}<p class="muted small">{{ p.excerpt }}</p>{% endif %}
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card"><div class="empty">
+  <p>{% trans "The orga team has not published any info pages yet." %}</p>
+  {% if is_orga %}<a class="btn btn-primary" href="{% url 'pages:create' event.slug %}">{% trans "Write the first page" %}</a>{% endif %}
+</div></div>
+{% endif %}
+{% endblock %}

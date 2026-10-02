@@ -1,0 +1,6 @@
+---
+- name: Deploy PET (Portable Event Telephone)
+  hosts: pet
+  become: true
+  roles:
+    - pet

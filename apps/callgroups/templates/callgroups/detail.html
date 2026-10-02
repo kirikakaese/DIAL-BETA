@@ -1,0 +1,130 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{{ group.name }} · {% trans "Call group" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h1><span class="number">{{ group.number }}</span> {{ group.name }}{% if group.shortcode %} <span class="badge">{{ group.shortcode }}</span>{% endif %}</h1>
+    <p class="subtitle">{{ group.get_strategy_display }} · {% trans "owner" %}: {{ group.extension.owner.username|default:"—" }}{% if admins %} · {% trans "admins" %}: {% for a in admins %}{{ a.username }}{% if not forloop.last %}, {% endif %}{% endfor %}{% endif %}{% if group.description %} · {{ group.description }}{% endif %}</p>
+  </div>
+  <div class="actions">
+    <a class="btn" href="{% url 'callgroups:index' event.slug %}">{% trans "All groups" %}</a>
+    {% if can_manage %}
+    <form method="post" action="{% url 'callgroups:delete' event.slug group.pk %}" class="inline" data-confirm="{% trans 'Delete this group and release its number?' %}">{% csrf_token %}
+      <button class="btn btn-danger">{% trans "Delete group" %}</button></form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <section class="card" data-refresh="30">
+    <div class="card-header"><h2>{% trans "Members" %} <span class="count">{{ members|length }}</span></h2></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th scope="col">{% trans "Extension" %}</th><th scope="col">{% trans "Owner" %}</th><th scope="col">{% trans "Prio" %}</th><th scope="col">{% trans "Delay" %}</th><th scope="col">{% trans "Status" %}</th><th scope="col">{% trans "Last call" %}</th><th scope="col"><span class="sr-only">{% trans "Actions" %}</span></th></tr></thead>
+      <tbody>
+      {% for m in members %}
+      <tr>
+        <td class="number">{{ m.extension.number }}{% if m.is_group %} <span class="badge" title="{% trans 'Nested call group' %}">{% trans "group" %}</span>{% endif %}</td>
+        <td>{{ m.extension.owner.username|default:"—" }}</td>
+        {% if can_manage %}
+        <td><input type="number" name="priority" value="{{ m.priority }}" min="0" max="99" form="ms-{{ m.pk }}" aria-label="{% trans 'Priority' %}"></td>
+        <td><input type="number" name="delay_s" value="{{ m.delay_s }}" min="0" max="120" form="ms-{{ m.pk }}" aria-label="{% trans 'Ring delay (s)' %}">
+          <form id="ms-{{ m.pk }}" method="post" action="{% url 'callgroups:member_settings' event.slug group.pk m.pk %}" class="inline">{% csrf_token %}<button class="btn btn-sm">{% trans "Save" %}</button></form></td>
+        {% else %}
+        <td>{{ m.priority }}</td>
+        <td>{% if m.delay_s %}{{ m.delay_s }} s{% else %}—{% endif %}</td>
+        {% endif %}
+        <td>{% if m.logged_in %}<span class="badge badge-active">{% trans "Logged in" %}</span>{% else %}<span class="badge">{% trans "Logged out" %}</span>{% endif %}</td>
+        <td class="small muted">{{ m.last_call_at|date:"D H:i"|default:"—" }}</td>
+        <td class="actions">
+          {% if can_manage or m.extension.pk in my_extension_ids and group.allow_self_service %}
+          <form method="post" action="{% url 'callgroups:toggle' event.slug group.pk m.pk m.logged_in|yesno:'logout,login' %}" class="inline">{% csrf_token %}
+            {% if m.logged_in %}<button class="btn btn-sm">{% trans "Log out" %}</button>{% else %}<button class="btn btn-sm btn-ok">{% trans "Log in" %}</button>{% endif %}
+          </form>
+          {% endif %}
+          {% if can_manage %}
+          <form method="post" action="{% url 'callgroups:remove_member' event.slug group.pk m.pk %}" class="inline">{% csrf_token %}
+            <button class="btn btn-sm btn-danger">{% trans "Remove" %}</button></form>
+          {% elif m.extension.pk in my_extension_ids %}
+          <form method="post" action="{% url 'callgroups:leave' event.slug group.pk m.pk %}" class="inline">{% csrf_token %}
+            <input type="hidden" name="next" value="{% url 'callgroups:detail' event.slug group.pk %}">
+            <button class="btn btn-sm btn-danger">{% trans "Leave" %}</button></form>
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}<tr><td colspan="7" class="empty">{% trans "No members yet." %}</td></tr>{% endfor %}
+      </tbody>
+    </table></div>
+    <p class="small muted">{% trans "Current ring order" %}: {% for t in targets %}<span class="number">{{ t }}</span>{% if not forloop.last %} → {% endif %}{% empty %}<em>{% trans "nobody logged in" %}</em>{% endfor %}</p>
+    {% if waves %}
+    <p class="small muted">{% trans "Ring waves" %}: {% for w in waves %}<span class="badge">+{{ w.delay }} s</span> {% for t in w.targets %}<span class="number">{{ t }}</span>{% if not forloop.last %}, {% endif %}{% endfor %}{% if not forloop.last %} · {% endif %}{% endfor %}</p>
+    {% endif %}
+
+    {% if can_manage %}
+    <h3>{% trans "Add member" %}</h3>
+    <form method="post" action="{% url 'callgroups:add_member' event.slug group.pk %}" class="form-row member-form">{% csrf_token %}
+      <div class="field"><label for="{{ add_form.number.id_for_label }}">{{ add_form.number.label }}</label>{{ add_form.number }}</div>
+      <div class="field"><label for="{{ add_form.priority.id_for_label }}">{{ add_form.priority.label }}</label>{{ add_form.priority }}</div>
+      <div class="field"><label for="{{ add_form.delay_s.id_for_label }}">{{ add_form.delay_s.label }}</label>{{ add_form.delay_s }}</div>
+      <div class="field field-submit"><button class="btn btn-primary">{% trans "Add" %}</button></div>
+    </form>
+    <p class="small muted">{% trans "Handsets, SIP phones and other call groups (nested up to three levels) can be members. Adding takes effect immediately; use an invitation to let the owner decide." %}</p>
+
+    <h3>{% trans "Invite extension" %}</h3>
+    <form method="post" action="{% url 'callgroups:invite' event.slug group.pk %}" class="form-row member-form">{% csrf_token %}
+      <div class="field"><label for="{{ invite_form.number.id_for_label }}">{{ invite_form.number.label }}</label>{{ invite_form.number }}</div>
+      <div class="field"><label for="{{ invite_form.reason.id_for_label }}">{{ invite_form.reason.label }}</label>{{ invite_form.reason }}</div>
+      <div class="field field-submit"><button class="btn btn-primary">{% trans "Invite" %}</button></div>
+    </form>
+    {% if open_invites %}
+    <ul class="small">
+      {% for inv in open_invites %}
+      <li><span class="number">{{ inv.extension.number }}</span> ({{ inv.extension.owner.username|default:"—" }}) <span class="muted">{% trans "invited" %} {{ inv.created_at|date:"D H:i" }}{% if inv.invited_by %} {% trans "by" %} {{ inv.invited_by.username }}{% endif %}{% if inv.reason %} · {{ inv.reason }}{% endif %}</span>
+        <form method="post" action="{% url 'callgroups:cancel_invite' event.slug group.pk inv.pk %}" class="inline">{% csrf_token %}<button class="btn btn-sm">{% trans "Cancel" %}</button></form></li>
+      {% endfor %}
+    </ul>
+    {% else %}<p class="small muted">{% trans "No pending invitations." %}</p>{% endif %}
+    {% endif %}
+  </section>
+
+  <section class="card">
+    {% if can_manage %}
+    <div class="card-header"><h2>{% trans "Settings" %}</h2></div>
+    <p class="small muted">{% blocktrans with login=plan.group_login_code logout=plan.group_logout_code n=group.number %}Feature codes: <code>{{ login }}{{ n }}</code> log in, <code>{{ logout }}{{ n }}</code> log out.{% endblocktrans %}</p>
+    <form method="post">{% csrf_token %}
+      {% if settings_form.non_field_errors %}<div class="alert alert-error" role="alert">{{ settings_form.non_field_errors }}</div>{% endif %}
+      {% for field in settings_form %}{% include "portal/_field.html" with field=field %}{% endfor %}
+      <div class="form-actions"><button class="btn btn-primary">{% trans "Save" %}</button></div>
+    </form>
+    {% else %}
+    <div class="card-header"><h2>{% trans "About this group" %}</h2></div>
+    <p class="small muted">{% blocktrans with login=plan.group_login_code logout=plan.group_logout_code n=group.number %}Feature codes: <code>{{ login }}{{ n }}</code> log in, <code>{{ logout }}{{ n }}</code> log out.{% endblocktrans %}</p>
+    <dl class="kv">
+      <dt>{% trans "Strategy" %}</dt><dd>{{ group.get_strategy_display }}</dd>
+      <dt>{% trans "Ring timeout" %}</dt><dd>{{ group.ring_timeout }} s</dd>
+      <dt>{% trans "Self-service" %}</dt><dd>{{ group.allow_self_service|yesno }}</dd>
+      {% if group.shortcode %}<dt>{% trans "Shortcode" %}</dt><dd>{{ group.shortcode }}</dd>{% endif %}
+    </dl>
+    {% endif %}
+
+    {% if is_owner_or_orga %}
+    <h3>{% trans "Group admins" %}</h3>
+    <ul class="small">
+      {% for a in admins %}
+      <li>{{ a.username }} <span class="muted">({{ a.email }})</span>
+        <form method="post" action="{% url 'callgroups:remove_admin' event.slug group.pk a.pk %}" class="inline">{% csrf_token %}<button class="btn btn-sm">{% trans "Remove" %}</button></form></li>
+      {% empty %}<li class="muted">{% trans "No additional admins - only the owner and orga manage this group." %}</li>{% endfor %}
+    </ul>
+    <form method="post" action="{% url 'callgroups:add_admin' event.slug group.pk %}" class="form-row member-form">{% csrf_token %}
+      <div class="field"><label for="{{ admin_form.identifier.id_for_label }}">{{ admin_form.identifier.label }}</label>{{ admin_form.identifier }}</div>
+      <div class="field field-submit"><button class="btn">{% trans "Add admin" %}</button></div>
+    </form>
+    {% endif %}
+
+    <h3>{% trans "Login log" %}</h3>
+    <ul class="small">
+      {% for l in log %}<li><span class="muted">{{ l.at|date:"D H:i" }}</span> <span class="number">{{ l.member.extension.number }}</span> {{ l.get_action_display }} <span class="muted">({{ l.via }})</span></li>
+      {% empty %}<li class="muted">{% trans "Nothing logged yet." %}</li>{% endfor %}
+    </ul>
+  </section>
+</div>
+{% endblock %}

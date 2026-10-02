@@ -1,0 +1,11 @@
+{% load i18n %}{% autoescape off %}{% blocktrans %}Hello,
+
+someone (hopefully you) wants to create a PET account for {{ email }}.
+Open this link to confirm the address and choose a nickname and password:{% endblocktrans %}
+
+{{ confirm_url }}
+
+{% blocktrans %}The link is valid for {{ ttl_hours }} hours. If you did not request this, simply ignore this e-mail - no account will be created.{% endblocktrans %}
+
+-- PET · Portable Event Telephone
+{% endautoescape %}

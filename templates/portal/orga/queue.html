@@ -1,0 +1,30 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Approval queue" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <p class="eyebrow eyebrow-orga">{% trans "Orga" %} · {% trans "Numbers" %}</p>
+    <h1>{% trans "Approval queue" %} <span class="count">{{ rows|length }}</span></h1>
+  </div>
+</div>
+<div class="table-wrap" data-refresh="60"><table>
+  <thead><tr><th scope="col">{% trans "Number" %}</th><th scope="col">{% trans "Type" %}</th><th scope="col">{% trans "Requested by" %}</th><th scope="col">{% trans "Range" %}</th><th scope="col">{% trans "Note" %}</th><th scope="col">{% trans "Requested" %}</th><th scope="col">{% trans "Decision" %}</th></tr></thead>
+  <tbody>{% for r in rows %}{% with e=r.ext %}
+  <tr>
+    <td><a class="number" href="{% url 'portal:extension_detail' event.slug e.pk %}">{{ e.number }}</a><div class="small muted">{{ e.display_name }}</div></td>
+    <td>{{ e.get_type_display }}</td>
+    <td>{% if e.owner %}{{ e.owner }} <div class="small muted">{{ e.owner.email }}</div>{% else %}<span class="muted">–</span>{% endif %}</td>
+    <td class="small">{% if r.range %}{{ r.range.name }}{% if r.range.is_vanity %} <span class="badge badge-warn">{% trans "vanity" %}</span>{% endif %}{% else %}<span class="muted">{% trans "default" %}</span>{% endif %}</td>
+    <td class="small">{{ e.request_note|default:"–" }}</td>
+    <td class="small">{{ e.created_at|date:"D H:i" }}</td>
+    <td>
+      <form method="post" action="{% url 'portal:orga_moderate' event.slug e.pk 'approve' %}" class="moderate">{% csrf_token %}
+        <label class="sr-only" for="note-{{ e.pk }}">{% trans "Moderation note" %}</label>
+        <input type="text" id="note-{{ e.pk }}" name="note" placeholder="{% trans 'note (optional)' %}" class="small">
+        <button class="btn btn-sm btn-ok">{% trans "Approve" %}</button>
+        <button class="btn btn-sm btn-danger" formaction="{% url 'portal:orga_moderate' event.slug e.pk 'reject' %}">{% trans "Reject" %}</button>
+      </form>
+    </td>
+  </tr>{% endwith %}{% empty %}<tr><td colspan="7" class="empty">{% trans "Queue is empty - nice." %}</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endblock %}

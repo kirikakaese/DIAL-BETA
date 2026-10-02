@@ -1,0 +1,132 @@
+{% load i18n static pet_nav %}<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE }}" data-theme="{{ request.COOKIES.pet_theme|default:'dark' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}PET{% endblock %} · {% if current_event %}{{ current_event.name }}{% else %}{% trans "Portable Event Telephone" %}{% endif %}</title>
+  <link rel="stylesheet" href="{% static 'css/pet.css' %}?v={{ ASSET_VERSION }}">
+  <link rel="stylesheet" href="{% static 'css/pwa.css' %}?v={{ ASSET_VERSION }}">
+  {% if current_event %}
+  <style>:root{--primary:{{ current_event.primary_color }};--accent:{{ current_event.accent_color }};}</style>
+  {% endif %}
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="{% if current_event %}{{ current_event.primary_color }}{% else %}{{ PET_PWA_THEME_COLOR }}{% endif %}">
+  <link rel="icon" type="image/svg+xml" href="{% static 'icons/favicon.svg' %}?v={{ ASSET_VERSION }}">
+  <link rel="apple-touch-icon" href="{% static 'icons/apple-touch-icon.png' %}">
+  {% if PET_PWA_ENABLED %}
+  <link rel="manifest" href="{% url 'core:manifest' %}">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="PET">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  {% endif %}
+  <script src="{% static 'js/pwa.js' %}?v={{ ASSET_VERSION }}" defer></script>
+  {% block head %}{% endblock %}
+</head>
+<body class="{% if show_sidebar %}has-sidenav{% endif %}">
+<a class="skip-link" href="#main">{% trans "Skip to main content" %}</a>
+
+<header class="topbar">
+  <nav class="topbar-inner" aria-label="{% trans 'Main navigation' %}">
+    {% if show_sidebar %}
+    <button type="button" class="btn btn-ghost sidenav-toggle" id="sidenav-toggle" aria-expanded="false" aria-controls="sidenav">
+      <span aria-hidden="true">☰</span> <span class="sr-only">{% trans "Toggle event menu" %}</span>
+    </button>
+    {% endif %}
+    <a class="brand" href="{% url 'portal:home' %}">
+      <span class="brand-icon" aria-hidden="true">☏</span><span>PET</span>
+    </a>
+
+    <ul class="nav-links">
+      {% if user.is_authenticated %}
+        <li><a href="{% url 'portal:dashboard' %}" {% nav_active 'portal:dashboard' 'portal:accept_transfer' %}>{% trans "My extensions" %}</a></li>
+      {% endif %}
+      <li><a href="{% url 'portal:event_list' %}" {% nav_active 'portal:event_list' 'portal:event_create' %}>{% trans "Events" %}</a></li>
+      <li><a href="{% url 'portal:docs_index' %}" {% nav_active 'portal:docs_*' %}>{% trans "Docs" %}</a></li>
+      {% if current_event %}
+        <li class="nav-current-event">
+          <a href="{% url 'portal:event_dashboard' current_event.slug %}" {% if show_sidebar %}aria-current="page"{% endif %}>
+            {% if current_event.logo %}<img src="{{ current_event.logo.url }}" alt="" class="nav-event-logo">{% endif %}{{ current_event.name|truncatechars:28 }}
+            <span class="badge badge-{{ current_event.state }} nav-event-state" title="{{ current_event.start_date|date:'j M' }} – {{ current_event.end_date|date:'j M Y' }}">{{ current_event.get_state_display }}</span>
+          </a>
+        </li>
+        {% if request.event_is_orga %}
+          <li><a href="{% url 'portal:orga_dashboard' current_event.slug %}" class="nav-orga" {% nav_active 'portal:orga_*' %}>{% trans "Orga" %}{% if nav_pending %} <span class="badge badge-warn">{{ nav_pending }}</span>{% endif %}</a></li>
+        {% elif request.event_is_helpdesk %}
+          <li><a href="{% url 'portal:helpdesk_lookup' current_event.slug %}" class="nav-orga" {% nav_active 'portal:helpdesk_lookup' %}>{% trans "Helpdesk" %}</a></li>
+        {% endif %}
+      {% endif %}
+    </ul>
+
+    <div class="nav-right">
+      {% if user.is_authenticated and switcher_events|length > 1 %}
+      <label class="sr-only" for="event-switch">{% trans "Switch event" %}</label>
+      <select id="event-switch" class="event-switch" data-action="navigate" data-href="{% url 'portal:switch_event' '__slug__' %}">
+        <option value="">{% trans "Switch event…" %}</option>
+        {% for e in switcher_events %}<option value="{{ e.slug }}" {% if current_event and e.pk == current_event.pk %}selected{% endif %}>{{ e.name }}</option>{% endfor %}
+      </select>
+      {% endif %}
+      <button type="button" class="btn btn-ghost btn-icon" id="theme-toggle" aria-label="{% trans 'Toggle dark mode' %}" title="{% trans 'Toggle dark mode' %}">◐</button>
+
+      {% if user.is_authenticated %}
+      <details class="menu" id="account-menu">
+        <summary class="btn btn-ghost btn-avatar" aria-label="{% trans 'Account menu' %}" title="{{ user.username }}"><span class="avatar" aria-hidden="true">{{ user.username|slice:":1"|upper }}</span></summary>
+        <div class="menu-panel">
+          <div class="menu-user"><strong>{{ user.username }}</strong><span class="muted small">{{ user.email }}</span></div>
+          <div class="menu-sep"></div>
+          <a class="menu-mobile-only" href="{% url 'portal:dashboard' %}">{% trans "My extensions" %}</a>
+          <a class="menu-mobile-only" href="{% url 'portal:event_list' %}">{% trans "Events" %}</a>
+          <a class="menu-mobile-only" href="{% url 'portal:docs_index' %}">{% trans "Docs" %}</a>
+          <div class="menu-sep menu-mobile-only"></div>
+          <a href="{% url 'accounts:profile' %}">{% trans "Profile & account" %}</a>
+          <a href="{% url 'accounts:tokens' %}">{% trans "API tokens" %}</a>
+          <div class="menu-sep"></div>
+          <form method="post" action="{% url 'accounts:logout' %}">{% csrf_token %}<button class="menu-item">{% trans "Log out" %}</button></form>
+        </div>
+      </details>
+      {% else %}
+      <a href="{% url 'accounts:login' %}" class="btn btn-ghost">{% trans "Log in" %}</a>
+      {% if signup_offered %}<a href="{% url 'accounts:register' %}" class="btn btn-primary">{% trans "Sign up" %}</a>{% endif %}
+      {% endif %}
+    </div>
+  </nav>
+</header>
+
+<div class="layout">
+  {% if show_sidebar %}{% include "_sidebar.html" %}{% endif %}
+  <main id="main" class="page {% block main_class %}{% endblock %}">
+    {% block breadcrumbs %}{% endblock %}
+    {% if user.is_authenticated and not user.email_verified and request.resolver_match.url_name != 'profile' %}
+    <form method="post" action="{% url 'accounts:resend_verification' %}" class="alert alert-warning split">{% csrf_token %}
+      <span>{% trans "Your e-mail address is not verified yet. Some features (e.g. registering extensions) stay locked until you confirm it." %}</span>
+      <button class="btn btn-sm">{% trans "Resend verification e-mail" %}</button>
+    </form>
+    {% endif %}
+    {% if messages %}
+    <div class="messages">
+      {% for m in messages %}<div class="alert alert-{{ m.tags }}" role="{% if 'error' in m.tags %}alert{% else %}status{% endif %}">{{ m }}</div>{% endfor %}
+    </div>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+</div>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <span>PET — Portable Event Telephone</span>
+    <span class="footer-links"><a href="{% url 'portal:docs_index' %}">{% trans "Docs" %}</a><a href="/api/docs/">{% trans "API" %}</a><a href="https://github.com/">{% trans "Source" %}</a></span>
+    {% if current_event and current_event.announcement %}<span class="muted footer-announcement">{{ current_event.announcement|truncatechars:120 }}</span>{% endif %}
+  </div>
+</footer>
+<div id="pet-pwa" class="pwa" data-ping="{% url 'core:manifest' %}"{% if PET_PWA_ENABLED %} data-sw="{% url 'core:service_worker' %}"{% endif %}>
+  <div id="pet-offline" class="pwa-banner" role="status" aria-live="polite" hidden>{% trans "You're offline - showing saved pages. Changes need a connection." %}</div>
+  <div id="pet-update" class="pwa-toast" role="status" aria-live="polite" hidden>
+    <span>{% trans "PET was updated." %}</span>
+    <button type="button" class="btn btn-sm btn-primary" id="pet-update-reload">{% trans "Reload" %}</button>
+    <button type="button" class="btn btn-sm btn-ghost btn-icon" id="pet-update-dismiss" aria-label="{% trans 'Dismiss' %}">✕</button>
+  </div>
+  <button type="button" class="btn btn-sm pwa-install" id="pet-install" hidden>{% trans "Install PET on this device" %}</button>
+</div>
+<script src="{% static 'js/pet.js' %}?v={{ ASSET_VERSION }}" defer></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,13 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Offline" %}{% endblock %}
+{% block content %}
+<div class="card error-page pwa-offline-page">
+  <h1><span aria-hidden="true">📵</span> {% trans "You're offline" %}</h1>
+  <p class="muted">{% trans "PET cannot reach the server right now. Pages you opened before - your event dashboard, the phonebook and the docs - may still be available from the cache; changes need a connection." %}</p>
+  <div class="actions">
+    <button type="button" class="btn btn-primary" data-pwa-reload>{% trans "Retry" %}</button>
+    <a class="btn" href="{% url 'portal:home' %}">{% trans "Back to start" %}</a>
+    <a class="btn btn-ghost" href="{% url 'portal:docs_index' %}">{% trans "Docs" %}</a>
+  </div>
+</div>
+{% endblock %}

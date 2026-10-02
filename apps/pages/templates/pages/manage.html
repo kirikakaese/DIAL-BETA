@@ -1,0 +1,55 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Manage info pages" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <p class="eyebrow eyebrow-orga">{% trans "Orga" %} · {% trans "Info pages" %}</p>
+    <h1>{% trans "Manage info pages" %}</h1>
+    <p class="subtitle">{% trans "Markdown pages for your participants: how to get a handset, where the helpdesk is, house rules. Pages flagged for the dashboard also show up on the event start page." %}</p>
+  </div>
+  <div class="actions">
+    <a class="btn" href="{% url 'pages:index' event.slug %}">{% trans "View as participant" %}</a>
+    <a class="btn btn-primary" href="{% url 'pages:create' event.slug %}">{% trans "New page" %}</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header"><h2>{% trans "Pages" %} <span class="count">{{ pages|length }}</span></h2></div>
+  {% if pages %}
+  <div class="table-wrap"><table>
+    <thead><tr>
+      <th scope="col">{% trans "Title" %}</th>
+      <th scope="col">{% trans "Slug" %}</th>
+      <th scope="col">{% trans "Order" %}</th>
+      <th scope="col">{% trans "Published" %}</th>
+      <th scope="col">{% trans "Dashboard" %}</th>
+      <th scope="col">{% trans "Updated" %}</th>
+      <th scope="col"><span class="sr-only">{% trans "Actions" %}</span></th>
+    </tr></thead>
+    <tbody>
+    {% for p in pages %}
+    <tr>
+      <td><a href="{% url 'pages:show' event.slug p.slug %}">{{ p.title }}</a></td>
+      <td><code>{{ p.slug }}</code></td>
+      <td>{{ p.order }}</td>
+      <td>{% if p.published %}<span class="badge badge-ok">{% trans "published" %}</span>{% else %}<span class="badge badge-warn">{% trans "draft" %}</span>{% endif %}</td>
+      <td>{% if p.show_on_dashboard %}<span class="badge badge-ok">{% trans "yes" %}</span>{% else %}<span class="badge badge-muted">{% trans "no" %}</span>{% endif %}</td>
+      <td class="small">{{ p.updated_at|date:"SHORT_DATETIME_FORMAT" }}{% if p.updated_by %}<div class="muted">{{ p.updated_by.username }}</div>{% endif %}</td>
+      <td class="actions">
+        <a class="btn btn-sm" href="{% url 'pages:edit' event.slug p.slug %}">{% trans "Edit" %}</a>
+        <form method="post" action="{% url 'pages:delete' event.slug p.slug %}" class="inline" data-confirm="{% trans 'Delete this page? This cannot be undone.' %}">{% csrf_token %}
+          <button class="btn btn-sm btn-danger">{% trans "Delete" %}</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+  <div class="empty">
+    <p>{% trans "No info pages yet." %}</p>
+    <a class="btn btn-primary" href="{% url 'pages:create' event.slug %}">{% trans "New page" %}</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,93 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "My profile" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h1>{% trans "My profile" %}</h1>
+  </div>
+  <div class="actions">
+    <a class="btn" href="{% url 'accounts:password_change' %}">{% trans "Change password" %}</a>
+    <a class="btn" href="{% url 'accounts:tokens' %}">{% trans "API tokens" %}{% if token_count %} <span class="badge">{{ token_count }}</span>{% endif %}</a>
+  </div>
+</div>
+<div class="grid grid-2">
+  <section class="card">
+    <div class="card-header"><h2>{% trans "Account" %}</h2></div>
+    <dl class="kv">
+      <dt>{% trans "Nickname" %}</dt><dd><strong>{{ user.username }}</strong> <span class="muted small">({% trans "shown in phonebooks" %})</span></dd>
+      <dt>{% trans "E-mail" %}</dt><dd>{{ user.email }}
+        {% if user.email_verified %}<span class="badge badge-ok">{% trans "verified" %}</span>
+        {% else %}<span class="badge badge-warn">{% trans "unverified" %}</span>{% endif %}</dd>
+      <dt>{% trans "Member since" %}</dt><dd>{{ user.date_joined|date:"DATE_FORMAT" }}</dd>
+      {% if oidc_enabled or user.oidc_subject %}
+      <dt>{% trans "Linked identity" %}</dt>
+      <dd>{% if user.oidc_subject %}<span class="badge badge-ok">SSO</span> <span class="small">{{ oidc_issuer|default:user.oidc_subject }}</span>
+        {% else %}<span class="muted">{% trans "none" %}</span>{% endif %}</dd>
+      {% endif %}
+    </dl>
+    {% if oidc_enabled %}
+    {% if user.oidc_subject %}
+    <form method="post" action="{% url 'accounts:oidc_unlink' %}" class="callout split">{% csrf_token %}
+      <span class="small">{% if has_usable_password %}{% trans "You can log in with SSO or your password." %}{% else %}{% trans "Set a password before unlinking, otherwise you could not log in anymore." %}{% endif %}</span>
+      <button class="btn btn-sm"{% if not has_usable_password %} disabled{% endif %}>{% trans "Unlink" %}</button>
+    </form>
+    {% else %}
+    <form method="post" action="{% url 'accounts:oidc_login' %}" class="callout split">{% csrf_token %}
+      <input type="hidden" name="link" value="1">
+      <span class="small">{% trans "Link your single sign-on identity to log in without a password." %}</span>
+      <button class="btn btn-sm">{% trans "Link SSO account" %}</button>
+    </form>
+    {% endif %}
+    {% endif %}
+    {% if not user.email_verified %}
+    <form method="post" action="{% url 'accounts:resend_verification' %}" class="callout split">{% csrf_token %}
+      <span class="small">{% trans "We could not confirm that this address is yours yet." %}</span>
+      <button class="btn btn-sm">{% trans "Resend verification e-mail" %}</button>
+    </form>
+    {% endif %}
+    <form method="post" action="{% url 'accounts:profile' %}">{% csrf_token %}
+      {% include "portal/_form.html" with form=form %}
+      <div class="form-actions"><button class="btn btn-primary">{% trans "Save" %}</button></div>
+    </form>
+  </section>
+
+  <section class="card">
+    <div class="card-header">
+      <h2>{% trans "My events & roles" %}</h2>
+      {% if memberships %}<a class="small" href="{% url 'portal:event_list' %}">{% trans "Browse events" %}</a>{% endif %}
+    </div>
+    {% if memberships %}
+    <div class="table-wrap"><table>
+      <thead><tr><th scope="col">{% trans "Event" %}</th><th scope="col">{% trans "Role" %}</th><th scope="col">{% trans "Groups" %}</th></tr></thead>
+      <tbody>{% for m in memberships %}
+      <tr><td><a href="{% url 'portal:event_dashboard' m.event.slug %}">{{ m.event.name }}</a> <span class="badge badge-{{ m.event.state }}">{{ m.event.get_state_display }}</span></td>
+        <td>{{ m.get_role_display }}</td>
+        <td class="small">{% for g in m.groups.all %}<span class="badge badge-info">{{ g.name }}</span> {% empty %}<span class="muted">–</span>{% endfor %}</td></tr>
+      {% endfor %}</tbody></table></div>
+    {% else %}
+    <div class="empty">
+      <p>{% trans "You have not joined an event yet." %}</p>
+      <a class="btn btn-primary" href="{% url 'portal:event_list' %}">{% trans "Browse events" %}</a>
+    </div>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <div class="card-header"><h2>{% trans "Change e-mail address" %}</h2></div>
+    <p class="small muted">{% trans "We send a confirmation link to the new address; your login changes once you open it." %}</p>
+    <form method="post" action="{% url 'accounts:change_email' %}">{% csrf_token %}
+      {% include "portal/_form.html" with form=change_form %}
+      <div class="form-actions"><button class="btn">{% trans "Send confirmation link" %}</button></div>
+    </form>
+  </section>
+
+  <section class="card">
+    <div class="card-header"><h2>{% trans "Privacy" %}</h2></div>
+    <p class="small muted">{% trans "Download everything PET stores about you, or delete your account and all your extensions." %}</p>
+    <div class="actions">
+      <a class="btn btn-sm" href="{% url 'accounts:gdpr_export' %}">{% trans "Export my data (JSON)" %}</a>
+      <a class="btn btn-sm btn-danger" href="{% url 'accounts:gdpr_delete' %}">{% trans "Delete my account" %}</a>
+    </div>
+  </section>
+</div>
+{% endblock %}

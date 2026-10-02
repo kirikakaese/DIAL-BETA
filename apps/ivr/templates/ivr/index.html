@@ -1,0 +1,44 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Announcements & IVR" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h1>{% trans "Announcements & IVR menus" %}</h1>
+    <p class="subtitle">{% trans "Numbers that play a recording or text-to-speech, and menus that route callers by keypress." %}</p>
+  </div>
+  <div class="actions">
+    <a class="btn btn-primary" href="{% url 'ivr:announcement_new' event.slug %}">{% trans "New announcement" %}</a>
+    <a class="btn" href="{% url 'ivr:menu_new' event.slug %}">{% trans "New menu" %}</a>
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <section class="card">
+    <div class="card-header"><h2>{% trans "Announcements" %} <span class="count">{{ announcements|length }}</span></h2></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th scope="col">{% trans "Number" %}</th><th scope="col">{% trans "Source" %}</th><th scope="col">{% trans "State" %}</th><th scope="col"><span class="sr-only">{% trans "Actions" %}</span></th></tr></thead>
+      <tbody>
+      {% for a in announcements %}
+      <tr><td class="number">{{ a.extension.number }}</td>
+        <td>{% if a.audio %}<span class="badge">{% trans "audio" %}</span>{% else %}<span class="badge">TTS</span> <span class="small muted">{{ a.tts_text|truncatechars:50 }}</span>{% endif %}{% if a.loop %} ↻{% endif %}</td>
+        <td><span class="badge badge-{{ a.extension.state }}">{{ a.extension.get_state_display }}</span></td>
+        <td class="actions"><a class="btn btn-sm" href="{% url 'ivr:announcement_edit' event.slug a.pk %}">{% trans "Edit" %}</a></td></tr>
+      {% empty %}<tr><td colspan="4" class="empty">{% trans "No announcements yet." %}</td></tr>{% endfor %}
+      </tbody></table></div>
+  </section>
+
+  <section class="card">
+    <div class="card-header"><h2>{% trans "IVR menus" %} <span class="count">{{ menus|length }}</span></h2></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th scope="col">{% trans "Number" %}</th><th scope="col">{% trans "Options" %}</th><th scope="col">{% trans "State" %}</th><th scope="col"><span class="sr-only">{% trans "Actions" %}</span></th></tr></thead>
+      <tbody>
+      {% for m in menus %}
+      <tr><td class="number">{{ m.extension.number }}</td>
+        <td class="small">{% for o in m.options %}<code>{{ o.digit }}</code>→{{ o.label|default:o.target|default:o.action }} {% endfor %}</td>
+        <td><span class="badge badge-{{ m.extension.state }}">{{ m.extension.get_state_display }}</span></td>
+        <td class="actions"><a class="btn btn-sm" href="{% url 'ivr:menu_edit' event.slug m.pk %}">{% trans "Edit" %}</a></td></tr>
+      {% empty %}<tr><td colspan="4" class="empty">{% trans "No menus yet." %}</td></tr>{% endfor %}
+      </tbody></table></div>
+  </section>
+</div>
+{% endblock %}

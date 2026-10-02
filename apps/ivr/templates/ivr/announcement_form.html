@@ -1,0 +1,36 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% if obj %}{% trans "Edit announcement" %}{% else %}{% trans "New announcement" %}{% endif %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h1>{% if obj %}{% trans "Edit announcement" %} <span class="muted number">{{ obj.extension.number }}</span>{% else %}{% trans "New announcement" %}{% endif %}</h1>
+    <p class="subtitle">{% trans "Upload a wav/gsm file or enter text that the PBX will speak (TTS)." %}</p>
+  </div>
+</div>
+
+<section class="card">
+  <form method="post" enctype="multipart/form-data">{% csrf_token %}
+    {% include "portal/_form.html" with form=form %}
+    {% if obj.audio %}<p class="small muted">{% trans "Current audio:" %} {{ obj.audio.name }}</p>{% endif %}
+    {% if phone_recording and not obj.audio %}<p class="small muted">{% trans "Last phone recording (kept on the PBX):" %} <code>{{ phone_recording.file }}</code></p>{% endif %}
+    <div class="form-actions">
+      <button class="btn btn-primary">{% trans "Save" %}</button>
+      <a class="btn" href="{% url 'ivr:index' event.slug %}">{% trans "Cancel" %}</a>
+    </div>
+  </form>
+</section>
+
+{% if obj and record_number %}
+<section class="card claim-box">
+  <h2>{% trans "Record by phone" %}</h2>
+  {% if record_dial %}
+  <p class="claim-dial"><span class="number big-number">{{ record_dial }}</span></p>
+  <p>{% blocktrans with n=record_number c=record_code %}Dial <strong>{{ n }}</strong> then <strong>{{ c }}</strong> (or <strong>{{ n }}{{ c }}</strong> en bloc) from your phone, speak after the beep and press <strong>#</strong> to finish. The recording is played back and replaces the current audio; the TTS text is kept as a fallback.{% endblocktrans %}</p>
+  {% else %}
+  <p class="muted">{% trans "Recording by phone is available once this announcement is active." %}</p>
+  {% endif %}
+  <p class="small muted">{% trans "Anyone with an event phone who knows this code can overwrite the announcement. Get a new code if in doubt." %}
+    <form method="post" action="{% url 'ivr:announcement_new_record_code' event.slug obj.pk %}" class="inline">{% csrf_token %}<button class="btn btn-sm">{% trans "New recording code" %}</button></form></p>
+</section>
+{% endif %}
+{% endblock %}

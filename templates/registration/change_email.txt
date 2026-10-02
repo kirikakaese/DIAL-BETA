@@ -1,0 +1,11 @@
+{% load i18n %}{% autoescape off %}{% blocktrans with u=user.username %}Hello {{ u }},
+
+you asked to change the e-mail address of your PET account to {{ new_email }}.
+Open this link to confirm - your login will switch to the new address:{% endblocktrans %}
+
+{{ confirm_url }}
+
+{% blocktrans %}The link is valid for {{ ttl_hours }} hours. If you did not request this, simply ignore this e-mail - your address stays as it is.{% endblocktrans %}
+
+-- PET · Portable Event Telephone
+{% endautoescape %}

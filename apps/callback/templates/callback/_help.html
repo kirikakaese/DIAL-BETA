@@ -1,0 +1,22 @@
+{% load i18n %}
+<section class="card">
+  <div class="card-header"><h2>{% trans "From your handset" %}</h2></div>
+  <dl class="kv">
+    {% if plan.callback_request_code %}
+    <dt><span class="number">{{ plan.callback_request_code }}&lt;{% trans "number" %}&gt;</span></dt>
+    <dd>{% blocktrans with code=plan.callback_request_code %}Dial {{ code }} followed by the extension to request a callback when it is busy or does not answer. You will be rung back as soon as it is free.{% endblocktrans %}</dd>
+    {% endif %}
+    {% if plan.callback_cancel_code %}
+    <dt><span class="number">{{ plan.callback_cancel_code }}</span></dt>
+    <dd>{% trans "Cancel all your pending callbacks." %}</dd>
+    {% endif %}
+    {% if plan.test_ringback_number %}
+    <dt><span class="number">{{ plan.test_ringback_number }}</span></dt>
+    <dd>{% trans "Test ringback: hang up and your handset rings back a few seconds later." %}</dd>
+    {% endif %}
+    {% if plan.wakeup_service_number %}
+    <dt><span class="number">{{ plan.wakeup_service_number }}</span></dt>
+    <dd>{% trans "Wake-up service: enter the time as HHMM to schedule a wake-up call for today or tomorrow." %}</dd>
+    {% endif %}
+  </dl>
+</section>

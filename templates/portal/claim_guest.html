@@ -1,0 +1,21 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Claim guest extension" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h1>{% trans "Claim your guest extension" %}</h1>
+  </div>
+</div>
+<div class="card narrow">
+  <p class="lead"><span class="number big-number">{{ ext.number }}</span></p>
+  <dl class="kv">
+    <dt>{% trans "Event" %}</dt><dd>{{ event.name }}</dd>
+    {% if ext.expires_at %}<dt>{% trans "Valid until" %}</dt><dd>{{ ext.expires_at|date:"SHORT_DATETIME_FORMAT" }}</dd>{% endif %}
+  </dl>
+  {% if ext.owner and ext.owner != user %}<div class="alert alert-error">{% trans "This extension was already claimed by someone else." %}</div>
+  {% else %}
+  <p class="small muted">{% trans "Claiming binds this number to your account. Afterwards you can attach a DECT handset or a softphone like with any other extension." %}</p>
+  <form method="post">{% csrf_token %}<button class="btn btn-primary">{% trans "Claim" %} {{ ext.number }}</button></form>
+  {% endif %}
+</div>
+{% endblock %}

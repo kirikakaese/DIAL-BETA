@@ -1,0 +1,17 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Check your inbox" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h1>{% trans "Check your inbox" %}</h1>
+  </div>
+</div>
+<div class="card narrow">
+  <p>{% blocktrans with e=email %}If <strong>{{ e }}</strong> can be used for a PET account, we have just sent it an e-mail with your next step.{% endblocktrans %}</p>
+  <p class="muted small">{% trans "Nothing there after a few minutes? Check your spam folder or try again with the same address." %}</p>
+  <div class="actions">
+    <a class="btn" href="{% url 'accounts:register' %}">{% trans "Use a different address" %}</a>
+    <a class="btn" href="{% url 'accounts:login' %}">{% trans "Log in" %}</a>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,79 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "PSTN breakout" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <p class="eyebrow eyebrow-orga">{% trans "Orga" %} · {% trans "Services" %}</p>
+    <h1>{% trans "PSTN breakout" %}</h1>
+    <p class="subtitle">{% trans "Outside lines: SIP trunks, dial rules and who is allowed to call out." %}</p>
+  </div>
+  <div class="actions"><a class="btn btn-primary" href="{% url 'breakout:trunk_new' event.slug %}">{% trans "Add trunk" %}</a></div>
+</div>
+
+{% if not event.allow_breakout %}<div class="alert alert-warning">{% trans "Breakout is switched off for this event (Event → allow_breakout). All calls will be rejected." %}</div>{% endif %}
+
+<section class="card">
+  <div class="card-header"><h2>{% trans "Trunks" %} <span class="count">{{ trunks|length }}</span></h2></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th scope="col">{% trans "Name" %}</th><th scope="col">{% trans "Prefix" %}</th><th scope="col">{% trans "SIP" %}</th><th scope="col">{% trans "Caller-ID" %}</th><th scope="col">{% trans "Enabled" %}</th><th scope="col"><span class="sr-only">{% trans "Actions" %}</span></th></tr></thead>
+    <tbody>
+    {% for t in trunks %}
+    <tr><td>{{ t.name }}</td><td class="number">{{ t.outbound_prefix }}</td><td class="small">{{ t.sip_host }}:{{ t.port }}/{{ t.transport|upper }}</td>
+      <td class="number">{{ t.caller_id_default|default:"–" }}</td>
+      <td>{% if t.enabled %}<span class="dot dot-ok"></span><span class="sr-only">{% trans "yes" %}</span>{% else %}<span class="dot dot-err"></span><span class="sr-only">{% trans "no" %}</span>{% endif %}</td>
+      <td class="actions"><a class="btn btn-sm" href="{% url 'breakout:trunk_edit' event.slug t.pk %}">{% trans "Edit" %}</a>
+          <a class="btn btn-sm" href="{% url 'breakout:trunk_pjsip' event.slug t.pk %}">pjsip.conf</a></td></tr>
+    {% empty %}<tr><td colspan="6" class="empty">{% trans "No trunks." %}</td></tr>{% endfor %}
+    </tbody></table></div>
+</section>
+
+<div class="grid grid-2">
+  <section class="card">
+    <div class="card-header"><h2>{% trans "Outbound rules" %}</h2></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th scope="col">{% trans "Trunk" %}</th><th scope="col">{% trans "Name" %}</th><th scope="col">{% trans "Pattern" %}</th><th scope="col">{% trans "Action" %}</th><th scope="col" class="num">{% trans "Max min" %}</th><th scope="col" class="num">{% trans "Prio" %}</th><th scope="col"><span class="sr-only">{% trans "Actions" %}</span></th></tr></thead>
+      <tbody>
+      {% for r in rules %}
+      <tr><td>{{ r.trunk.name }}</td><td>{{ r.name }}</td><td><code>{{ r.pattern }}</code></td>
+        <td>{% if r.allow %}<span class="badge badge-active">{% trans "allow" %}</span>{% else %}<span class="badge badge-rejected">{% trans "deny" %}</span>{% endif %}</td>
+        <td class="num">{{ r.per_call_max_minutes|default:"∞" }}</td><td class="num">{{ r.priority }}</td>
+        <td class="actions"><form method="post" action="{% url 'breakout:rule_delete' event.slug r.pk %}" class="inline">{% csrf_token %}<button class="btn btn-sm btn-danger" aria-label="{% trans 'Delete rule' %}">×</button></form></td></tr>
+      {% empty %}<tr><td colspan="7" class="empty">{% trans "No rules - everything not on the blocklist is allowed." %}</td></tr>{% endfor %}
+      </tbody></table></div>
+    <p class="small muted">{% trans "Blocklist (settings.PET_BREAKOUT_BLOCKLIST):" %} {% for b in blocklist %}<code>{{ b }}</code> {% endfor %}</p>
+    <h3>{% trans "New rule" %}</h3>
+    <form method="post" action="{% url 'breakout:rule_new' event.slug %}">{% csrf_token %}
+      {% include "portal/_form.html" with form=rule_form %}
+      <div class="form-actions"><button class="btn btn-primary">{% trans "Add rule" %}</button></div>
+    </form>
+  </section>
+
+  <section class="card">
+    <div class="card-header"><h2>{% trans "Permissions" %}</h2></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th scope="col">{% trans "Subject" %}</th><th scope="col">{% trans "Allowed" %}</th><th scope="col" class="num">{% trans "Minutes/day" %}</th><th scope="col"><span class="sr-only">{% trans "Actions" %}</span></th></tr></thead>
+      <tbody>
+      {% for p in permissions %}
+      <tr><td>{% if p.extension %}<span class="number">{{ p.extension.number }}</span>{% else %}{% trans "group" %} {{ p.user_group.name }}{% endif %}</td>
+        <td>{{ p.allowed|yesno }}</td><td class="num">{{ p.daily_minutes_limit|default:"∞" }}</td>
+        <td class="actions"><form method="post" action="{% url 'breakout:permission_delete' event.slug p.pk %}" class="inline">{% csrf_token %}<button class="btn btn-sm btn-danger" aria-label="{% trans 'Delete permission' %}">×</button></form></td></tr>
+      {% empty %}<tr><td colspan="4" class="empty">{% trans "No permissions - nobody may dial out." %}</td></tr>{% endfor %}
+      </tbody></table></div>
+    <h3>{% trans "New permission" %}</h3>
+    <form method="post" action="{% url 'breakout:permission_new' event.slug %}">{% csrf_token %}
+      {% include "portal/_form.html" with form=perm_form %}
+      <div class="form-actions"><button class="btn btn-primary">{% trans "Add permission" %}</button></div>
+    </form>
+  </section>
+</div>
+
+<section class="card">
+  <div class="card-header"><h2>{% trans "Usage" %}</h2></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th scope="col">{% trans "Date" %}</th><th scope="col">{% trans "Extension" %}</th><th scope="col" class="num">{% trans "Calls" %}</th><th scope="col" class="num">{% trans "Minutes" %}</th></tr></thead>
+    <tbody>
+    {% for u in usage %}<tr><td>{{ u.date }}</td><td class="number">{{ u.extension.number }}</td><td class="num">{{ u.calls }}</td><td class="num">{{ u.minutes|floatformat:0 }}</td></tr>
+    {% empty %}<tr><td colspan="4" class="empty">{% trans "No breakout calls yet." %}</td></tr>{% endfor %}
+    </tbody></table></div>
+</section>
+{% endblock %}

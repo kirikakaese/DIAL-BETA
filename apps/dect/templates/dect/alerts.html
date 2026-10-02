@@ -1,0 +1,41 @@
+{% extends "base.html" %}{% load i18n dect_tags %}
+{% block title %}{% trans "DECT alerts" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <p class="eyebrow eyebrow-orga">{% trans "Orga" %} · {% trans "Infrastructure" %}</p>
+    <h1>{% trans "DECT alerts" %} <span class="count">{{ alerts|length }}</span></h1>
+    <p class="subtitle">{% if show_all %}{% trans "All alerts, including resolved ones." %}{% else %}{% trans "Open alerts only. Resolve an alert once the cause has been fixed." %}{% endif %}</p>
+  </div>
+  <div class="actions">
+    {% if show_all %}<a class="btn" href="{% dect_url 'alerts' event.slug %}">{% trans "Open only" %}</a>
+    {% else %}<a class="btn" href="{% dect_url 'alerts' event.slug %}?all=1">{% trans "Show resolved" %}</a>{% endif %}
+  </div>
+</div>
+{% include "dect/_nav.html" %}
+<div class="table-wrap" data-refresh="15" aria-live="polite">
+  <table>
+    <thead><tr>
+      <th scope="col">{% trans "When" %}</th><th scope="col">{% trans "Severity" %}</th><th scope="col">{% trans "Kind" %}</th>
+      <th scope="col">{% trans "RFP" %}</th><th scope="col">{% trans "Message" %}</th><th scope="col">{% trans "Notified" %}</th>
+      <th scope="col">{% trans "Resolved" %}</th><th scope="col"><span class="sr-only">{% trans "Actions" %}</span></th>
+    </tr></thead>
+    <tbody>
+    {% for a in alerts %}
+    <tr>
+      <td class="small">{{ a.created_at|date:"D H:i:s" }}</td>
+      <td><span class="badge badge-{% if a.severity == 'critical' %}err{% elif a.severity == 'warning' %}warn{% else %}info{% endif %}">{{ a.get_severity_display }}</span></td>
+      <td><code>{{ a.kind }}</code></td>
+      <td>{% if a.rfp %}<a href="{% dect_url 'rfp_edit' event.slug a.rfp.pk %}">{{ a.rfp.name }}</a>{% else %}–{% endif %}</td>
+      <td>{{ a.message }}</td>
+      <td>{% if a.notified %}✓{% else %}–{% endif %}</td>
+      <td class="small">{% if a.resolved_at %}{{ a.resolved_at|date:"D H:i:s" }}{% else %}<span class="badge badge-warn">{% trans "open" %}</span>{% endif %}</td>
+      <td class="actions">{% if not a.resolved_at %}
+        <form method="post" action="{% dect_url 'alert_resolve' event.slug a.pk %}" class="inline">{% csrf_token %}
+          <button class="btn btn-sm btn-ok">{% trans "Resolve" %}</button></form>{% endif %}</td>
+    </tr>
+    {% empty %}<tr><td colspan="8" class="empty">{% trans "No alerts – all quiet." %}</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

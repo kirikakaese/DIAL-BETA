@@ -1,0 +1,25 @@
+{% extends "base.html" %}{% load i18n tz %}
+{% block title %}{% trans "Schedule a wake-up call" %}{% endblock %}
+{% block content %}
+{% timezone event.timezone %}
+<div class="page-header">
+  <div class="page-title">
+    <h1>{% trans "Schedule a wake-up call" %}</h1>
+    <p class="subtitle">{% trans "PET rings your extension at the chosen time; snooze or cancel it from your callbacks page." %}</p>
+  </div>
+</div>
+{% if request.event_is_orga %}{% include "callback/_nav.html" %}{% endif %}
+<div class="grid grid-2">
+  <section class="card">
+    <div class="card-header"><h2>{% trans "Wake-up call" %}</h2></div>
+    <form method="post" action="{% url 'callback:wakeup_new' event.slug %}" enctype="multipart/form-data">{% csrf_token %}
+      {{ form.non_field_errors }}
+      {% for field in form %}{% include "callback/_field.html" %}{% endfor %}
+      <div class="form-actions"><button class="btn btn-primary">{% translate "Schedule" context "verb: create the wake-up call" %}</button>
+        <a class="btn" href="{% url 'callback:index' event.slug %}">{% trans "Back" %}</a></div>
+    </form>
+  </section>
+  {% include "callback/_help.html" %}
+</div>
+{% endtimezone %}
+{% endblock %}

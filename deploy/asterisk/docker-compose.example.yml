@@ -1,0 +1,54 @@
+# Example compose fragment for the PET reference Asterisk. Merge into your main docker-compose.yml.
+# PET (web + celery worker) must share the same PostgreSQL database - Asterisk reads/writes the
+# realtime tables (ps_endpoints, ps_auths, ps_aors, ps_contacts, extensions, voicemail_users, cdr)
+# that are Django models in apps/pbx/models.py. Run `manage.py migrate` before starting Asterisk.
+#
+# This is the "shared database" variant. For a venue box WITHOUT database access to the central PET
+# (local PostgreSQL fed by deploy/venue-agent over HTTPS) see docker-compose.venue.example.yml.
+services:
+  asterisk:
+    build: ./deploy/asterisk
+    restart: unless-stopped
+    depends_on:
+      - db
+      - pet
+    environment:
+      PET_API_URL: http://pet:8000
+      PET_PBX_HOOK_SECRET: ${PET_PBX_HOOK_SECRET:-change-me}
+      PET_EVENTS: ${PET_EVENTS:-}          # fallback shell contexts if PET is down at boot, e.g. "demo,camp2026"
+      PET_EMERGENCY_FALLBACK: ${PET_EMERGENCY_FALLBACK:-}
+      PET_CDR_HOOK: "no"
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: ${POSTGRES_DB:-pet}
+      DB_USER: ${POSTGRES_USER:-pet}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-pet}
+      ARI_USER: ${ASTERISK_ARI_USER:-pet}
+      ARI_PASSWORD: ${ASTERISK_ARI_PASSWORD:-pet}
+      AMI_USER: ${ASTERISK_AMI_USER:-pet}
+      AMI_PASSWORD: ${ASTERISK_AMI_PASSWORD:-pet}
+      SIP_DOMAIN: ${ASTERISK_SIP_DOMAIN:-pet.local}
+      EXTERNAL_IP: ${EXTERNAL_IP:-}   # host LAN IP when not using network_mode: host
+      RTP_START: "10000"
+      RTP_END: "10200"
+    # SIP/RTP through docker NAT is painful; on the event LAN prefer host networking:
+    # network_mode: host
+    ports:
+      - "5060:5060/udp"
+      - "5060:5060/tcp"
+      - "5061:5061/tcp"
+      - "8088:8088/tcp"     # ARI  (restrict to the PET network in production)
+      - "8089:8089/tcp"     # WSS  (WebRTC scaffold)
+      - "5038:5038/tcp"     # AMI  (optional)
+      - "10000-10200:10000-10200/udp"
+    volumes:
+      - asterisk-voicemail:/var/spool/asterisk/voicemail   # share with PET for apps.voicemail
+      - asterisk-sounds:/var/lib/asterisk/sounds/pet       # custom prompts / IVR audio uploaded by PET
+      - asterisk-keys:/etc/asterisk/keys                   # mount your own asterisk.crt/.key/.pem here
+      - asterisk-recordings:/var/spool/asterisk/pet-recordings  # share with PET (PET_RECORDING_DIR) for record-by-phone
+
+volumes:
+  asterisk-voicemail:
+  asterisk-sounds:
+  asterisk-keys:
+  asterisk-recordings:

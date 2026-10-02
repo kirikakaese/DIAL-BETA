@@ -1,0 +1,20 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Finish signing up" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h1>{% trans "Finish signing up" %}</h1>
+    <p class="subtitle">{% blocktrans with e=email %}Your address <strong>{{ e }}</strong> is confirmed. Pick a nickname and a password to create your account.{% endblocktrans %}</p>
+  </div>
+</div>
+<div class="card narrow">
+  <form method="post">{% csrf_token %}
+    <div class="field"><label for="id_email_fixed">{% trans "E-mail address" %}</label>
+      <input id="id_email_fixed" type="email" value="{{ email }}" readonly disabled></div>
+    {% include "portal/_form.html" with form=form %}
+    <div class="form-actions">
+      <button class="btn btn-primary">{% trans "Create account" %}</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

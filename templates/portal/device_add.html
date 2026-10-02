@@ -1,0 +1,48 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Add device" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h1>{% if ext.is_trunk %}{% trans "Create the SIP account for trunk" %}{% else %}{% trans "Add a device to" %}{% endif %} <span class="number">{{ ext.number_label }}</span></h1>
+  </div>
+</div>
+<div class="grid grid-2">
+  <section class="card">
+    <form method="post" novalidate>{% csrf_token %}
+      {% include "portal/_form.html" with form=form %}
+      <div class="form-actions">
+        <button class="btn btn-primary">{% trans "Add device" %}</button>
+        <a class="btn" href="{% url 'portal:extension_detail' event.slug ext.pk %}">{% trans "Cancel" %}</a>
+      </div>
+    </form>
+  </section>
+  <aside class="card">
+    {% if ext.is_trunk %}
+    <h2>{% trans "SIP trunk" %}</h2>
+    <ul class="small">
+      <li>{% trans "A trunk has exactly one SIP account: your PBX registers with it and receives every call to the number block." %}</li>
+      <li>{% trans "DECT or GSM handsets cannot be bound to a trunk - register a normal extension for those." %}</li>
+    </ul>
+    {% endif %}
+    {% for t in types %}
+    <h2>{{ t.label }}</h2>
+    <p class="small muted">{{ t.description }}</p>
+    {% if t.onboarding == 'ipei_pin' %}
+    <ul class="small">
+      <li>{% trans "PET issues a 6-digit subscription PIN valid for 30 minutes." %}</li>
+      <li>{% trans "Subscribe on the handset: Menu → Registration → new base, then enter the PIN." %}</li>
+      <li>{% trans "Already subscribed a handset in this event? Attach the existing device instead of entering the IPEI again." %}</li>
+      <li>{% trans "Vendor is auto-detected from the IPEI (its first 5 digits identify the manufacturer)." %}</li>
+      <li><a href="{% url 'devices:history' event.slug %}">{% trans "Used a handset at a previous event? Reuse it from your handset history." %}</a></li>
+    </ul>
+    {% elif t.onboarding == 'sip_credentials' %}
+    <ul class="small">
+      <li>{% trans "PET generates a random SIP username and password for this device." %}</li>
+      <li>{% trans "Scan the QR code with your softphone or copy the credentials manually." %}</li>
+      <li>{% trans "For hard phones, enter the MAC address to use autoprovisioning." %}</li>
+    </ul>
+    {% endif %}
+    {% endfor %}
+  </aside>
+</div>
+{% endblock %}

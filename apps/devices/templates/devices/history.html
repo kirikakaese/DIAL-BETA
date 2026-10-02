@@ -1,0 +1,45 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "My handsets" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h1>{% trans "My DECT handsets" %}</h1>
+    <p class="subtitle">{% trans "Every handset you have subscribed in any PET event, grouped by IPEI. Reuse one here instead of typing the IPEI again - you still need to bind it to an extension and subscribe it with a new PIN." %}</p>
+  </div>
+  <div class="actions"><a class="btn" href="{% url 'portal:extension_list' event.slug %}">{% trans "My extensions" %}</a></div>
+</div>
+{% if rows %}
+<div class="table-wrap"><table>
+    <thead><tr>
+      <th scope="col">IPEI</th><th scope="col">{% trans "Vendor / model" %}</th><th scope="col">{% trans "Used in" %}</th><th scope="col"><span class="sr-only">{% trans "Actions" %}</span></th>
+    </tr></thead>
+    <tbody>
+    {% for r in rows %}
+    <tr>
+      <td><code>{{ r.h.ipei }}</code>{% if r.h.name %}<div class="small muted">{{ r.h.name }}</div>{% endif %}</td>
+      <td>{% if r.h.vendor %}{{ r.h.vendor.name }}{% else %}<span class="muted">{% trans "unknown vendor" %}</span>{% endif %}{% if r.h.model %} · {{ r.h.model }}{% endif %}</td>
+      <td class="small">
+        <ul>{% for u in r.h.uses %}
+          <li>{% if u.event.pk == event.pk %}<strong>{{ u.event.name }}</strong>{% else %}{{ u.event.name }}{% endif %}
+            {% for n in u.numbers %}<span class="number">{{ n }}</span>{% empty %}<span class="muted">{% trans "no extension" %}</span>{% endfor %}
+            <span class="badge badge-{{ u.device.state }}">{{ u.device.get_state_display }}</span>
+            {% if u.event.pk == event.pk %}<a class="small" href="{% url 'portal:device_detail' event.slug u.device.pk %}">{% trans "open" %}</a>{% endif %}</li>
+        {% endfor %}</ul>
+      </td>
+      <td>
+        {% if r.here %}
+        <a class="btn btn-sm" href="{% url 'portal:device_detail' event.slug r.here.pk %}">{% trans "In this event" %}</a>
+        {% elif r.reuse_from %}
+        <form method="post" action="{% url 'devices:reuse' event.slug r.reuse_from.pk %}" class="inline">{% csrf_token %}
+          <button class="btn btn-sm btn-primary">{% trans "Reuse in this event" %}</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+{% else %}
+<div class="empty"><p>{% trans "You have not registered a DECT handset in any event yet." %}</p></div>
+{% endif %}
+{% endblock %}

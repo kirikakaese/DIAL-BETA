@@ -1,0 +1,32 @@
+{% load i18n static %}<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE }}" data-theme="light">
+<head>
+  <meta charset="utf-8"><title>{% trans "Guest extensions" %} · {{ event.name }}</title>
+  <link rel="stylesheet" href="{% static 'css/pet.css' %}">
+  <style>
+    body { background: #fff; color: #111; }
+    .sheet { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8mm; padding: 10mm; }
+    .badge-card { border: 1px dashed #999; border-radius: 6px; padding: 5mm; text-align: center; break-inside: avoid; }
+    .badge-card .number { font-size: 2rem; font-weight: 700; display: block; }
+    .badge-card img { width: 34mm; height: 34mm; }
+    .badge-card .url { font-size: .6rem; word-break: break-all; color: #555; }
+    @media print { .no-print { display: none; } }
+  </style>
+</head>
+<body>
+<p class="no-print" style="padding:10mm 10mm 0"><button type="button" class="btn btn-primary" data-action="print">{% trans "Print" %}</button> <a class="btn" href="{% url 'portal:orga_guests' event.slug %}">{% trans "Back" %}</a></p>
+<main class="sheet">
+  <h1 class="sr-only">{% trans "Guest extensions" %} · {{ event.name }}</h1>
+  {% for r in rows %}{% if r.qr %}
+  <div class="badge-card">
+    <div class="small">{{ event.name }}</div>
+    <span class="number">{{ r.ext.number }}</span>
+    <img src="data:image/png;base64,{{ r.qr }}" alt="">
+    <div class="small">{% trans "Scan to claim this phone number" %}</div>
+    <div class="url">{{ r.claim_url }}</div>
+  </div>
+  {% endif %}{% empty %}<p class="muted">{% trans "No unclaimed guest extensions." %}</p>{% endfor %}
+</main>
+<script src="{% static 'js/pet.js' %}" defer></script>
+</body>
+</html>

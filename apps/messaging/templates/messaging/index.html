@@ -1,0 +1,57 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Messages" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h1>{% trans "Messages" %}</h1>
+    <p class="subtitle">{% trans "Short text messages to and from handsets at this event." %}</p>
+  </div>
+  {% if request.event_is_orga %}<div class="actions"><a class="btn btn-danger" href="{% url 'messaging:broadcast' event.slug %}">{% trans "Broadcast" %}</a></div>{% endif %}
+</div>
+
+<div class="grid grid-2">
+  <section class="card">
+    <div class="card-header"><h2>{% trans "Send a message to a handset" %}</h2></div>
+    <form method="post">{% csrf_token %}
+      {% if form.non_field_errors %}<div class="alert alert-error" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+      {% include "portal/_field.html" with field=form.number %}
+      {% include "portal/_field.html" with field=form.text %}
+      <div class="help" aria-live="polite"><span data-counter-for="{{ form.text.id_for_label }}">0</span> / {{ max_text }}</div>
+      <div class="form-actions"><button class="btn btn-primary">{% trans "Send" %}</button></div>
+    </form>
+    <script>
+      (function () {
+        var ta = document.getElementById("{{ form.text.id_for_label }}");
+        var out = document.querySelector('[data-counter-for="{{ form.text.id_for_label }}"]');
+        if (!ta || !out) return;
+        var upd = function () { out.textContent = ta.value.length; };
+        ta.addEventListener("input", upd); upd();
+      })();
+    </script>
+  </section>
+
+  <section class="card">
+    <div class="card-header"><h2>{% trans "Inbox" %}</h2></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th scope="col">{% trans "From" %}</th><th scope="col">{% trans "Text" %}</th><th scope="col">{% trans "When" %}</th></tr></thead>
+      <tbody>
+      {% for m in inbox %}
+      <tr><td class="number">{{ m.sender_extension.number|default:m.sender.username|default:"–" }}</td><td>{{ m.text }}</td><td class="small">{{ m.created_at|date:"D H:i" }}</td></tr>
+      {% empty %}<tr><td colspan="3" class="empty">{% trans "No messages yet." %}</td></tr>{% endfor %}
+      </tbody></table></div>
+  </section>
+</div>
+
+<section class="card">
+  <div class="card-header"><h2>{% trans "Sent" %}</h2></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th scope="col">{% trans "To" %}</th><th scope="col">{% trans "Text" %}</th><th scope="col">{% trans "State" %}</th><th scope="col">{% trans "When" %}</th></tr></thead>
+    <tbody>
+    {% for m in outbox %}
+    <tr><td class="number">{{ m.recipient_extension.number|default:"–" }}</td><td>{{ m.text }}</td>
+      <td><span class="badge badge-{{ m.state }}">{{ m.get_state_display }}</span>{% if m.error %} <span class="small muted">{{ m.error }}</span>{% endif %}</td>
+      <td class="small">{{ m.created_at|date:"D H:i" }}</td></tr>
+    {% empty %}<tr><td colspan="4" class="empty">{% trans "Nothing sent yet." %}</td></tr>{% endfor %}
+    </tbody></table></div>
+</section>
+{% endblock %}

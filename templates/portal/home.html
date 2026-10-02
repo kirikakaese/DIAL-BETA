@@ -1,0 +1,31 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Welcome" %}{% endblock %}
+{% block content %}
+<section class="hero">
+  <h1>{% trans "Your phone number for the event." %}</h1>
+  <p class="lead">{% blocktrans %}PET - the Portable Event Telephone - runs the temporary phone network at camps, congresses and festivals. Register an extension, subscribe your DECT handset or a softphone, and call anyone on site for free.{% endblocktrans %}</p>
+  <div class="actions">
+    <a class="btn btn-primary" href="{% url 'accounts:register' %}">{% trans "Sign up" %}</a>
+    <a class="btn" href="{% url 'accounts:login' %}">{% trans "Log in" %}</a>
+  </div>
+</section>
+
+<div class="grid grid-2 features">
+  <div class="card"><h2>☏ {% trans "One account, every event" %}</h2><p class="muted small">{% trans "Re-request last year's number with a single click. Your settings travel with you." %}</p></div>
+  <div class="card"><h2>📡 {% trans "DECT & SIP" %}</h2><p class="muted small">{% trans "Bring any GAP handset (IPEI + PIN) or scan a QR code into your favourite softphone. One number, many devices." %}</p></div>
+  <div class="card"><h2>👥 {% trans "Groups, callbacks, voicemail" %}</h2><p class="muted small">{% trans "Hunt groups for your team, call-back when busy, wake-up calls and more." %}</p></div>
+</div>
+
+<h2>{% trans "Upcoming & live events" %}</h2>
+{% if events %}
+<div class="grid grid-2">
+  {% for e in events %}
+  <a class="card event-card" href="{% url 'portal:event_dashboard' e.slug %}">
+    <div class="card-header"><h3>{{ e.name }}</h3><span class="badge badge-{{ e.state }}">{{ e.get_state_display }}</span></div>
+    <p class="muted small">{{ e.start_date|date:"j M" }} – {{ e.end_date|date:"j M Y" }}{% if e.location %} · {{ e.location }}{% endif %}</p>
+    {% if e.description %}<p class="small">{{ e.description|truncatewords:30 }}</p>{% endif %}
+  </a>
+  {% endfor %}
+</div>
+{% else %}<p class="muted">{% trans "No public events at the moment." %}</p>{% endif %}
+{% endblock %}

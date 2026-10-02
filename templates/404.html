@@ -1,0 +1,12 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Not found" %}{% endblock %}
+{% block content %}
+<div class="card error-page">
+  <h1>404 · {% trans "Not found" %}</h1>
+  <p class="muted">{% trans "This page, event or extension does not exist - or you may not see it." %}</p>
+  <div class="actions">
+    <a class="btn btn-primary" href="{% url 'portal:home' %}">{% trans "Back to start" %}</a>
+    <a class="btn" href="{% url 'portal:event_list' %}">{% trans "Events" %}</a>
+  </div>
+</div>
+{% endblock %}

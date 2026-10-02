@@ -1,0 +1,42 @@
+{% extends "base.html" %}{% load i18n dect_tags %}
+{% block title %}{{ rfp.name }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <p class="eyebrow eyebrow-orga">{% trans "Orga" %} · {% trans "Infrastructure" %}</p>
+    <h1>{{ rfp.name }} <span class="muted small">#{{ rfp.omm_id }}</span> {% include "dect/_status.html" %}</h1>
+    {% if rfp.location %}<p class="subtitle">{{ rfp.location }}</p>{% endif %}
+  </div>
+</div>
+{% include "dect/_nav.html" %}
+<div class="grid grid-2">
+  <section class="card">
+    <div class="card-header"><h2>{% trans "Edit RFP" %}</h2></div>
+    <form method="post">{% csrf_token %}
+      {% include "portal/_form.html" with form=form %}
+      <div class="form-actions"><button class="btn btn-primary">{% trans "Save" %}</button>
+        <a class="btn" href="{% dect_url 'index' event.slug %}">{% trans "Back" %}</a></div>
+    </form>
+  </section>
+  <section class="card">
+    <div class="card-header"><h2>{% trans "Live state" %}</h2></div>
+    <dl class="kv">
+      <dt>{% trans "MAC" %}</dt><dd class="mono">{{ rfp.mac_address|default:"–" }}</dd>
+      <dt>{% trans "IP" %}</dt><dd class="mono">{{ rfp.ip_address|default:"–" }}</dd>
+      <dt>{% trans "Sync source" %}</dt><dd>{{ rfp.sync_source|default:"–" }}</dd>
+      <dt>{% trans "Active calls" %}</dt><dd>{{ rfp.active_calls }}</dd>
+      <dt>{% trans "Last seen" %}</dt><dd>{{ rfp.last_seen_at|default:"–" }}</dd>
+      <dt>{% trans "Last state change" %}</dt><dd>{{ rfp.last_state_change|default:"–" }}</dd>
+      <dt>{% trans "Map position" %}</dt><dd>{% if rfp.pos_x is not None %}{{ rfp.pos_x|floatformat:1 }} % / {{ rfp.pos_y|floatformat:1 }} %{% else %}–{% endif %}</dd>
+      {% for k, v in rfp.extra.items %}<dt>{{ k }}</dt><dd>{{ v }}</dd>{% endfor %}
+    </dl>
+    <h3>{% trans "Handsets currently here" %} <span class="count">{{ handsets|length }}</span></h3>
+    <ul>{% for d in handsets %}<li><span class="mono">{{ d.ipei }}</span> {{ d.owner.username|default:"" }}</li>{% empty %}<li class="muted">{% trans "none" %}</li>{% endfor %}</ul>
+    <h3>{% trans "Recent samples" %}</h3>
+    <div class="table-wrap"><table class="small">
+      <thead><tr><th scope="col">{% trans "At" %}</th><th scope="col">{% trans "Connected" %}</th><th scope="col">{% trans "Synced" %}</th><th scope="col">{% trans "Calls" %}</th><th scope="col">{% trans "Handsets" %}</th></tr></thead>
+      <tbody>{% for s in samples %}<tr><td class="small">{{ s.at|date:"D H:i" }}</td><td>{% if s.connected %}✓{% else %}✗{% endif %}</td><td>{% if s.synced %}✓{% else %}✗{% endif %}</td><td>{{ s.active_calls }}</td><td>{{ s.handsets }}</td></tr>{% empty %}<tr><td colspan="5" class="empty">{% trans "No samples recorded yet." %}</td></tr>{% endfor %}</tbody>
+    </table></div>
+  </section>
+</div>
+{% endblock %}

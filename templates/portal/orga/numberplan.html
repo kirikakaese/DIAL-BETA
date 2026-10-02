@@ -1,0 +1,62 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Number plan" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <p class="eyebrow eyebrow-orga">{% trans "Orga" %} · {% trans "Numbers" %}</p>
+    <h1>{% trans "Number plan" %}</h1>
+  </div>
+  <div class="actions"><a class="btn btn-primary" href="{% url 'portal:orga_range_create' event.slug %}">{% trans "Add range" %}</a></div>
+</div>
+
+<section class="card">
+  <div class="card-header"><h2>{% trans "Ranges" %}</h2><span class="small muted">{% trans "Evaluated in priority order (lower first); the first match decides." %}</span></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th scope="col">{% trans "Prio" %}</th><th scope="col">{% trans "Name" %}</th><th scope="col">{% trans "Match" %}</th><th scope="col">{% trans "Length" %}</th><th scope="col">{% trans "Mode" %}</th><th scope="col">{% trans "Roles / groups" %}</th><th scope="col">{% trans "Types" %}</th><th scope="col">{% trans "Vanity" %}</th><th scope="col">{% trans "Quota" %}</th><th scope="col"><span class="sr-only">{% trans "Actions" %}</span></th></tr></thead>
+    <tbody>{% for r in ranges %}
+    <tr{% if not r.is_active %} class="muted"{% endif %}>
+      <td>{{ r.priority }}</td>
+      <td><a href="{% url 'portal:orga_range_edit' event.slug r.pk %}">{{ r.name }}</a>{% if not r.is_active %} <span class="badge badge-muted">{% trans "inactive" %}</span>{% endif %}{% if r.description %}<div class="small muted">{{ r.description }}</div>{% endif %}</td>
+      <td class="small">{% if r.prefix %}{% trans "prefix" %} <code>{{ r.prefix }}</code>{% endif %}{% if r.pattern %} <code>/{{ r.pattern }}/</code>{% endif %}</td>
+      <td class="small">{{ r.min_length|default:plan.min_length }}–{{ r.max_length|default:plan.max_length }}</td>
+      <td><span class="badge badge-{% if r.mode == 'open' %}ok{% elif r.mode == 'approval' %}warn{% elif r.mode == 'blocked' %}err{% else %}info{% endif %}">{{ r.get_mode_display }}</span></td>
+      <td class="small">{{ r.allowed_roles|join:", " }}{% for g in r.allowed_groups.all %} <span class="badge badge-info">{{ g.name }}</span>{% endfor %}</td>
+      <td class="small">{{ r.allowed_types|join:", "|default:"*" }}</td>
+      <td>{% if r.is_vanity %}✓{% endif %}</td>
+      <td>{{ r.quota_per_user|default:"–" }}</td>
+      <td class="actions"><a class="btn btn-sm" href="{% url 'portal:orga_range_edit' event.slug r.pk %}">{% trans "Edit" %}</a>
+        <form method="post" action="{% url 'portal:orga_range_delete' event.slug r.pk %}" class="inline" data-confirm="{% trans 'Delete this range?' %}">{% csrf_token %}<button class="btn btn-sm btn-danger">{% trans "Delete" %}</button></form></td>
+    </tr>{% empty %}<tr><td colspan="10" class="empty">{% trans "No ranges - every number of valid length is treated by the defaults below." %}</td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+
+<div class="grid grid-2">
+  <section class="card">
+    <h2>{% trans "Plan defaults, service numbers & feature codes" %}</h2>
+    <form method="post">{% csrf_token %}
+      <div class="form-cols">{% include "portal/_form.html" with form=form form_fields=form.plan_fields %}</div>
+      <h3>{% trans "Feature codes" %}</h3>
+      <p class="small muted">{% trans "Dialed from any phone of the event. Codes that take a number are dialed en bloc, e.g. *214242 forwards all calls to 4242; the bare clear code switches forwarding off. Leave a code empty to disable it." %}</p>
+      <div class="form-cols">{% include "portal/_form.html" with form=form form_fields=form.feature_code_fields bare=True %}</div>
+      <div class="form-actions"><button class="btn btn-primary">{% trans "Save plan" %}</button></div>
+    </form>
+  </section>
+  <section class="card">
+    <h2>{% trans "Test a number" %}</h2>
+    <form method="get" class="form-row">
+      {% include "portal/_form.html" with form=test_form %}
+      <div class="field field-submit"><button class="btn">{% trans "Evaluate" %}</button></div>
+    </form>
+    {% if test %}
+    <dl class="kv">
+      <dt>{% trans "Number" %}</dt><dd><span class="number">{{ test.number }}</span></dd>
+      <dt>{% trans "Policy" %}</dt><dd>{% if test.policy.allowed %}<span class="badge badge-ok">{% trans "allowed" %}</span>{% if test.policy.requires_approval %} <span class="badge badge-warn">{% trans "requires approval" %}</span>{% endif %}{% else %}<span class="badge badge-err">{% trans "denied" %}</span> {{ test.policy.reason }}{% endif %}</dd>
+      <dt>{% trans "Range" %}</dt><dd>{{ test.policy.range|default:"–" }}</dd>
+      <dt>{% trans "Taken" %}</dt><dd>{% if test.taken %}{% trans "yes" %}{% else %}{% trans "no" %}{% endif %}</dd>
+      {% if test.as_user %}<dt>{% trans "As user" %}</dt><dd>{{ test.as_user }} · {% trans "quota ok:" %} {{ test.quota_ok|yesno }}</dd>{% endif %}
+      <dt>{% trans "Result" %}</dt><dd>{% if test.available %}<span class="badge badge-ok">{% trans "registrable now" %}</span>{% else %}<span class="badge badge-err">{{ test.reason|default:_("not available") }}</span>{% endif %}</dd>
+    </dl>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,132 @@
+{% extends "base.html" %}{% load i18n events_tags %}
+{% block title %}{% trans "Orga" %} · {{ event.name }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <p class="eyebrow eyebrow-orga">{% trans "Orga" %}</p>
+    <h1>{% trans "Dashboard" %} <span class="badge badge-{{ event.state }}">{{ event.get_state_display }}</span></h1>
+    {% next_transition event as next_transition_line %}{% if next_transition_line %}<p class="subtitle">{{ next_transition_line }}</p>{% endif %}
+  </div>
+  <div class="actions">
+    {% for value, label in transitions %}<form method="post" action="{% url 'portal:orga_event_state' event.slug value %}" class="inline" data-confirm="{% blocktrans %}Change event state to '{{ label }}'?{% endblocktrans %}">{% csrf_token %}<button class="btn">→ {{ label }}</button></form>{% endfor %}
+    <form method="post" action="{% url 'portal:orga_resync' event.slug %}" class="inline">{% csrf_token %}<button class="btn">{% trans "Resync PBX & DECT" %}</button></form>
+    <a class="btn" href="{% url 'portal:orga_export' event.slug %}">{% trans "Export JSON" %}</a>
+    {% if user.is_superuser %}<a class="btn" href="{% url 'portal:orga_event_clone' event.slug %}">{% trans "Clone" %}</a>{% endif %}
+  </div>
+</div>
+
+<div class="grid stats-grid" data-refresh="60">
+  <a class="card stat-card" href="{% url 'portal:orga_queue' event.slug %}"><div class="stat{% if pending %} warn{% endif %}">{{ pending }}</div><div class="stat-label">{% trans "awaiting approval" %}</div></a>
+  <a class="card stat-card" href="{% url 'portal:orga_extensions' event.slug %}?state=active"><div class="stat">{{ ext_by_state.active|default:0 }}</div><div class="stat-label">{% trans "active extensions" %}</div></a>
+  <a class="card stat-card" href="{% url 'portal:orga_extensions' event.slug %}?state=suspended"><div class="stat">{{ ext_by_state.suspended|default:0 }}</div><div class="stat-label">{% trans "suspended" %}</div></a>
+  <a class="card stat-card" href="{% url 'portal:orga_members' event.slug %}"><div class="stat">{{ members }}</div><div class="stat-label">{% trans "members" %}</div></a>
+  <a class="card stat-card" href="{% url 'dect:index' event.slug %}"><div class="stat">{{ rfp_up|default:0 }}<span class="muted small">/{{ rfp_down|default:0 }}</span></div><div class="stat-label">{% trans "RFPs up / down" %}</div></a>
+  <a class="card stat-card" href="{% url 'dect:alerts' event.slug %}"><div class="stat{% if alert_count %} err{% endif %}">{{ alert_count|default:0 }}</div><div class="stat-label">{% trans "open alerts" %}</div></a>
+  {% if waitlist %}<div class="card stat-card"><div class="stat">{{ waitlist }}</div><div class="stat-label">{% trans "waitlist entries" %}</div></div>{% endif %}
+</div>
+
+<section class="card{% if not venue.pbx or not venue.dect %} card-danger{% endif %}" id="venue-connection">
+  <div class="card-header">
+    <h2>{% trans "Venue connection" %}</h2>
+    <a class="btn btn-sm" href="{% url 'pbx:infrastructure' event.slug %}">{% trans "PBX & DECT connection" %}</a>
+  </div>
+  <p class="small">
+    {% trans "PBX" %}: {% if venue.pbx %}<strong>{{ venue.pbx.backend_label }}</strong> <span class="muted">{{ venue.pbx.ari_url|default:venue.pbx.ami_host }}</span>{% else %}<span class="badge badge-warn">{% trans "server default" %}</span>{% endif %} ·
+    {% trans "DECT" %}: {% if venue.dect %}<strong>{{ venue.dect.backend_label }}</strong> <span class="muted">{{ venue.dect.host }}</span>{% else %}<span class="badge badge-warn">{% trans "server default" %}</span>{% endif %}
+    {% if not venue.pbx or not venue.dect %}<br><span class="muted">{% trans "This event is not yet connected to its own phone infrastructure at the venue." %}</span>{% endif %}
+    {% if venue_agent %}<br>{% trans "Venue agent" %}:
+      {% if venue_agent.status == "ok" %}<span class="badge badge-ok">{% trans "ok" %}</span>{% elif venue_agent.status == "stale" %}<span class="badge badge-err">{% trans "stale" %}</span>{% elif venue_agent.status == "behind" %}<span class="badge badge-warn">{% trans "behind" %}</span>{% else %}<span class="badge badge-warn">{{ venue_agent.status }}</span>{% endif %}
+      <span class="muted">{% if venue_agent.host %}{{ venue_agent.host }} · {% endif %}{% if venue_agent.last_seen %}{% trans "last seen" %} {{ venue_agent.last_seen|time:"H:i" }}{% else %}{% trans "never seen" %}{% endif %}</span>{% endif %}
+  </p>
+</section>
+
+{% if pbx_queue %}
+<section class="card" id="pbx-queue" data-url="{% url 'api:pbx-outbox' %}?event={{ event.slug }}" data-retry-url="{% url 'api:pbx-outbox-retry' %}?event={{ event.slug }}">
+  <div class="card-header">
+    <h2>{% trans "PBX queue" %} <span class="muted small">· {{ pbx_queue.backend }}{% if pbx_queue.sync_mode %} · {% trans "sync" %}{% endif %}</span></h2>
+    <form class="inline" id="pbx-queue-retry-form" method="post" action="{% url 'api:pbx-outbox-retry' %}?event={{ event.slug }}">{% csrf_token %}
+      <button class="btn btn-sm" id="pbx-queue-retry"{% if not pbx_queue.dead %} disabled{% endif %}>{% trans "Retry dead jobs" %}</button>
+    </form>
+  </div>
+  <p class="small">
+    <strong data-stat="pending">{{ pbx_queue.pending }}</strong> {% trans "pending" %} ·
+    <strong data-stat="failed"{% if pbx_queue.failed %} style="color: var(--warn)"{% endif %}>{{ pbx_queue.failed }}</strong> {% trans "failed" %} ·
+    <strong data-stat="dead"{% if pbx_queue.dead %} style="color: var(--err)"{% endif %}>{{ pbx_queue.dead }}</strong> {% trans "dead" %} ·
+    {% trans "last delivery" %} <span data-stat="last">{% if pbx_queue.last_delivery_at %}{{ pbx_queue.last_delivery_at|time:"H:i" }}{% else %}–{% endif %}</span>
+    <span class="muted" id="pbx-queue-status"></span>
+  </p>
+</section>
+{% endif %}
+
+<div class="grid grid-2">
+  <div class="stack">
+    <section class="card">
+      <h2>{% trans "Extensions by type" %}</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th scope="col">{% trans "Type" %}</th><th scope="col" class="number">#</th></tr></thead>
+        <tbody>{% for t, n in ext_by_type.items %}<tr><td>{{ t }}</td><td class="number">{{ n }}</td></tr>{% empty %}<tr><td colspan="2" class="empty">{% trans "none" %}</td></tr>{% endfor %}</tbody>
+      </table></div>
+    </section>
+    <section class="card">
+      <h2>{% trans "Devices" %}</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th scope="col">{% trans "Type" %} / {% trans "State" %}</th><th scope="col" class="number">#</th></tr></thead>
+        <tbody>
+        {% for t, n in dev_by_type.items %}<tr><td>{{ t }}</td><td class="number">{{ n }}</td></tr>{% endfor %}
+        {% for s, n in dev_by_state.items %}<tr><td><span class="badge badge-{{ s }}">{{ s }}</span></td><td class="number">{{ n }}</td></tr>{% endfor %}
+        {% if not dev_by_type %}<tr><td colspan="2" class="empty">{% trans "none" %}</td></tr>{% endif %}
+        </tbody>
+      </table></div>
+    </section>
+    {% if alerts %}
+    <section class="card">
+      <div class="card-header"><h2>{% trans "Open alerts" %}</h2><a class="small" href="{% url 'dect:alerts' event.slug %}">{% trans "All alerts" %}</a></div>
+      <ul class="small audit-list">{% for a in alerts %}<li><span class="badge badge-{% if a.severity == 'critical' %}err{% elif a.severity == 'warning' %}warn{% else %}info{% endif %}">{{ a.get_severity_display }}</span> {{ a.message }} <span class="muted">{{ a.created_at|date:"D H:i" }}</span></li>{% endfor %}</ul>
+    </section>
+    {% endif %}
+  </div>
+  <section class="card">
+    <div class="card-header"><h2>{% trans "Recent activity" %}</h2><a class="small" href="{% url 'portal:orga_audit' event.slug %}">{% trans "full audit log" %}</a></div>
+    <ul class="small audit-list">{% for a in recent_audit %}
+      <li><span class="muted">{{ a.created_at|date:"D H:i" }}</span> <strong>{{ a.actor_repr }}</strong> {{ a.get_action_display|lower }} <code>{{ a.target_repr|truncatechars:40 }}</code>{% if a.message %} – {{ a.message|truncatechars:80 }}{% endif %}</li>
+    {% empty %}<li class="muted">{% trans "Nothing yet." %}</li>{% endfor %}</ul>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+{% if pbx_queue %}
+<script>
+(function () {
+  const box = document.getElementById('pbx-queue');
+  const form = document.getElementById('pbx-queue-retry-form');
+  const button = document.getElementById('pbx-queue-retry');
+  const status = document.getElementById('pbx-queue-status');
+  const csrf = form.querySelector('input[name=csrfmiddlewaretoken]').value;
+  function hhmm(iso) { return iso ? new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '–'; }
+  function render(s) {
+    box.querySelector('[data-stat=pending]').textContent = s.pending;
+    const failed = box.querySelector('[data-stat=failed]'); failed.textContent = s.failed; failed.style.color = s.failed ? 'var(--warn)' : '';
+    const dead = box.querySelector('[data-stat=dead]'); dead.textContent = s.dead; dead.style.color = s.dead ? 'var(--err)' : '';
+    box.querySelector('[data-stat=last]').textContent = hhmm(s.last_delivery_at);
+    button.disabled = !s.dead;
+  }
+  function poll() {
+    fetch(box.dataset.url, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (d) { render(d.stats); status.textContent = ''; })
+      .catch(function () { status.textContent = '{% trans "(live update unavailable)" %}'; });
+  }
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    button.disabled = true;
+    fetch(box.dataset.retryUrl, { method: 'POST', credentials: 'same-origin',
+                                  headers: { 'X-CSRFToken': csrf, Accept: 'application/json' } })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (d) { render(d.stats); status.textContent = d.retried + ' {% trans "job(s) re-queued" %}'; })
+      .catch(function () { status.textContent = '{% trans "Retry failed." %}'; button.disabled = false; });
+  });
+  setInterval(poll, 5000);
+})();
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,19 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "New conference room" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h1>{% trans "New conference room" %}</h1>
+    <p class="subtitle">{% trans "Reserve a number that several people can dial into at once." %}</p>
+  </div>
+</div>
+<section class="card">
+  <form method="post">{% csrf_token %}
+    {% include "portal/_form.html" with form=form %}
+    <div class="form-actions">
+      <button class="btn btn-primary">{% trans "Create" %}</button>
+      <a class="btn" href="{% url 'conferences:index' event.slug %}">{% trans "Cancel" %}</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

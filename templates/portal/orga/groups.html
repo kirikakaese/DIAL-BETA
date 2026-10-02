@@ -1,0 +1,30 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "User groups" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <p class="eyebrow eyebrow-orga">{% trans "Orga" %} · {% trans "People" %}</p>
+    <h1>{% trans "User groups" %} <span class="count">{{ groups|length }}</span></h1>
+  </div>
+</div>
+<div class="grid grid-2">
+  <section class="card">
+    <h2>{% trans "Groups" %}</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th scope="col">{% trans "Name" %}</th><th scope="col">{% trans "Slug" %}</th><th scope="col">{% trans "Members" %}</th><th scope="col">{% trans "Join code" %}</th><th scope="col"><span class="sr-only">{% trans "Actions" %}</span></th></tr></thead>
+      <tbody>{% for g in groups %}
+      <tr><td>{{ g.name }}{% if g.description %}<div class="small muted">{{ g.description }}</div>{% endif %}</td><td><code>{{ g.slug }}</code></td><td>{{ g.member_count }}</td>
+        <td>{% if g.join_code %}<code>{{ g.join_code }}</code>{% else %}<span class="muted">–</span>{% endif %}</td>
+        <td class="actions"><a class="btn btn-sm" href="?edit={{ g.pk }}">{% trans "Edit" %}</a>
+          <form method="post" class="inline" data-confirm="{% trans 'Delete this group? Range restrictions referencing it are dropped.' %}">{% csrf_token %}<input type="hidden" name="action" value="delete"><input type="hidden" name="pk" value="{{ g.pk }}"><button class="btn btn-sm btn-danger">{% trans "Delete" %}</button></form></td></tr>
+      {% empty %}<tr><td colspan="5" class="empty">{% trans "No groups yet. Groups gate restricted number ranges and can be self-joined with a code." %}</td></tr>{% endfor %}</tbody></table></div>
+  </section>
+  <section class="card">
+    <h2>{% if editing %}{% trans "Edit group" %} · {{ editing.name }}{% else %}{% trans "New group" %}{% endif %}</h2>
+    <form method="post">{% csrf_token %}{% if editing %}<input type="hidden" name="pk" value="{{ editing.pk }}">{% endif %}
+      {% include "portal/_form.html" with form=form %}
+      <div class="form-actions"><button class="btn btn-primary">{% trans "Save" %}</button>{% if editing %}<a class="btn" href="{% url 'portal:orga_groups' event.slug %}">{% trans "Cancel" %}</a>{% endif %}</div>
+    </form>
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% if trunk %}{% trans "Edit trunk" %}{% else %}{% trans "Add trunk" %}{% endif %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <p class="eyebrow eyebrow-orga">{% trans "Orga" %} · {% trans "Services" %}</p>
+    <h1>{% if trunk %}{% trans "Edit trunk" %} <span class="muted">{{ trunk.name }}</span>{% else %}{% trans "Add PSTN trunk" %}{% endif %}</h1>
+  </div>
+  <div class="actions"><a class="btn" href="{% url 'breakout:index' event.slug %}">{% trans "Back to breakout" %}</a></div>
+</div>
+
+<div class="grid grid-2">
+  <section class="card">
+    <div class="card-header"><h2>{% trans "Trunk settings" %}</h2></div>
+    <form method="post">{% csrf_token %}
+      {% include "portal/_form.html" with form=form %}
+      <div class="form-actions">
+        <button class="btn btn-primary">{% trans "Save" %}</button>
+        <a class="btn" href="{% url 'breakout:index' event.slug %}">{% trans "Cancel" %}</a>
+      </div>
+    </form>
+  </section>
+
+  {% if trunk %}
+  <section class="card">
+    <div class="card-header"><h2>{% trans "pjsip.conf snippet" %}</h2><a class="btn btn-sm" href="{% url 'breakout:trunk_pjsip' event.slug trunk.pk %}">{% trans "Plain text" %}</a></div>
+    <pre class="small">{{ pjsip }}</pre>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

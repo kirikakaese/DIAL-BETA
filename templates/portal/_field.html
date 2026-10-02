@@ -1,0 +1,17 @@
+{% load i18n pet_forms %}{% comment %}
+Render one bound form field: {% include "portal/_field.html" with field=form.number %}
+Label (or wrapping label for checkboxes), widget with aria-describedby/aria-invalid, help text and errors.
+Used by portal/_form.html and by templates that lay out their fields by hand.
+{% endcomment %}
+{% if field.field.widget.attrs.class == 'hp' %}<div class="hp" aria-hidden="true"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}</div>{% else %}
+<div class="field{% if field.errors %} has-error{% endif %}">
+  {% if field.field.widget.input_type == 'checkbox' and not field.field.widget.allow_multiple_selected %}
+  <label class="checkbox" for="{{ field.id_for_label }}">{% a11y_field field %} <span>{{ field.label }}{% if field.field.required %} <span class="req" aria-hidden="true">*</span>{% endif %}</span></label>
+  {% else %}
+  <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span class="req" aria-hidden="true">*</span>{% endif %}</label>
+  {% a11y_field field %}
+  {% endif %}
+  {% if field.help_text %}<div class="help" id="{{ field.auto_id }}_help">{{ field.help_text|safe }}</div>{% endif %}
+  {% if field.errors %}<ul class="errorlist" id="{{ field.auto_id }}_errors" role="alert">{% for e in field.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+</div>
+{% endif %}

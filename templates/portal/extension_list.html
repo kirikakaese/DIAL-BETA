@@ -1,0 +1,30 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "My extensions" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h1>{% trans "My extensions" %}{% if extensions %} <span class="count">{{ extensions|length }}</span>{% endif %}</h1>
+  </div>
+  {% if event.registration_open %}
+  <div class="actions">
+    <a class="btn btn-primary" href="{% url 'portal:extension_create' event.slug %}">{% trans "Register extension" %}</a>
+    <a class="btn" href="{% url 'portal:extension_port' event.slug %}">{% trans "Port from previous event" %}</a>
+  </div>
+  {% endif %}
+</div>
+<div class="table-wrap"><table>
+  <thead><tr><th scope="col">{% trans "Number" %}</th><th scope="col">{% trans "Type" %}</th><th scope="col">{% trans "Name" %}</th><th scope="col">{% trans "State" %}</th><th scope="col">{% trans "Devices" %}</th><th scope="col"><span class="sr-only">{% trans "Actions" %}</span></th></tr></thead>
+  <tbody>{% for e in extensions %}
+  <tr>
+    <td><a class="number" href="{% url 'portal:extension_detail' event.slug e.pk %}">{{ e.number_label }}</a></td>
+    <td>{{ e.get_type_display }}</td>
+    <td>{{ e.display_name }}{% if e.location_hint %}<div class="small muted">{{ e.location_hint }}</div>{% endif %}</td>
+    <td><span class="badge badge-{{ e.state }}">{{ e.get_state_display }}</span></td>
+    <td class="small">{% for b in e.bindings.all %}{{ b.device }} <span class="badge badge-{{ b.device.state }}">{{ b.device.get_state_display }}</span><br>{% empty %}<span class="muted">–</span>{% endfor %}</td>
+    <td class="actions">
+      <a class="btn btn-sm" href="{% url 'portal:extension_detail' event.slug e.pk %}">{% trans "Details" %}</a>
+      {% if e.is_endpoint and e.state != 'requested' %}<a class="btn btn-sm" href="{% url 'portal:device_add' event.slug e.pk %}">{% trans "Add device" %}</a>{% endif %}
+    </td>
+  </tr>{% empty %}<tr><td colspan="6" class="empty">{% trans "No extensions yet." %}</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endblock %}

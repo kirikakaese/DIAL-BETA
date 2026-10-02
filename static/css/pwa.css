@@ -1,0 +1,46 @@
+/* PET PWA shell - offline banner, update toast, install button, standalone-mode tweaks.
+ * Loaded after pet.css and only uses its tokens (--bg-elev2, --fg, --warn, --border-strong, --radius, ...).
+ */
+
+#pet-pwa [hidden] { display: none !important; }
+.pwa { display: flex; justify-content: center; padding: 0 var(--space-4); }
+.pwa-install { margin: 0 auto var(--space-4); }
+
+/* offline banner: full-width strip pinned to the bottom edge */
+.pwa-banner {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+  padding: .6rem var(--space-4) calc(.6rem + env(safe-area-inset-bottom, 0px));
+  text-align: center; font-size: .9rem; font-weight: 500;
+  background: var(--warn); color: #1c1400; border-top: 1px solid var(--border-strong);
+}
+html.is-offline body { padding-bottom: 3rem; }
+html.is-offline form button[type="submit"], html.is-offline form .btn-primary { opacity: .6; }
+
+/* update toast: small non-modal card in the bottom-right corner */
+.pwa-toast {
+  position: fixed; right: var(--space-4); bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px)); z-index: 61;
+  display: flex; align-items: center; gap: var(--space-3); max-width: calc(100vw - 2 * var(--space-4));
+  padding: .6rem .8rem; background: var(--bg-elev2); color: var(--fg);
+  border: 1px solid var(--border-strong); border-radius: var(--radius); box-shadow: var(--shadow);
+  animation: pwa-slide-in .18s ease-out;
+}
+html.is-offline .pwa-toast { bottom: calc(3.5rem + env(safe-area-inset-bottom, 0px)); }
+@keyframes pwa-slide-in {
+  from { transform: translateY(.5rem); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+/* installed app: respect the notch / home indicator and drop the install button */
+@media (display-mode: standalone) {
+  .topbar { padding-top: env(safe-area-inset-top, 0px); }
+  .footer { padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .pwa-install { display: none !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pwa-toast, .pwa-banner { animation: none; transition: none; }
+}
+
+@media print {
+  #pet-pwa { display: none !important; }
+}

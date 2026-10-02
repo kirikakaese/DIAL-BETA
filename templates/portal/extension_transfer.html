@@ -1,0 +1,32 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Transfer" %} {{ ext.number }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h1>{% trans "Transfer" %} <span class="number">{{ ext.number }}</span></h1>
+    <p class="subtitle">{% trans "The recipient has to accept the transfer within two days. Until then the number stays yours." %}</p>
+  </div>
+</div>
+<div class="grid grid-2">
+  <section class="card">
+    <form method="post">{% csrf_token %}
+      {% include "portal/_form.html" with form=form %}
+      <div class="form-actions">
+        <button class="btn btn-primary">{% trans "Offer transfer" %}</button>
+        <a class="btn" href="{% url 'portal:extension_detail' event.slug ext.pk %}">{% trans "Back" %}</a>
+      </div>
+    </form>
+  </section>
+  <section class="card">
+    <h2>{% trans "Open offers" %}</h2>
+    {% for t in transfers %}
+    <div class="transfer">
+      <p><strong>{{ t.to_user }}</strong> <span class="muted small">· {% trans "expires" %} {{ t.expires_at|date:"SHORT_DATETIME_FORMAT" }}</span></p>
+      <p class="small">{% trans "Accept link (share with the recipient):" %} <code class="token">{{ public_url }}{% url 'portal:accept_transfer' t.token %}</code></p>
+    </div>
+    {% empty %}
+    <div class="empty"><p>{% trans "No open transfer offers." %}</p></div>
+    {% endfor %}
+  </section>
+</div>
+{% endblock %}

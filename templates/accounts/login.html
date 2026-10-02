@@ -1,0 +1,29 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Log in" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h1>{% trans "Log in" %}</h1>
+    {% if oidc_password_login %}<p class="subtitle">{% trans "No account yet?" %} <a href="{% url 'accounts:register' %}">{% trans "Sign up" %}</a></p>{% endif %}
+  </div>
+</div>
+<div class="card narrow">
+  {% if oidc_enabled %}
+  <div class="form-actions">
+    <a class="btn btn-primary" href="{% url 'accounts:oidc_login' %}{% if next %}?next={{ next|urlencode }}{% endif %}" data-testid="oidc-login">{{ oidc_button_label }}</a>
+  </div>
+  {% if oidc_password_login %}<hr><p class="muted small">{% trans "Or log in with your PET password:" %}</p>{% endif %}
+  {% endif %}
+  {% if oidc_password_login %}
+  {% if lockout_minutes %}<div class="alert alert-error" role="alert">{% blocktrans count m=lockout_minutes %}Too many failed login attempts. Please wait a minute and try again, or reset your password.{% plural %}Too many failed login attempts. Please wait {{ m }} minutes and try again, or reset your password.{% endblocktrans %}</div>{% endif %}
+  <form method="post" action="{% url 'accounts:login' %}">{% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+    {% include "portal/_form.html" with form=form %}
+    <div class="form-actions">
+      <button class="btn btn-primary">{% trans "Log in" %}</button>
+      <a class="small" href="{% url 'accounts:password_reset' %}">{% trans "Forgot your password?" %}</a>
+    </div>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

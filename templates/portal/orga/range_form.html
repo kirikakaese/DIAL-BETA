@@ -1,0 +1,30 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% if range.pk %}{% trans "Edit range" %}{% else %}{% trans "New range" %}{% endif %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <p class="eyebrow eyebrow-orga">{% trans "Orga" %} · {% trans "Numbers" %}</p>
+    <h1>{% if range.pk %}{% trans "Edit range" %}{% else %}{% trans "New number range" %}{% endif %}</h1>
+    {% if range.pk %}<p class="subtitle">{{ range.name }}</p>{% endif %}
+  </div>
+</div>
+<div class="grid grid-2">
+  <section class="card">
+    <form method="post">{% csrf_token %}
+      {% include "portal/_form.html" with form=form %}
+      <div class="form-actions"><button class="btn btn-primary">{% trans "Save range" %}</button>
+        <a class="btn" href="{% url 'portal:orga_numberplan' event.slug %}">{% trans "Cancel" %}</a></div>
+    </form>
+  </section>
+  <aside class="card">
+    <h2>{% trans "Modes" %}</h2>
+    <dl class="kv small">
+      <dt>{% translate "Open" context "range mode" %}</dt><dd>{% trans "Instant self-service." %}</dd>
+      <dt>{% trans "Approval" %}</dt><dd>{% trans "Request goes to the orga queue." %}</dd>
+      <dt>{% trans "Restricted" %}</dt><dd>{% trans "Only the listed roles/groups may register (instantly). Orga can always register if nothing is listed." %}</dd>
+      <dt>{% trans "Blocked" %}</dt><dd>{% trans "Nobody can register here (trunk prefixes, service ranges)." %}</dd>
+    </dl>
+    <p class="small muted">{% trans "Prefix matches the start of the number; pattern is an anchored regular expression (e.g. (\d)\1{3} for quadruple digits). Vanity ranges always require approval." %}</p>
+  </aside>
+</div>
+{% endblock %}

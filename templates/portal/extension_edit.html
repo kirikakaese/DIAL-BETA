@@ -1,0 +1,28 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Edit" %} {{ ext.number }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h1>{% trans "Edit" %} <span class="number">{{ ext.number }}</span></h1>
+  </div>
+</div>
+<div class="card narrow">
+  <form method="post" enctype="multipart/form-data">{% csrf_token %}
+    {% include "portal/_form.html" with form=form %}
+    {% if ext.is_endpoint %}
+    <div class="help small muted">
+      <p>{% trans "Call forwarding: 'Always' skips your devices; 'Delayed' rings them for the given seconds first; 'When busy' / 'When unanswered' only forward in that case. Forwarding is switched off automatically when the target extension is deleted." %}</p>
+      {% if ext.ringback_tone %}
+      <p>{% trans "Current ringback tone:" %} <code>{{ ext.ringback_tone.name|cut:"ringback/" }}</code> ·
+        <span class="badge badge-{% if ext.ringback_tone_status == 'ready' %}active{% elif ext.ringback_tone_status == 'failed' %}rejected{% else %}requested{% endif %}">{{ ext.get_ringback_tone_status_display }}</span>
+        {% if ext.ringback_tone_error %}<br><span class="error">{{ ext.ringback_tone_error }}</span>{% endif %}</p>
+      {% endif %}
+    </div>
+    {% endif %}
+    <div class="form-actions">
+      <button class="btn btn-primary">{% trans "Save" %}</button>
+      <a class="btn" href="{% url 'portal:extension_detail' event.slug ext.pk %}">{% trans "Cancel" %}</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

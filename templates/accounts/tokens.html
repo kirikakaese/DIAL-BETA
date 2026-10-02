@@ -1,0 +1,43 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "API tokens" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h1>{% trans "My API tokens" %}{% if accounts %} <span class="count">{{ accounts|length }}</span>{% endif %}</h1>
+  </div>
+</div>
+{% if raw_token %}
+<div class="card token-reveal" role="alert">
+  <h2>{% trans "Your new token" %}</h2>
+  <p class="small muted">{% trans "Copy it now. For security reasons it cannot be displayed again." %}</p>
+  <code class="token">{{ raw_token }}</code>
+  <p class="small muted">{% blocktrans %}Use it as <code>Authorization: Bearer &lt;token&gt;</code> against <code>/api/v1/</code>.{% endblocktrans %}</p>
+</div>
+{% endif %}
+<div class="grid grid-2">
+  <section class="card">
+    <h2>{% trans "Tokens" %}</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th scope="col">{% trans "Name" %}</th><th scope="col">{% trans "Prefix" %}</th><th scope="col">{% trans "Event" %}</th><th scope="col">{% trans "Scopes" %}</th><th scope="col">{% trans "Last used" %}</th><th scope="col"><span class="sr-only">{% trans "Actions" %}</span></th></tr></thead>
+      <tbody>{% for a in accounts %}
+      <tr{% if not a.is_active %} class="muted"{% endif %}>
+        <td>{{ a.name }}{% if not a.is_active %} <span class="badge badge-muted">{% trans "revoked" %}</span>{% elif a.expires_at and a.expires_at < now %} <span class="badge badge-expired">{% trans "expired" %}</span>{% endif %}</td>
+        <td><code>{{ a.token_prefix }}…</code></td>
+        <td>{{ a.event|default:"—" }}</td>
+        <td class="small">{{ a.scopes|join:", "|default:"*" }}</td>
+        <td class="small">{{ a.last_used_at|date:"SHORT_DATETIME_FORMAT"|default:"–" }}</td>
+        <td class="actions">{% if a.is_active %}<form method="post" class="inline" data-confirm="{% trans 'Revoke this token? Integrations using it will stop working.' %}">{% csrf_token %}
+          <input type="hidden" name="action" value="revoke"><input type="hidden" name="pk" value="{{ a.pk }}">
+          <button class="btn btn-sm btn-danger">{% trans "Revoke" %}</button></form>{% endif %}</td>
+      </tr>{% empty %}<tr><td colspan="6" class="empty">{% trans "No tokens yet." %}</td></tr>{% endfor %}</tbody>
+    </table></div>
+  </section>
+  <section class="card">
+    <h2>{% trans "Create a token" %}</h2>
+    <form method="post">{% csrf_token %}
+      {% include "portal/_form.html" with form=form %}
+      <div class="form-actions"><button class="btn btn-primary">{% trans "Create token" %}</button></div>
+    </form>
+  </section>
+</div>
+{% endblock %}

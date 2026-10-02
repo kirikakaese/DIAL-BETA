@@ -1,0 +1,21 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Conference rooms" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h1>{% trans "Conference rooms" %}</h1>
+    <p class="subtitle">{% trans "Dial a room number from any handset to join; PIN-protected rooms ask for the PIN." %}</p>
+  </div>
+  <div class="actions"><a class="btn btn-primary" href="{% url 'conferences:new' event.slug %}">{% trans "New room" %}</a></div>
+</div>
+<div class="grid grid-2">
+  <section class="card">
+    <div class="card-header"><h2>{% trans "My rooms" %} <span class="count">{{ my_rooms|length }}</span></h2></div>
+    {% include "conferences/_rooms_table.html" with rooms=my_rooms %}
+  </section>
+  <section class="card">
+    <div class="card-header"><h2>{% trans "Public rooms" %} <span class="count">{{ public_rooms|length }}</span></h2></div>
+    {% include "conferences/_rooms_table.html" with rooms=public_rooms %}
+  </section>
+</div>
+{% endblock %}

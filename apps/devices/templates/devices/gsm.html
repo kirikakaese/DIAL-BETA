@@ -1,0 +1,52 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "GSM handsets" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <p class="eyebrow eyebrow-orga">{% trans "Orga" %} · {% trans "Infrastructure" %}</p>
+    <h1>{% trans "GSM handsets" %}{% if event.has_gsm %} <span class="count">{{ devices|length }}</span>{% endif %}</h1>
+  </div>
+</div>
+{% if not event.has_gsm %}
+<section class="card">
+  <h2>{% trans "GSM is not enabled for this event" %}</h2>
+  <p>{% trans "Enable it in the event settings (has GSM) once an on-site cell network (e.g. Osmocom) is connected to the PBX, and set the PJSIP trunk name of the GSM gateway (default" %} <code>gsm-gateway</code>).</p>
+  <p class="small muted">{% trans "A commented trunk template is in" %} <code>deploy/asterisk/conf/pjsip.conf</code>. {% trans "The GSM core registers SIMs by calling" %} <code>POST /prov/gsm/register/</code> {% trans "with the header" %} <code>X-PET-PBX-Secret</code>.</p>
+</section>
+{% else %}
+<div class="grid grid-2">
+  <section class="card">
+    <h2>{% trans "Registered SIMs" %}</h2>
+    <p class="small muted">{% trans "Trunk:" %} <code>{{ event.gsm_trunk|default:"gsm-gateway" }}</code> · {% trans "users dial or text the registration code on the GSM network; the core posts it to PET, which stores the IMSI/MSISDN." %}</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th scope="col">{% trans "Device" %}</th><th scope="col">{% trans "Extension" %}</th><th scope="col">IMSI</th><th scope="col">MSISDN</th><th scope="col">{% trans "Radio" %}</th><th scope="col">{% trans "Status" %}</th><th scope="col"><span class="sr-only">{% trans "Actions" %}</span></th></tr></thead>
+      <tbody>
+      {% for d in devices %}
+      <tr>
+        <td><a href="{% url 'portal:device_detail' event.slug d.pk %}">{{ d.name|default:d }}</a>{% if d.owner %}<div class="small muted">{{ d.owner }}</div>{% endif %}</td>
+        <td>{% for b in d.bindings.all %}<span class="number">{{ b.extension.number }}</span> {% empty %}<span class="muted">–</span>{% endfor %}</td>
+        <td><code>{{ d.imsi|default:"–" }}</code></td>
+        <td><code>{{ d.msisdn|default:"–" }}</code></td>
+        <td class="small">{{ d.gsm_generations|join:", " }}</td>
+        <td>
+          {% if d.gsm_registered_at %}<span class="badge badge-active">{% trans "registered" %} {{ d.gsm_registered_at|date:"SHORT_DATETIME_FORMAT" }}</span>
+          {% elif d.gsm_register_token %}<span class="badge badge-pending">{% trans "code" %} <strong class="number">{{ d.gsm_register_token }}</strong></span>
+          {% else %}<span class="badge">{{ d.get_state_display }}</span>{% endif %}
+        </td>
+        <td><form method="post" action="{% url 'devices:gsm_token' event.slug d.pk %}" class="inline">{% csrf_token %}<button class="btn btn-sm">{% trans "New code" %}</button></form></td>
+      </tr>
+      {% empty %}<tr><td colspan="7" class="empty">{% trans "No GSM devices yet." %}</td></tr>{% endfor %}
+      </tbody>
+    </table></div>
+  </section>
+  <section class="card">
+    <h2>{% trans "Add a GSM handset" %}</h2>
+    <form method="post">{% csrf_token %}
+      {% include "portal/_form.html" with form=form %}
+      <p class="small muted">{% trans "PET issues a 6-digit registration code. Hand it to the user; once the SIM is linked the extension rings on the GSM phone via the gateway trunk." %}</p>
+      <div class="form-actions"><button class="btn btn-primary">{% trans "Add" %}</button></div>
+    </form>
+  </section>
+</div>
+{% endif %}
+{% endblock %}

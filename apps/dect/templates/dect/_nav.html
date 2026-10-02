@@ -1,0 +1,9 @@
+{% load i18n dect_tags %}
+<nav class="tabs" aria-label="{% trans 'DECT sections' %}">
+  <a href="{% dect_url 'index' event.slug %}" {% if active == 'index' %}aria-current="page"{% endif %}>{% trans "Infrastructure" %}</a>
+  <a href="{% dect_url 'handsets' event.slug %}" {% if active == 'handsets' %}aria-current="page"{% endif %}>{% trans "Handsets" %}</a>
+  <a href="{% dect_url 'map' event.slug %}" {% if active == 'map' %}aria-current="page"{% endif %}>{% trans "Coverage map" %}</a>
+  <a href="{% dect_url 'alerts' event.slug %}" {% if active == 'alerts' %}aria-current="page"{% endif %}>{% trans "Alerts" %}</a>
+  <a href="{% dect_url 'survey' event.slug %}" {% if active == 'survey' %}aria-current="page"{% endif %}>{% trans "Site survey" %}</a>
+  <a href="{% url 'pbx:infrastructure' event.slug %}">{% trans "OMM connection" %}</a>
+</nav>

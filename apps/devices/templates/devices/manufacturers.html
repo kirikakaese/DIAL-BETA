@@ -1,0 +1,37 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "DECT manufacturers" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <p class="eyebrow eyebrow-orga">{% trans "Orga" %} · {% trans "Infrastructure" %}</p>
+    <h1>{% trans "DECT manufacturers" %}</h1>
+    <p class="subtitle">{% trans "The vendor table is shared across events and crowdsourced: users can name the vendor of a handset with an unknown EMC on the device page." %}</p>
+  </div>
+</div>
+<div class="grid grid-2">
+  <section class="card">
+    <h2>{% trans "Handsets in this event by vendor" %}</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th scope="col">EMC</th><th scope="col">{% trans "Vendor" %}</th><th scope="col">{% trans "Models" %}</th><th scope="col">{% trans "Source" %}</th><th scope="col">{% trans "Handsets" %}</th></tr></thead>
+      <tbody>
+      {% for r in rows %}
+      <tr>
+        <td><code>{{ r.emc }}</code></td>
+        <td>{% if r.manufacturer %}{{ r.manufacturer.name }}{% else %}<span class="muted">{% trans "unknown - add it on the right" %}</span>{% endif %}</td>
+        <td class="small muted">{{ r.manufacturer.models_hint|default:"" }}</td>
+        <td class="small">{% if r.manufacturer %}{{ r.manufacturer.get_source_display }}{% endif %}</td>
+        <td><span class="badge {% if r.count %}badge-active{% endif %}">{{ r.count }}</span></td>
+      </tr>
+      {% empty %}<tr><td colspan="5" class="empty">{% trans "No DECT handsets and no vendor entries yet. Run" %} <code>manage.py pet_dect_vendors</code>.</td></tr>{% endfor %}
+      </tbody>
+    </table></div>
+  </section>
+  <section class="card">
+    <h2>{% trans "Add or rename a vendor" %}</h2>
+    <form method="post">{% csrf_token %}
+      {% include "portal/_form.html" with form=form %}
+      <div class="form-actions"><button class="btn btn-primary">{% trans "Save" %}</button></div>
+    </form>
+  </section>
+</div>
+{% endblock %}

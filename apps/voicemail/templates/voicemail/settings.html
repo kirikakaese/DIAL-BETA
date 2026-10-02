@@ -1,0 +1,21 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Mailbox settings" %} {{ mailbox.number }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h1>{% trans "Mailbox" %} <span class="number">{{ mailbox.number }}</span></h1>
+    {% if plan.voicemail_number %}<p class="subtitle">{% blocktrans with n=plan.voicemail_number %}Dial <code>{{ n }}</code> and enter your PIN to listen to messages and record a greeting from the handset.{% endblocktrans %}</p>{% endif %}
+  </div>
+</div>
+<form method="post" enctype="multipart/form-data" class="card" novalidate>{% csrf_token %}
+  {% if form.non_field_errors %}<div class="alert alert-error" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+  {% for field in form %}
+  {% include "portal/_field.html" with field=field %}
+  {% if field.name == "greeting" and mailbox.greeting %}<div class="help">{% trans "Current greeting" %}: <code>{{ mailbox.greeting.name }}</code></div>{% endif %}
+  {% endfor %}
+  <div class="form-actions">
+    <button class="btn btn-primary">{% trans "Save" %}</button>
+    <a class="btn" href="{% url 'voicemail:index' event.slug %}">{% trans "Cancel" %}</a>
+  </div>
+</form>
+{% endblock %}

@@ -1,0 +1,6 @@
+---
+- name: Restart pet stack
+  ansible.builtin.command:
+    cmd: docker compose up -d --build --remove-orphans
+    chdir: "{{ pet_src_dir }}"
+  changed_when: true

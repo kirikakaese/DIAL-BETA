@@ -1,0 +1,92 @@
+{% extends "base.html" %}{% load i18n dect_tags %}
+{% block title %}{% trans "DECT infrastructure" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <p class="eyebrow eyebrow-orga">{% trans "Orga" %} · {% trans "Infrastructure" %}</p>
+    <h1>{% trans "DECT infrastructure" %}</h1>
+    <p class="subtitle">{% trans "Base stations, sync clusters and handset load as reported by the OMM." %}</p>
+  </div>
+  <div class="actions">
+    <form method="post" action="{% dect_url 'sync_now' event.slug %}" class="inline">{% csrf_token %}
+      <button class="btn btn-primary">{% trans "Sync now" %}</button>
+    </form>
+  </div>
+</div>
+{% include "dect/_nav.html" %}
+
+<div class="grid stats-grid" data-refresh="15" aria-live="polite">
+  <div class="card stat-card"><div class="stat">{{ counts.up }}<span class="muted">/{{ counts.rfps }}</span></div><div class="stat-label">{% trans "RFPs up" %}</div></div>
+  <div class="card stat-card"><div class="stat{% if counts.down %} err{% endif %}">{{ counts.down }}</div><div class="stat-label">{% trans "RFPs down" %}</div></div>
+  <div class="card stat-card"><div class="stat{% if counts.unsynced %} warn{% endif %}">{{ counts.unsynced }}</div><div class="stat-label">{% trans "Unsynced" %}</div></div>
+  <div class="card stat-card"><div class="stat">{{ counts.subscribed }}<span class="muted">/{{ counts.handsets }}</span></div><div class="stat-label">{% trans "Handsets subscribed" %}</div></div>
+  <div class="card stat-card"><div class="stat">{{ counts.calls }}</div><div class="stat-label">{% trans "Active DECT calls" %}</div></div>
+</div>
+
+{% if open_alerts %}
+<section class="card" aria-labelledby="alerts-h">
+  <div class="card-header"><h2 id="alerts-h">{% trans "Open alerts" %}</h2><a class="btn btn-sm" href="{% dect_url 'alerts' event.slug %}">{% trans "All alerts" %}</a></div>
+  {% for a in open_alerts %}
+  <div class="alert alert-{% if a.severity == 'critical' %}error{% elif a.severity == 'warning' %}warning{% else %}info{% endif %}">
+    <strong>{{ a.get_severity_display }}</strong> · <code>{{ a.kind }}</code> · {{ a.message }}
+    <span class="muted small">{{ a.created_at|timesince }} {% trans "ago" %}</span>
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+
+<h2>{% trans "Sync clusters" %}</h2>
+{% if clusters %}
+<div class="grid">
+  {% for c in clusters %}
+  <div class="card">
+    <div class="card-header"><h3>{{ c }}</h3>
+      {% if c.health == 'ok' %}<span class="badge badge-ok">{% trans "ok" %}</span>{% elif c.health == 'degraded' %}<span class="badge badge-warn">{% trans "degraded" %}</span>{% elif c.health == 'down' %}<span class="badge badge-err">{% trans "down" %}</span>{% else %}<span class="badge badge-muted">{% trans "empty" %}</span>{% endif %}
+    </div>
+    <p class="muted small">{% blocktrans count n=c.rfps.count %}{{ n }} RFP{% plural %}{{ n }} RFPs{% endblocktrans %}</p>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty"><p>{% trans "No clusters yet – run a sync." %}</p></div>
+{% endif %}
+
+<section class="card" aria-labelledby="rfps-h">
+  <div class="card-header"><h2 id="rfps-h">{% trans "Base stations (RFPs)" %} <span class="count">{{ counts.rfps }}</span></h2></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th scope="col">{% trans "Status" %}</th><th scope="col">{% trans "Name" %}</th><th scope="col">{% trans "Location" %}</th>
+        <th scope="col">{% trans "Cluster" %}</th><th scope="col">{% trans "Sync source" %}</th><th scope="col">{% trans "Handsets" %}</th>
+        <th scope="col">{% trans "Calls" %}</th><th scope="col">{% trans "IP" %}</th><th scope="col">{% trans "Last change" %}</th><th scope="col"><span class="sr-only">{% trans "Actions" %}</span></th>
+      </tr></thead>
+      <tbody>
+      {% for rfp in rfps %}
+      <tr>
+        <td>{% include "dect/_status.html" %}</td>
+        <td><a href="{% dect_url 'rfp_edit' event.slug rfp.pk %}">{{ rfp.name }}</a> <span class="muted small">#{{ rfp.omm_id }}</span></td>
+        <td>{{ rfp.location|default:"–" }}</td>
+        <td>{{ rfp.cluster|default:"–" }}</td>
+        <td>{{ rfp.sync_source|default:"–" }}</td>
+        <td>{{ rfp.n_handsets }}</td>
+        <td>{{ rfp.active_calls }}</td>
+        <td class="mono small">{{ rfp.ip_address|default:"–" }}</td>
+        <td class="small">{% if rfp.last_state_change %}{{ rfp.last_state_change|timesince }} {% trans "ago" %}{% else %}–{% endif %}</td>
+        <td class="actions"><a class="btn btn-sm" href="{% dect_url 'rfp_edit' event.slug rfp.pk %}">{% trans "Edit" %}</a></td>
+      </tr>
+      {% empty %}<tr><td colspan="10" class="empty">{% trans "No RFPs known yet. Click “Sync now” to pull them from the OMM." %}</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{% if weak_zones %}
+<section class="card" aria-labelledby="weak-h">
+  <div class="card-header"><h2 id="weak-h">{% trans "Weak zones" %} <span class="count">{{ weak_zones|length }}</span></h2></div>
+  <ul>
+    {% for z in weak_zones %}<li><strong>{{ z.rfp }}</strong> {% if z.location %}({{ z.location }}){% endif %} –
+      {% if z.reason == 'down' %}{% trans "down" %}{% elif z.reason == 'unsynced' %}{% trans "not in sync" %}{% else %}{% trans "no handsets while neighbours are loaded" %}{% endif %}</li>{% endfor %}
+  </ul>
+</section>
+{% endif %}
+{% endblock %}

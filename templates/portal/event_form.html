@@ -1,0 +1,19 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "New event" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h1>{% trans "Create a new event" %}</h1>
+    <p class="subtitle">{% trans "Creates the event with an empty number plan and makes you its admin. Consider cloning an existing event instead to reuse its number plan and groups." %}</p>
+  </div>
+</div>
+<div class="card narrow">
+  <form method="post">{% csrf_token %}
+    {% include "portal/_form.html" with form=form %}
+    <div class="form-actions">
+      <button class="btn btn-primary">{% trans "Create event" %}</button>
+      <a class="btn" href="{% url 'portal:event_list' %}">{% trans "Cancel" %}</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

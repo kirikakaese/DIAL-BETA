@@ -1,0 +1,18 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Delete" %} {{ ext.number }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h1>{% trans "Delete extension" %} <span class="number">{{ ext.number }}</span>?</h1>
+  </div>
+</div>
+<div class="card narrow">
+  <p>{% trans "The number becomes free for others, all bound devices stop ringing and people on the waitlist are notified." %}</p>
+  <form method="post" data-confirm="{% trans 'Really delete this extension?' %}">{% csrf_token %}
+    <div class="form-actions">
+      <button class="btn btn-danger">{% trans "Delete" %}</button>
+      <a class="btn" href="{% url 'portal:extension_detail' event.slug ext.pk %}">{% trans "Cancel" %}</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

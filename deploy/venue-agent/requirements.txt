@@ -1,0 +1,2 @@
+# The agent needs nothing but the Python standard library and psycopg 3.
+psycopg[binary]>=3.1,<4

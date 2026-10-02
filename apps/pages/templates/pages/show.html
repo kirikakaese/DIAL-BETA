@@ -1,0 +1,36 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{{ page.title }} · {{ event.name }}{% endblock %}
+{% block breadcrumbs %}
+<p class="breadcrumbs"><a href="{% url 'pages:index' event.slug %}">{% trans "Info pages" %}</a> <span aria-hidden="true">›</span> {{ page.title }}</p>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <p class="eyebrow">{{ event.name }}{% if not page.published %} · <span class="badge badge-warn">{% trans "unpublished" %}</span>{% endif %}</p>
+    <h1>{{ page.title }}</h1>
+    <p class="subtitle">{% blocktrans with when=page.updated_at|date:"SHORT_DATETIME_FORMAT" %}Last updated {{ when }}{% endblocktrans %}{% if page.updated_by %} · {{ page.updated_by.username }}{% endif %}</p>
+  </div>
+  {% if is_orga %}
+  <div class="actions">
+    <a class="btn btn-sm" href="{% url 'pages:edit' event.slug page.slug %}">{% trans "Edit" %}</a>
+    <a class="btn btn-sm" href="{% url 'pages:manage' event.slug %}">{% trans "Manage pages" %}</a>
+  </div>
+  {% endif %}
+</div>
+
+{% if not page.published %}
+<div class="alert alert-warning">{% trans "This page is not published - only the orga team can see it." %}</div>
+{% endif %}
+
+<article class="card">
+  <div class="doc-body">
+    {{ page.body_html }}
+  </div>
+</article>
+
+{% if others %}
+<p class="small muted">{% trans "More pages:" %}
+  {% for o in others %}<a href="{% url 'pages:show' event.slug o.slug %}">{{ o.title }}</a>{% if not forloop.last %} · {% endif %}{% endfor %}
+</p>
+{% endif %}
+{% endblock %}

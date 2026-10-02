@@ -1,0 +1,66 @@
+[project]
+name = "pet"
+version = "0.1.0"
+description = "PET - Portable Event Telephone: self-hostable event telephony management"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "AGPL-3.0-or-later" }
+dependencies = [
+    "Django>=5.1,<5.3",
+    "djangorestframework>=3.15",
+    "drf-spectacular>=0.27",
+    "django-filter>=24.0",
+    "django-cors-headers>=4.0",
+    "django-environ>=0.11",
+    "celery>=5.4",
+    "redis>=5.0",
+    "psycopg[binary]>=3.1",
+    "argon2-cffi>=23.0",
+    "qrcode[pil]>=7.4",
+    "pillow>=10.0",
+    "reportlab>=4.0",
+    "requests>=2.31",
+    "PyYAML>=6.0",
+    "gunicorn>=22.0",
+    "whitenoise>=6.6",
+    "pyotp>=2.9",
+    "Markdown>=3.6",
+    "Pygments>=2.17",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-django>=4.8",
+    "factory-boy>=3.3",
+    "ruff>=0.5",
+]
+
+[project.scripts]
+pet = "apps.api.cli:main"
+
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["apps*", "pet*"]
+
+[tool.setuptools.package-data]
+"*" = ["templates/**/*.html", "static/**/*"]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "pet.settings.test"
+python_files = ["test_*.py", "tests.py"]
+testpaths = ["apps", "tests"]
+addopts = "-q --reuse-db"
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+exclude = ["migrations", ".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["B904", "B027"]

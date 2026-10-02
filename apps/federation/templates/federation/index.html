@@ -1,0 +1,54 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Federation (PET-VPN)" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <p class="eyebrow eyebrow-orga">{% trans "Orga" %} · {% trans "Services" %}</p>
+    <h1>{% trans "Federation (PET-VPN)" %}</h1>
+    <p class="subtitle">{% trans "Dial into other PET events over SIP: each peer gets a prefix in front of its extension numbers." %}</p>
+  </div>
+  <div class="actions"><a class="btn btn-primary" href="{% url 'federation:peer_new' event.slug %}">{% trans "Add peer" %}</a></div>
+</div>
+
+<section class="card">
+  <div class="card-header"><h2>{% trans "Peers" %} <span class="count">{{ peers|length }}</span></h2></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th scope="col">{% trans "Prefix" %}</th><th scope="col">{% trans "Name" %}</th><th scope="col">{% trans "SIP" %}</th><th scope="col">{% trans "State" %}</th><th scope="col">{% trans "Last seen" %}</th><th scope="col"><span class="sr-only">{% trans "Actions" %}</span></th></tr></thead>
+    <tbody>
+    {% for p in peers %}
+    <tr><td class="number">{{ p.remote_prefix }}</td><td>{{ p.name }} <span class="small muted">{{ p.remote_event_name }}</span></td>
+      <td class="small">{{ p.sip_host }}:{{ p.sip_port }}/{{ p.transport|upper }}{% if p.srtp %} +SRTP{% endif %}</td>
+      <td><span class="badge badge-{{ p.state }}">{{ p.get_state_display }}</span></td>
+      <td class="small">{{ p.last_seen|date:"D H:i"|default:"–" }}</td>
+      <td class="actions"><a class="btn btn-sm" href="{% url 'federation:peer_edit' event.slug p.pk %}">{% trans "Edit" %}</a>
+          <a class="btn btn-sm" href="{% url 'federation:peer_pjsip' event.slug p.pk %}">pjsip.conf</a></td></tr>
+    {% empty %}<tr><td colspan="6" class="empty">{% trans "No peers configured." %}</td></tr>{% endfor %}
+    </tbody></table></div>
+</section>
+
+<div class="grid grid-2">
+  <section class="card">
+    <div class="card-header"><h2>{% trans "Our directory entry" %}</h2></div>
+    <dl class="kv">{% for k, v in own_entry.items %}<dt>{{ k }}</dt><dd>{{ v|default:"–" }}</dd>{% endfor %}</dl>
+    <p class="help">{% trans "Published at" %} <code>/api/v1/federation/directory/</code></p>
+  </section>
+
+  <section class="card">
+    <div class="card-header"><h2>{% trans "Public directory (cached)" %}</h2></div>
+    <form method="post" action="{% url 'federation:directory_fetch' event.slug %}" class="form-row">{% csrf_token %}
+      <div class="field">
+        <label for="directory_url">{% trans "Directory URL" %}</label>
+        <input id="directory_url" type="url" name="url" placeholder="https://other-pet.example/api/v1/federation/directory/" required>
+      </div>
+      <div class="field field-submit"><button class="btn">{% trans "Fetch" %}</button></div>
+    </form>
+    <div class="table-wrap"><table>
+      <thead><tr><th scope="col">{% trans "Event" %}</th><th scope="col">{% trans "Prefix" %}</th><th scope="col">{% trans "SIP host" %}</th><th scope="col">{% trans "Contact" %}</th></tr></thead>
+      <tbody>
+      {% for d in directory %}
+      <tr><td>{{ d.event_name }} <span class="small muted">{{ d.instance_url }}</span></td><td class="number">{{ d.dial_prefix }}</td><td class="small">{{ d.sip_host }}:{{ d.sip_port }}</td><td class="small">{{ d.contact }}</td></tr>
+      {% empty %}<tr><td colspan="4" class="empty">{% trans "Directory cache is empty." %}</td></tr>{% endfor %}
+      </tbody></table></div>
+  </section>
+</div>
+{% endblock %}

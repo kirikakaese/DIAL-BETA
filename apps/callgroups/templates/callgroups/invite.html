@@ -1,0 +1,34 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Invitation" %} · {{ invite.group.name }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h1>{% trans "Invitation to a call group" %}</h1>
+    <p class="subtitle">{{ invite.group.name }} <span class="number">{{ invite.group.number }}</span></p>
+  </div>
+  <div class="actions"><a class="btn" href="{% url 'callgroups:mine' event.slug %}">{% trans "My call groups" %}</a></div>
+</div>
+<section class="card">
+  <div class="card-header"><h2>{% trans "Invitation details" %}</h2>{% if invite.is_open %}<span class="badge badge-pending">{% trans "open" %}</span>{% else %}<span class="badge badge-muted">{{ invite.status }}</span>{% endif %}</div>
+  {% if invite.is_open %}
+  <p class="small muted">{% trans "After joining you can log in and out of the group at any time and leave it again from 'My call groups'." %}</p>
+  {% else %}
+  <p class="muted">{% trans "This invitation is no longer open" %}: {{ invite.status }}.</p>
+  {% endif %}
+  <dl class="kv">
+    <dt>{% trans "Group" %}</dt><dd><a href="{% url 'callgroups:detail' event.slug invite.group.pk %}">{{ invite.group.name }}</a> <span class="number">{{ invite.group.number }}</span>{% if invite.group.shortcode %} <span class="badge">{{ invite.group.shortcode }}</span>{% endif %}</dd>
+    <dt>{% trans "Your extension" %}</dt><dd class="number">{{ invite.extension.number }}</dd>
+    <dt>{% trans "Invited by" %}</dt><dd>{{ invite.invited_by.username|default:"—" }} <span class="muted small">({{ invite.created_at|date:"D H:i" }})</span></dd>
+    {% if invite.reason %}<dt>{% trans "Reason" %}</dt><dd>{{ invite.reason }}</dd>{% endif %}
+    <dt>{% trans "Strategy" %}</dt><dd>{{ invite.group.get_strategy_display }}</dd>
+  </dl>
+  {% if invite.is_open %}
+  <form method="post">{% csrf_token %}
+    <div class="form-actions">
+      <button class="btn btn-primary" name="action" value="accept">{% trans "Accept - join the group" %}</button>
+      <button class="btn" name="action" value="decline">{% trans "Decline" %}</button>
+    </div>
+  </form>
+  {% endif %}
+</section>
+{% endblock %}

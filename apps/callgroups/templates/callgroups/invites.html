@@ -1,0 +1,14 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Call group invitations" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h1>{% trans "Call group invitations" %}{% if open_invites %} <span class="count">{{ open_invites|length }}</span>{% endif %}</h1>
+    <p class="subtitle">{% trans "Accept to join the group with the invited extension, or decline." %}</p>
+  </div>
+  <div class="actions"><a class="btn" href="{% url 'callgroups:mine' event.slug %}">{% trans "My call groups" %}</a></div>
+</div>
+<section class="card">
+  {% include "callgroups/_invites.html" with open_invites=open_invites next_url=request.path %}
+</section>
+{% endblock %}

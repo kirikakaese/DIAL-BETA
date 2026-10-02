@@ -1,0 +1,11 @@
+{% load i18n %}
+<div class="table-wrap"><table>
+  <thead><tr><th scope="col">{% trans "Number" %}</th><th scope="col">{% trans "Name" %}</th><th scope="col">{% trans "Access" %}</th><th scope="col">{% trans "Max" %}</th><th scope="col">{% trans "Owner" %}</th></tr></thead>
+  <tbody>
+  {% for r in rooms %}
+  <tr><td class="number"><a href="{% url 'conferences:detail' event.slug r.pk %}">{{ r.number }}</a></td>
+    <td>{{ r.name|default:"–" }}</td>
+    <td>{% if r.is_open %}<span class="badge badge-active">{% trans "open" %}</span>{% else %}<span class="badge">{% trans "PIN" %}</span>{% endif %}</td>
+    <td>{{ r.max_participants }}</td><td>{{ r.owner.username|default:"–" }}</td></tr>
+  {% empty %}<tr><td colspan="5" class="empty">{% trans "No rooms." %}</td></tr>{% endfor %}
+  </tbody></table></div>

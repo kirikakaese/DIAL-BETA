@@ -1,0 +1,24 @@
+{% load i18n %}
+{% if open_invites %}
+<div class="table-wrap"><table>
+  <thead><tr><th scope="col">{% trans "Group" %}</th><th scope="col">{% trans "My extension" %}</th><th scope="col">{% trans "Invited by" %}</th><th scope="col"><span class="sr-only">{% trans "Actions" %}</span></th></tr></thead>
+  <tbody>
+  {% for inv in open_invites %}
+  <tr>
+    <td><a href="{% url 'callgroups:detail' event.slug inv.group.pk %}">{{ inv.group.name }}</a> <span class="number">{{ inv.group.number }}</span>{% if inv.reason %}<div class="muted small">{{ inv.reason }}</div>{% endif %}</td>
+    <td class="number">{{ inv.extension.number }}</td>
+    <td class="small">{{ inv.invited_by.username|default:"—" }}<div class="muted">{{ inv.created_at|date:"D H:i" }}</div></td>
+    <td class="actions">
+      <form method="post" action="{% url 'callgroups:invite_respond' event.slug inv.token %}" class="inline">{% csrf_token %}
+        <input type="hidden" name="next" value="{{ next_url }}">
+        <button class="btn btn-sm btn-ok" name="action" value="accept">{% trans "Accept" %}</button>
+        <button class="btn btn-sm" name="action" value="decline">{% trans "Decline" %}</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% else %}
+<div class="empty"><p>{% trans "No open invitations for your extensions." %}</p></div>
+{% endif %}

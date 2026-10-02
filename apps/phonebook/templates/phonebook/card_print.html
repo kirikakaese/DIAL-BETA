@@ -1,0 +1,60 @@
+{% load i18n static %}<!doctype html>
+<html lang="{{ LANGUAGE_CODE|default:'en' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>{{ ext.number }} · {{ name }} · {{ event.name }}</title>
+  <style>
+    :root { --primary: {{ event.primary_color }}; --accent: {{ event.accent_color }}; }
+    @page { size: 105mm 74mm; margin: 0; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: #e5e7eb; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #111; }
+    body { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 12px; }
+    .card { width: 85mm; height: 55mm; background: #fff; border-radius: 3mm; overflow: hidden; display: flex; border: 1px solid #cbd5e1; box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+    .stripe { width: 4mm; background: linear-gradient(180deg, var(--primary), var(--accent)); flex: none; }
+    .body { flex: 1; min-width: 0; display: flex; align-items: center; gap: 3mm; padding: 4mm 4mm 4mm 4mm; }
+    .text { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 1mm; }
+    .event { font-size: 7.5pt; text-transform: uppercase; letter-spacing: .08em; color: var(--primary); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .name { font-size: 11pt; font-weight: 600; line-height: 1.15; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    .number { font-size: 22pt; font-weight: 800; letter-spacing: .06em; font-variant-numeric: tabular-nums; line-height: 1.05; }
+    .hint { font-size: 6.5pt; color: #555; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .qr { flex: none; width: 26mm; height: 26mm; }
+    .qr img { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+    .qr-label { font-size: 5.5pt; color: #555; text-align: center; margin-top: .5mm; }
+    .qr-wrap { flex: none; text-align: center; }
+    .toolbar { display: flex; gap: 8px; }
+    .toolbar a, .toolbar button { font: inherit; font-size: 14px; padding: 6px 14px; border-radius: 6px; border: 1px solid #94a3b8; background: #fff; color: #111; cursor: pointer; text-decoration: none; }
+    .toolbar button.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    @media print {
+      html, body { background: #fff; min-height: 0; padding: 0; display: block; }
+      .card { margin: 9.5mm 10mm; box-shadow: none; border-color: #ddd; page-break-inside: avoid; }
+      .toolbar { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1 class="sr-only">{{ ext.number }} · {{ name }}</h1>
+    <div class="stripe"></div>
+    <div class="body">
+      <div class="text">
+        <div class="event">{{ event.name }}</div>
+        <div class="name">{{ name }}</div>
+        <div class="number">{{ ext.number }}</div>
+        {% if ext.location_hint %}<div class="hint">{{ ext.location_hint }}</div>{% elif ext.description %}<div class="hint">{{ ext.description }}</div>{% endif %}
+      </div>
+      <div class="qr-wrap">
+        <div class="qr"><img src="{% url 'phonebook:card_qr' event.slug ext.number %}" alt="{% trans 'QR code with contact details' %}" width="240" height="240"></div>
+        <div class="qr-label">{% trans "Scan to save this number" %}</div>
+      </div>
+    </div>
+  </main>
+  <div class="toolbar">
+    <button type="button" class="primary" data-action="print">{% trans "Print" %}</button>
+    <a href="{% url 'phonebook:vcard_one' event.slug ext.number %}">{% trans "Download vCard" %}</a>
+  </div>
+  <script src="{% static 'js/pet.js' %}" defer></script>
+</body>
+</html>

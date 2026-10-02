@@ -1,0 +1,51 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "My call groups" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h1>{% trans "My call groups" %}</h1>
+    <p class="subtitle">{% trans "Groups your extensions belong to, and invitations waiting for your answer." %}</p>
+  </div>
+  <div class="actions"><a class="btn" href="{% url 'callgroups:index' event.slug %}">{% trans "All groups" %}</a></div>
+</div>
+
+<div class="grid grid-2">
+  <section class="card" data-refresh="30">
+    <div class="card-header"><h2>{% trans "My memberships" %}</h2></div>
+    {% if my_memberships %}
+    <div class="table-wrap"><table>
+      <thead><tr><th scope="col">{% trans "Group" %}</th><th scope="col">{% trans "My extension" %}</th><th scope="col">{% trans "Status" %}</th><th scope="col"><span class="sr-only">{% trans "Actions" %}</span></th></tr></thead>
+      <tbody>
+      {% for m in my_memberships %}
+      <tr>
+        <td><a href="{% url 'callgroups:detail' event.slug m.group.pk %}">{{ m.group.name }}</a> <span class="number">{{ m.group.number }}</span>{% if m.group.shortcode %} <span class="badge">{{ m.group.shortcode }}</span>{% endif %}</td>
+        <td class="number">{{ m.extension.number }}</td>
+        <td>{% if m.logged_in %}<span class="badge badge-active"><span class="dot dot-ok" aria-hidden="true"></span> {% trans "Logged in" %}</span>{% else %}<span class="badge"><span class="dot dot-err" aria-hidden="true"></span> {% trans "Logged out" %}</span>{% endif %}</td>
+        <td class="actions">
+          {% if m.group.allow_self_service %}
+          <form method="post" action="{% url 'callgroups:toggle' event.slug m.group.pk m.pk m.logged_in|yesno:'logout,login' %}" class="inline">{% csrf_token %}
+            <input type="hidden" name="next" value="{% url 'callgroups:mine' event.slug %}">
+            {% if m.logged_in %}<button class="btn btn-sm">{% trans "Log out" %}</button>{% else %}<button class="btn btn-sm btn-ok">{% trans "Log in" %}</button>{% endif %}
+          </form>
+          {% else %}<span class="muted small">{% trans "managed by group owner" %}</span>{% endif %}
+          <form method="post" action="{% url 'callgroups:leave' event.slug m.group.pk m.pk %}" class="inline" data-confirm="{% trans 'Leave this group?' %}">{% csrf_token %}
+            <input type="hidden" name="next" value="{% url 'callgroups:mine' event.slug %}">
+            <button class="btn btn-sm btn-danger">{% trans "Leave" %}</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    {% else %}
+    <div class="empty"><p>{% trans "You are not a member of any call group. Group owners add members by extension number or send you an invitation." %}</p></div>
+    {% endif %}
+    <p class="small muted">{% blocktrans with login=plan.group_login_code logout=plan.group_logout_code %}From your handset: dial <code>{{ login }}</code> + group number to log in, <code>{{ logout }}</code> + group number to log out (without a number: all your groups).{% endblocktrans %}</p>
+  </section>
+
+  <section class="card">
+    <div class="card-header"><h2>{% trans "Open invitations" %}{% if open_invites %} <span class="count">{{ open_invites|length }}</span>{% endif %}</h2></div>
+    {% include "callgroups/_invites.html" with open_invites=open_invites next_url=request.path %}
+  </section>
+</div>
+{% endblock %}

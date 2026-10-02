@@ -1,0 +1,32 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Voicemail overview" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <p class="eyebrow eyebrow-orga">{% trans "Orga" %} · {% trans "Services" %}</p>
+    <h1>{% trans "Voicemail overview" %}</h1>
+    <p class="subtitle">{% trans "Privacy: orga only sees counts, never message contents." %}</p>
+  </div>
+  <div class="actions"><a class="btn" href="{% url 'voicemail:index' event.slug %}">{% trans "My voicemail" %}</a></div>
+</div>
+<div class="grid stats-grid" data-refresh="60">
+  <div class="card stat-card"><div class="stat">{{ summary.mailboxes }}</div><div class="stat-label">{% trans "Mailboxes" %}</div></div>
+  <div class="card stat-card"><div class="stat">{{ summary.enabled }}</div><div class="stat-label">{% trans "Enabled" %}</div></div>
+  <div class="card stat-card"><div class="stat">{{ summary.messages }}</div><div class="stat-label">{% trans "Messages" %}</div></div>
+  <div class="card stat-card"><div class="stat">{{ summary.unread }}</div><div class="stat-label">{% trans "Unread" %}</div></div>
+  <div class="card stat-card"><div class="stat">{{ summary.email_delivery }}</div><div class="stat-label">{% trans "With e-mail delivery" %}</div></div>
+</div>
+<section class="card">
+  <div class="card-header"><h2>{% trans "Mailboxes" %} <span class="count">{{ summary.mailboxes }}</span></h2></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th scope="col">{% trans "Mailbox" %}</th><th scope="col">{% trans "Messages" %}</th><th scope="col">{% trans "Unread" %}</th><th scope="col">{% trans "Enabled" %}</th></tr></thead>
+      <tbody>
+      {% for b in summary.boxes %}
+      <tr><td class="number">{{ b.number }}</td><td>{{ b.total }}</td><td>{{ b.unread }}</td><td>{{ b.enabled|yesno }}</td></tr>
+      {% empty %}<tr><td colspan="4" class="empty">{% trans "No mailboxes yet." %}</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

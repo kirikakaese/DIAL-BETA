@@ -1,0 +1,5 @@
+{% load i18n %}
+<nav class="tabs" aria-label="{% trans 'Statistics sections' %}">
+  {% if request.event_is_helpdesk %}<a href="{% url 'stats:index' event.slug %}" {% if active == 'index' %}aria-current="page"{% endif %}>{% trans "Dashboard" %}</a>{% endif %}
+  <a href="{% url 'stats:mine' event.slug %}" {% if active == 'mine' %}aria-current="page"{% endif %}>{% trans "My calls" %}</a>
+</nav>

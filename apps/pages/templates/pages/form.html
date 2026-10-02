@@ -1,0 +1,27 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% if page %}{% trans "Edit page" %}{% else %}{% trans "New page" %}{% endif %}{% endblock %}
+{% block breadcrumbs %}
+<p class="breadcrumbs"><a href="{% url 'pages:manage' event.slug %}">{% trans "Manage info pages" %}</a> <span aria-hidden="true">›</span> {% if page %}{{ page.title }}{% else %}{% trans "New page" %}{% endif %}</p>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <p class="eyebrow eyebrow-orga">{% trans "Orga" %} · {% trans "Info pages" %}</p>
+    <h1>{% if page %}{% trans "Edit page" %}{% else %}{% trans "New page" %}{% endif %}</h1>
+    <p class="subtitle">{% trans "Write in Markdown: headings (##), lists, links, tables and code blocks are supported. HTML tags are shown as plain text." %}</p>
+  </div>
+  {% if page %}
+  <div class="actions">
+    <a class="btn btn-sm" href="{% url 'pages:show' event.slug page.slug %}">{% trans "View page" %}</a>
+  </div>
+  {% endif %}
+</div>
+
+<form method="post" class="card" novalidate>{% csrf_token %}
+  {% include "portal/_form.html" with form=form %}
+  <div class="form-actions">
+    <button class="btn btn-primary">{% if page %}{% trans "Save page" %}{% else %}{% trans "Create page" %}{% endif %}</button>
+    <a class="btn" href="{% url 'pages:manage' event.slug %}">{% trans "Cancel" %}</a>
+  </div>
+</form>
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% if peer %}{% trans "Edit peer" %}{% else %}{% trans "Add peer" %}{% endif %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <p class="eyebrow eyebrow-orga">{% trans "Orga" %} · {% trans "Services" %}</p>
+    <h1>{% if peer %}{% trans "Edit peer" %} <span class="muted">{{ peer.name }}</span>{% else %}{% trans "Add federation peer" %}{% endif %}</h1>
+  </div>
+  <div class="actions"><a class="btn" href="{% url 'federation:index' event.slug %}">{% trans "Back to federation" %}</a></div>
+</div>
+
+<div class="grid grid-2">
+  <section class="card">
+    <div class="card-header"><h2>{% trans "Peer settings" %}</h2></div>
+    <form method="post">{% csrf_token %}
+      {% include "portal/_form.html" with form=form %}
+      <div class="form-actions">
+        <button class="btn btn-primary">{% trans "Save" %}</button>
+        <a class="btn" href="{% url 'federation:index' event.slug %}">{% trans "Cancel" %}</a>
+      </div>
+    </form>
+  </section>
+
+  {% if peer %}
+  <section class="card">
+    <div class="card-header"><h2>{% trans "pjsip.conf snippet" %}</h2><a class="btn btn-sm" href="{% url 'federation:peer_pjsip' event.slug peer.pk %}">{% trans "Plain text" %}</a></div>
+    <pre class="small">{{ pjsip }}</pre>
+    <p class="help">{% trans "Calls to" %} <code>{{ peer.remote_prefix }}XXXX</code> {% trans "are routed as" %} <code>PJSIP/XXXX@{{ peer.endpoint_name }}</code>.</p>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

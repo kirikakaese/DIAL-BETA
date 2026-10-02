@@ -1,0 +1,177 @@
+# PET - Portable Event Telephone: full demo stack.
+#
+#   cp .env.example .env   # then edit SECRET_KEY etc.
+#   docker compose up --build -d
+#   open http://localhost:8000  (admin@pet.local / admin, event "demo")
+#
+# Values marked ${VAR:-default} are read from .env (compose interpolation);
+# everything else in .env reaches the containers via env_file. Topology values
+# (hostnames, URLs between containers) are fixed here on purpose so that .env
+# can hold laptop-friendly values for `make run` at the same time.
+
+x-pet-env: &pet-env
+  DJANGO_SETTINGS_MODULE: pet.settings.prod
+  DATABASE_URL: postgres://${POSTGRES_USER:-pet}:${POSTGRES_PASSWORD:-pet}@db:5432/${POSTGRES_DB:-pet}
+  REDIS_URL: redis://redis:6379/0
+  CELERY_TASK_ALWAYS_EAGER: "0"
+  MEDIA_ROOT: /app/media
+  # plain-http demo defaults; set to 1 behind a TLS reverse proxy
+  SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-0}
+  CSRF_COOKIE_SECURE: ${CSRF_COOKIE_SECURE:-0}
+  ALLOWED_HOSTS: ${ALLOWED_HOSTS:-*}
+  CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-http://localhost:8000}
+  PET_PUBLIC_URL: ${PET_PUBLIC_URL:-http://localhost:8000}
+  # PBX: reference Asterisk container below
+  PET_PBX_BACKEND: ${PET_PBX_BACKEND:-apps.pbx.backends.asterisk.AsteriskPBX}
+  ASTERISK_ARI_URL: http://asterisk:8088/ari
+  ASTERISK_ARI_USER: ${ARI_USER:-pet}
+  ASTERISK_ARI_PASSWORD: ${ARI_PASSWORD:-pet}
+  ASTERISK_AMI_HOST: asterisk
+  ASTERISK_AMI_PORT: "5038"
+  ASTERISK_AMI_USER: ${AMI_USER:-pet}
+  ASTERISK_AMI_PASSWORD: ${AMI_PASSWORD:-pet}
+  ASTERISK_SIP_DOMAIN: ${SIP_DOMAIN:-pet.local}
+  # DECT: dummy unless an OMM is configured in .env
+  PET_DECT_BACKEND: ${PET_DECT_BACKEND:-apps.dect.backends.dummy.DummyDECT}
+  PET_SEED_DEMO: ${PET_SEED_DEMO:-1}
+
+x-pet-service: &pet-service
+  build: .
+  image: pet:local
+  restart: unless-stopped
+  env_file: .env
+  environment: *pet-env
+  depends_on:
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pet}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pet}
+      POSTGRES_DB: ${POSTGRES_DB:-pet}
+      TZ: UTC
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pet} -d ${POSTGRES_DB:-pet}"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  web:
+    <<: *pet-service
+    command: ["web"]
+    ports:
+      - "8000:8000"
+    volumes:
+      - media:/app/media
+      - voicemail:/var/spool/asterisk/voicemail
+      - recordings:/var/spool/asterisk/pet-recordings
+
+  worker:
+    <<: *pet-service
+    command: ["worker"]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      web:
+        condition: service_started
+    volumes:
+      - media:/app/media
+      - voicemail:/var/spool/asterisk/voicemail
+      - recordings:/var/spool/asterisk/pet-recordings
+
+  beat:
+    <<: *pet-service
+    command: ["beat"]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      web:
+        condition: service_started
+
+  # Read-only LDAP phonebook for desk phones / the DECT OMM (bind cn=directory,dc=<event>,dc=pet,
+  # password = the event's directory token). Listens on 3890 inside the container, published on
+  # ${PET_LDAP_PORT}. Append `--cert /path/to/fullchain-and-key.pem` to the command for LDAPS.
+  ldap:
+    <<: *pet-service
+    command: ["python", "manage.py", "pet_ldap", "--host", "0.0.0.0", "--port", "3890"]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      web:
+        condition: service_started
+    ports:
+      - "${PET_LDAP_PORT:-3890}:3890"
+
+  asterisk:
+    build: ./deploy/asterisk
+    image: pet-asterisk:local
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      web:
+        condition: service_started
+    environment:
+      PET_API_URL: http://web:8000
+      # must equal PET's PET_PBX_HOOK_SECRET (falls back to ASTERISK_ARI_PASSWORD)
+      PET_PBX_HOOK_SECRET: ${PET_PBX_HOOK_SECRET:-${ARI_PASSWORD:-pet}}
+      PET_EVENTS: ${PET_EVENTS:-demo}
+      PET_EMERGENCY_FALLBACK: ${PET_EMERGENCY_FALLBACK:-}
+      PET_CDR_HOOK: ${PET_CDR_HOOK:-no}
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: ${POSTGRES_DB:-pet}
+      DB_USER: ${POSTGRES_USER:-pet}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-pet}
+      ARI_USER: ${ARI_USER:-pet}
+      ARI_PASSWORD: ${ARI_PASSWORD:-pet}
+      AMI_USER: ${AMI_USER:-pet}
+      AMI_PASSWORD: ${AMI_PASSWORD:-pet}
+      SIP_DOMAIN: ${SIP_DOMAIN:-pet.local}
+      # host LAN IP for NAT'd SIP/RTP; on the event LAN prefer `network_mode: host`
+      EXTERNAL_IP: ${EXTERNAL_IP:-}
+      RTP_START: "10000"
+      RTP_END: "10200"
+    ports:
+      - "5060:5060/udp"
+      - "5060:5060/tcp"
+      - "5061:5061/tcp"
+      - "8088:8088"                    # ARI - restrict to the PET network in production
+      - "10000-10200:10000-10200/udp"  # RTP (keep in sync with RTP_START/RTP_END)
+    volumes:
+      - voicemail:/var/spool/asterisk/voicemail
+      - recordings:/var/spool/asterisk/pet-recordings
+      - asterisk-sounds:/var/lib/asterisk/sounds/pet
+      - asterisk-keys:/etc/asterisk/keys
+
+volumes:
+  pgdata:
+  media:
+  voicemail:
+  recordings:
+  asterisk-sounds:
+  asterisk-keys:
