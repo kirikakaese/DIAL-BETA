@@ -142,6 +142,19 @@ Behind a reverse proxy DIAL takes the client address from the first `X-Forwarded
 sure the proxy sets (and overwrites) that header; otherwise lockouts and rate limits would count the
 proxy as one client. A shared venue NAT may need higher `DIAL_LOGIN_IP_MAX_FAILURES` / `DIAL_RATE_LIMITS`.
 
+### Early access (public server, not public yet)
+
+Set `DIAL_EARLY_ACCESS_PASSWORD` before the server is reachable from the internet. Every browser then has
+to enter that password once (valid `DIAL_EARLY_ACCESS_DAYS`, default 30) before it sees any page - login
+and signup included. Share it with your team; change it to lock everyone out again; remove it to go
+public. `DIAL_EARLY_ACCESS_MESSAGE` replaces the text on the gate page.
+
+Machines keep working because they authenticate with their own secrets: phone provisioning (`/prov/`),
+the remote phonebook XML for desk phones and the OMM, PBX hooks and the venue agent (`X-DIAL-PBX-Secret`),
+API clients with a `dial_` service token, the federation directory, the PWA manifest/service worker and
+static files. The LDAP phonebook server is a separate process and unaffected. EVAC implements the same
+gate (`EVAC_EARLY_ACCESS_*`, EVAC ADR-0012).
+
 ## 3. Initial setup
 
 1. Create the admin: with `DIAL_SEED_DEMO=0` run `docker compose exec web python manage.py createsuperuser`.

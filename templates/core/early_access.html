@@ -1,0 +1,17 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "Early access" %}{% endblock %}
+{% block content %}
+<div class="page-header"><div class="page-title"><h1>{% trans "Early access" %}</h1></div></div>
+<div class="card narrow">
+  <p>{% if message %}{{ message }}{% else %}{% trans "This DIAL instance is not public yet. Enter the access password you were given to continue." %}{% endif %}</p>
+  {% if error %}<div class="alert alert-error" role="alert">{% trans "That password is not correct." %}</div>{% endif %}
+  <form method="post" action="{% url 'early_access' %}">{% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <div class="field">
+      <label for="ea-password">{% trans "Access password" %}</label>
+      <input id="ea-password" type="password" name="password" autocomplete="current-password" required autofocus>
+    </div>
+    <div class="form-actions"><button class="btn btn-primary">{% trans "Continue" %}</button></div>
+  </form>
+</div>
+{% endblock %}
