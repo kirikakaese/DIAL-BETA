@@ -53,7 +53,16 @@ def test_machines_are_not_gated(client):
     r = client.post("/api/v1/pbx/hooks/register/", {}, HTTP_X_DIAL_PBX_SECRET="wrong")
     assert r.status_code != 302 and b"early access" not in r.content
     assert client.get("/manifest.webmanifest").status_code != 302
-    assert client.get("/api/v1/federation/directory/").status_code != 401
+
+
+
+@pytest.mark.django_db
+@GATE
+def test_federation_directory_is_gated(client):
+    # it lists event names, so it stays private until launch (peers cannot fetch it meanwhile)
+    assert client.get("/api/v1/federation/directory/").status_code == 401
+    unlock(client)
+    assert client.get("/api/v1/federation/directory/").status_code == 200
 
 
 @pytest.mark.django_db

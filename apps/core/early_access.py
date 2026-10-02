@@ -10,7 +10,6 @@ Not gated - machines that cannot type a password and authenticate with their own
 * phone provisioning ``/prov/...`` and remote phonebook XML ``/e/<slug>/phonebook/remote/<token>/...``
 * PBX hooks, route lookups, dialplan, venue-agent snapshot/heartbeat (``X-DIAL-PBX-Secret`` header)
 * API calls with a DIAL service token (``Authorization: Bearer dial_...``)
-* the federation directory (it only lists events that opted into federation)
 * static files and the PWA shell (manifest, service worker, offline page)
 
 Each of those still checks its own secret in the view. The gate is a barrier in front of the normal
@@ -36,7 +35,7 @@ seclog = logging.getLogger("dial.security")
 COOKIE = "dial_early_access"
 SALT = "dial.early_access"
 EXEMPT_PREFIXES = ("/early-access/", "/static/", "/prov/", "/manifest.webmanifest", "/sw.js", "/offline/",
-                   "/favicon.ico", "/api/v1/federation/directory/")
+                   "/favicon.ico")
 REMOTE_PHONEBOOK = re.compile(r"^/e/[^/]+/phonebook/remote/")
 
 

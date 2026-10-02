@@ -9,8 +9,9 @@ All notable changes to DIAL are documented here. The format follows
 
 - `DIAL_EARLY_ACCESS_PASSWORD` puts a shared password in front of every page and the API while DIAL runs
   on its public domain before launch (`/early-access/`, signed cookie bound to the current password, rate
-  limited). Phones, PBX hooks, the venue agent, the remote phonebook, the federation directory and
-  `dial_` service tokens are exempt. Same contract as EVAC's gate.
+  limited). Phones, PBX hooks, the venue agent, the remote phonebook and `dial_` service tokens are
+  exempt. The federation directory is gated too (it lists event names), so peers cannot fetch it until
+  launch. Same contract as EVAC's gate.
 
 ### Changed — renamed PET to DIAL
 

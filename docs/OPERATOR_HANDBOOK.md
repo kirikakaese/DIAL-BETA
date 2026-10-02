@@ -151,9 +151,10 @@ public. `DIAL_EARLY_ACCESS_MESSAGE` replaces the text on the gate page.
 
 Machines keep working because they authenticate with their own secrets: phone provisioning (`/prov/`),
 the remote phonebook XML for desk phones and the OMM, PBX hooks and the venue agent (`X-DIAL-PBX-Secret`),
-API clients with a `dial_` service token, the federation directory, the PWA manifest/service worker and
-static files. The LDAP phonebook server is a separate process and unaffected. EVAC implements the same
-gate (`EVAC_EARLY_ACCESS_*`, EVAC ADR-0012).
+API clients with a `dial_` service token, the PWA manifest/service worker and static files. The federation
+directory (`/api/v1/federation/directory/`) is gated too, because it lists event names: while the gate is
+on, other DIAL instances cannot fetch it (federated SIP trunks themselves are unaffected). The LDAP
+phonebook server is a separate process and unaffected. EVAC implements the same gate (`EVAC_EARLY_ACCESS_*`, EVAC ADR-0012).
 
 ## 3. Initial setup
 
