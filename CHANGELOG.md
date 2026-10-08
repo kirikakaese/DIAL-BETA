@@ -5,6 +5,11 @@ All notable changes to DIAL are documented here. The format follows
 
 ## Unreleased
 
+### Added — GitHub Codespaces
+
+- `.devcontainer/`: one-click DIAL in the browser (SQLite, no Redis, demo data, port 8000 private to the
+  codespace owner). Dev setting `DIAL_TRUST_PROXY_HEADERS` trusts the Codespaces proxy headers.
+
 ### Added — early-access gate
 
 - `DIAL_EARLY_ACCESS_PASSWORD` puts a shared password in front of every page and the API while DIAL runs

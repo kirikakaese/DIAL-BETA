@@ -90,6 +90,11 @@ Register a softphone against Asterisk (SIP `localhost:5060`, credentials on any 
 should not) open DIAL's database runs the same Asterisk image next to a local PostgreSQL fed by the
 **venue agent** - [`deploy/venue-agent/README.md`](deploy/venue-agent/README.md).
 
+## Try it in the browser
+
+On GitHub: **Code → Codespaces → Create codespace on main**. DIAL starts with the demo data in a few
+minutes, no server needed (log in as `admin@dial.local` / `admin`). See `.devcontainer/README.md`.
+
 ## Local development
 
 ```sh

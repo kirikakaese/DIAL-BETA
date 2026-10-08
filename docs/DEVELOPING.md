@@ -14,6 +14,13 @@ contracts between the DIAL apps. Read it before adding code.
 
 Python 3.12+, Django 5.2, DRF, Celery (eager in dev/test), PostgreSQL in prod, sqlite for tests.
 
+## Try it in the browser (GitHub Codespaces)
+
+**Code → Codespaces → Create codespace** on the repository page starts DIAL with SQLite, no Redis and the
+demo data; port 8000 opens by itself (log in as `admin@dial.local` / `admin`). The setup lives in
+`.devcontainer/` (see its README). `DIAL_TRUST_PROXY_HEADERS=1` (dev settings only) makes Django trust the
+Codespaces proxy's `X-Forwarded-Proto`/`-Host`, so CSRF checks and absolute links use the browser's HTTPS URL.
+
 ## Layout
 
 ```
