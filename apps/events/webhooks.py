@@ -5,6 +5,7 @@ import hashlib
 import hmac
 import json
 import logging
+import uuid
 
 from celery import shared_task
 from django.utils import timezone
@@ -27,11 +28,12 @@ def emit(event_type: str, payload: dict, event=None) -> None:
         qs = qs.filter(Q(event=event) | Q(event__isnull=True))
     for hook in qs:
         if hook.matches(event_type):
-            deliver.delay(hook.pk, event_type, payload)
+            deliver.delay(hook.pk, event_type, payload, str(uuid.uuid4()))
 
 
 @shared_task(bind=True, max_retries=5, default_retry_delay=30)
-def deliver(self, hook_id: int, event_type: str, payload: dict):
+def deliver(self, hook_id: int, event_type: str, payload: dict, delivery_id: str = ""):
+    """POST one webhook. ``X-DIAL-Delivery`` stays the same across retries, so receivers can drop repeats."""
     import requests
 
     try:
@@ -43,6 +45,8 @@ def deliver(self, hook_id: int, event_type: str, payload: dict):
         default=str,
     ).encode()
     headers = {"Content-Type": "application/json", "X-DIAL-Event": event_type}
+    if delivery_id:
+        headers["X-DIAL-Delivery"] = delivery_id
     if hook.secret:
         sig = hmac.new(hook.secret.encode(), body, hashlib.sha256).hexdigest()
         headers["X-DIAL-Signature"] = f"sha256={sig}"

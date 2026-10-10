@@ -3767,6 +3767,29 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/ivr/announcements/{id}/audio/:
+    get:
+      operationId: v1_ivr_announcements_audio_retrieve
+      description: |-
+        The announcement's audio file (an upload or a recording made by phone), for owners and orga; media files
+        are not served publicly in production, so integrations (e.g. EVAC) fetch recordings here.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Announcement'
+          description: ''
   /api/v1/ivr/menus/:
     get:
       operationId: v1_ivr_menus_list

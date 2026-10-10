@@ -56,11 +56,11 @@ Who: **any** = anonymous, **user** = authenticated member, **owner** = object ow
 | GET | `availability/?event=&number=&type=` (`&block_digits=1|2|3` with `type=trunk`) | live policy + availability check (incl. `conflicts`, `reserved`); for trunks the whole block is checked | any |
 | GET | `random-number/?event=&type=` | a random, instantly registrable number from the event's extension pools (`{"number": "4711"}`, `null` if none) | any |
 | GET | `health/?event=` | DIAL, PBX and DECT backend health. Without `event` the **server default** adapters are checked; with `?event=<slug>` the event's venue connection (`404` for an unknown slug). Response carries `event` | any |
-| GET | `me/` | current user / service account | user |
+| GET | `me/` | current user / service account; `token` describes the calling service token (`{name, prefix, scopes, event, expires_at}`, `null` in a browser session) | user |
 | GET, POST | `events/` | list / create events | user / admin |
 | GET, PATCH, DELETE | `events/{slug}/` | event details / edit / delete. Scheduled lifecycle: `registration_opens_at`, `goes_live_at`, `archives_at` (ISO 8601 or `null`; validated against the current state) and read-only `next_scheduled_transition` (`{"state", "at"}` or `null`); a beat task applies due schedules every minute | user / orga / admin |
 | GET | `events/{slug}/number-plan/` | plan + ranges, service numbers (`dect_claim_number`, `announcement_record_number`, ...) and phone feature codes (`callback_*_code`, `group_login/logout_code`, `forward_set_code` `*21`, `forward_clear_code` `*20`, `forward_busy_code` `*22`, `forward_noanswer_code` `*23`) | user |
-| GET | `events/{slug}/members/`, `events/{slug}/groups/` | memberships (helpdesk+), user groups | helpdesk / user |
+| GET | `events/{slug}/members/`, `events/{slug}/groups/` | memberships with the member's `email` (helpdesk+), user groups | helpdesk / user |
 | POST | `events/{slug}/transition/` `{"state": "live"}` | lifecycle change | orga |
 | POST | `events/{slug}/clone/` | clone into new draft event | admin |
 | GET | `events/{slug}/audit/` | audit log | orga |
@@ -101,7 +101,7 @@ Who: **any** = anonymous, **user** = authenticated member, **owner** = object ow
 
 | Method | Path | Purpose | Who |
 |---|---|---|---|
-| GET, PATCH | `dect/rfps/`, `dect/rfps/{id}/` | RFPs (position, location editable) | user read / orga write |
+| GET | `dect/rfps/`, `dect/rfps/{id}/` | RFPs (read-only; positions are edited on the venue map). List filters: `?event__slug=`, `connected`, `synced`, `is_active`, `cluster__cluster_id`, `?search=` | user |
 | GET | `dect/clusters/` | sync clusters with health | user |
 | GET, PATCH | `dect/alerts/` | alerts, resolve | orga |
 | GET | `dect/handsets/` | handsets with owner, extension, last RFP, battery/RSSI | orga |
@@ -152,11 +152,11 @@ Orga-written Markdown pages shown under `/e/<slug>/pages/`; scopes `pages:read` 
 | Method | Path | Flag | Who |
 |---|---|---|---|
 | GET, POST | `messaging/messages/`; `POST messaging/broadcast/` | `messaging` | user / orga |
-| CRUD | `ivr/announcements/`, `ivr/menus/` | `ivr` | owner |
+| CRUD | `ivr/announcements/`, `ivr/menus/` (orga see the event's with `?event=<slug>`); `GET ivr/announcements/{id}/audio/` - the audio file (upload or recording by phone; `404` without audio), scope `ivr:read`, owner or orga (`?event=`) | `ivr` | owner |
 | CRUD | `conferences/rooms/`; `GET {id}/participants/`; `POST {id}/kick/` | `conferences` | owner |
 | CRUD | `federation/peers/`; `GET {id}/pjsip/`; `GET federation/directory/` | `federation` | orga / any |
 | CRUD | `breakout/trunks/` (`GET {id}/pjsip/`), `breakout/rules/`, `breakout/permissions/`; `GET breakout/usage/` | `breakout` | orga |
-| CRUD | `emergency/targets/`, `emergency/incidents/` (`POST {id}/resolve/`); `POST emergency/broadcast/`; `GET emergency/incident-log/` | `emergency` | orga |
+| CRUD | `emergency/targets/`, `emergency/incidents/` (`POST {id}/resolve/`); `POST emergency/broadcast/`; `POST emergency/incident-log/` (PBX hook, `X-DIAL-PBX-Secret`) | `emergency` | orga |
 
 ## Example: availability check
 
@@ -187,13 +187,15 @@ Configure subscriptions at `/e/<slug>/orga/webhooks/` (URL, secret, event types;
 `callgroup.invited|invite_accepted|invite_declined`, `device.provisioned|claimed|adopted`,
 `dect.rfp.down|rfp.up|sync.degraded`, `callback.completed`, `emergency.triggered`, `page.updated` (info page
 created or edited; `data` = the page fields plus `action: "create"|"update"`), `announcement.recorded`
-(recorded by phone; `data` = `{extension, event, audio, file, duration, imported}`), `pbx.snapshot.changed`
+(recorded by phone; `data` = `{extension, event, audio, file, duration, imported, announcement}`; fetch the file
+with `GET ivr/announcements/<announcement>/audio/?event=<slug>`), `pbx.snapshot.changed`
 (the venue-agent snapshot version changed after a PBX write; `data` = `{event, version, previous}`; only for
 events whose PBX connection uses `provisioning: agent`). Delivery is a Celery task with 5 retries (30 s
 backoff); the last status is shown in the UI.
 
-Request: `POST <url>`, `Content-Type: application/json`, headers `X-DIAL-Event: <type>` and, when a secret is
-set, `X-DIAL-Signature: sha256=<hex HMAC-SHA256 of the raw body>`.
+Request: `POST <url>`, `Content-Type: application/json`, headers `X-DIAL-Event: <type>`,
+`X-DIAL-Delivery: <uuid>` (the same for every retry of one delivery: drop repeats by it; `sent_at` in the body
+changes per attempt) and, when a secret is set, `X-DIAL-Signature: sha256=<hex HMAC-SHA256 of the raw body>`.
 
 ```json
 {"type": "extension.approved", "sent_at": "2026-09-14T12:00:00+00:00",

@@ -65,6 +65,16 @@ class MembershipSerializer(serializers.ModelSerializer):
         fields = ["id", "user", "role", "groups", "created_at"]
 
 
+class MemberSerializer(MembershipSerializer):
+    """Members of an event as helpdesk and orga see them: with the e-mail address (to match accounts in other
+    systems, e.g. EVAC's role mapping)."""
+
+    email = serializers.EmailField(source="user.email", read_only=True)
+
+    class Meta(MembershipSerializer.Meta):
+        fields = [*MembershipSerializer.Meta.fields, "email"]
+
+
 class NumberRangeSerializer(serializers.ModelSerializer):
     allowed_groups = serializers.SlugRelatedField(slug_field="slug", many=True, read_only=True)
 
@@ -192,7 +202,7 @@ class EventViewSet(viewsets.ModelViewSet):
         ev = self.get_object()
         if not request.user.is_helpdesk(ev):
             return Response(status=403)
-        return Response(MembershipSerializer(ev.memberships.select_related("user"), many=True).data)
+        return Response(MemberSerializer(ev.memberships.select_related("user"), many=True).data)
 
     @action(detail=True, methods=["get"])
     def groups(self, request, slug=None):
@@ -589,7 +599,17 @@ def me(request):
         "is_superuser": u.is_superuser,
         "memberships": MembershipSerializer(u.memberships.select_related("event"), many=True).data,
         "service_account": getattr(getattr(request, "service_account", None), "name", None),
+        "token": _token_info(getattr(request, "service_account", None)),
     })
+
+
+def _token_info(acct):
+    """The calling service token (``None`` for a browser session): what an integration may check about itself."""
+    if acct is None:
+        return None
+    return {"name": acct.name, "prefix": acct.token_prefix, "scopes": list(acct.scopes or []),
+            "event": acct.event.slug if acct.event_id else None,
+            "expires_at": acct.expires_at.isoformat() if acct.expires_at else None}
 
 
 def register(router):
