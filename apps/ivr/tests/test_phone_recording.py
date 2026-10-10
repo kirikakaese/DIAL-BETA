@@ -166,6 +166,7 @@ def test_finish_imports_wav_and_emits(event, ann, alice_phone, settings, monkeyp
     assert rec["imported"] is True and rec["duration"] == 3 and ext.config["audio"] == d["greeting"]
     assert seen and seen[0][0] == "announcement.recorded"
     assert seen[0][1]["extension"] == "4801" and seen[0][1]["imported"] is True and seen[0][1]["duration"] == 3
+    assert seen[0][1]["announcement"] == ann.pk
     assert provisioned == [str(ext.pk)]
     assert AuditLog.objects.filter(action="update", target_id=str(ext.pk),
                                    message__icontains="recorded by phone").exists()
@@ -256,3 +257,33 @@ def test_new_code_forbidden_for_strangers(client, event, other_user, ann):
     client.force_login(other_user)
     r = client.post(f"/e/{event.slug}/ivr/announcement/{ann.pk}/record-code/")
     assert r.status_code == 403
+
+
+def test_audio_download_for_owner_orga_and_tokens(event, ann, alice_phone, orga, other_user, settings):
+    from apps.accounts.models import ServiceAccount
+
+    code = ann.extension.announcement_record_code
+    res = services.begin_phone_recording(event, "demo-alice", code, callerid="4242")
+    path = make_wav(res["file"] + ".wav", seconds=1)
+    services.finish_phone_recording(event, code, path, 0)
+    url = f"/api/v1/ivr/announcements/{ann.pk}/audio/?event=demo"  # orga see the event's announcements with ?event=
+    client = APIClient()
+    assert client.get(url).status_code in (401, 403)
+    client.force_authenticate(orga)
+    r = client.get(url)
+    with open(path, "rb") as fh:
+        assert r.status_code == 200 and b"".join(r.streaming_content) == fh.read()
+    assert r["Content-Type"] == "audio/wav" and r["Cache-Control"] == "private, no-store"
+    client.force_authenticate(other_user)
+    assert client.get(url).status_code == 404  # not visible to strangers
+    _acct, raw = ServiceAccount.issue(name="evac", owner=orga, event=event, scopes=["ivr:read"])
+    tok = APIClient(HTTP_AUTHORIZATION=f"Bearer {raw}")
+    assert tok.get(url).status_code == 200
+    _acct, raw = ServiceAccount.issue(name="no-ivr", owner=orga, event=event, scopes=["pages:read"])
+    assert APIClient(HTTP_AUTHORIZATION=f"Bearer {raw}").get(url).status_code == 403
+
+
+def test_audio_download_without_audio(event, ann, orga):
+    client = APIClient()
+    client.force_authenticate(orga)
+    assert client.get(f"/api/v1/ivr/announcements/{ann.pk}/audio/?event=demo").status_code == 404

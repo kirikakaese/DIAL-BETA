@@ -5,6 +5,20 @@ All notable changes to DIAL are documented here. The format follows
 
 ## Unreleased
 
+### Added — what the EVAC link needs
+
+- `GET /api/v1/ivr/announcements/{id}/audio/`: the announcement's audio for owners and orga (scope `ivr:read`),
+  so integrations can fetch recordings made by phone without `/media/` being served publicly.
+- `announcement.recorded` carries the announcement id (`data.announcement`).
+- Webhooks send `X-DIAL-Delivery`, one id per delivery that stays the same across retries.
+- `events/{slug}/members/` includes the member's e-mail address (helpdesk and orga only), to match accounts in
+  other systems (EVAC's DIAL role mapping).
+- `me/` describes the calling service token (`token`: name, prefix, scopes, event, expiry).
+
+### Fixed — API documentation
+
+- DECT lists are read-only and filter with `?event__slug=`; the emergency incident log hook is a `POST`.
+
 ### Added — GitHub Codespaces
 
 - `.devcontainer/`: one-click DIAL in the browser (SQLite, no Redis, demo data, port 8000 private to the

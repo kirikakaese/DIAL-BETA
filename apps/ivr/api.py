@@ -1,7 +1,9 @@
 """IVR REST API: ``ivr/announcements/`` and ``ivr/menus/`` (own objects; orga see all with ``?event=``)."""
 from django.db.models import Q
+from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -93,6 +95,22 @@ class AnnouncementViewSet(_OwnerViewSet):
                                             loop=d.get("loop", False), request=self.request)
 
     update_obj = staticmethod(services.update_announcement)
+
+    @action(detail=True, methods=["get"])
+    def audio(self, request, pk=None):
+        """The announcement's audio file (an upload or a recording made by phone), for owners and orga; media files
+        are not served publicly in production, so integrations (e.g. EVAC) fetch recordings here."""
+        ann = self.get_object()
+        if not ann.audio:
+            raise Http404("no audio")
+        try:
+            fh = ann.audio.open("rb")
+        except (FileNotFoundError, OSError):
+            raise Http404("audio file missing") from None
+        resp = FileResponse(fh, content_type="audio/wav" if ann.audio.name.lower().endswith(".wav")
+                            else "application/octet-stream")
+        resp["Cache-Control"] = "private, no-store"
+        return resp
 
 
 class MenuViewSet(_OwnerViewSet):

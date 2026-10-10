@@ -324,7 +324,8 @@ def finish_phone_recording(event, code: str, file_path: str, duration: int = 0) 
               "Announcement recorded by phone (file kept on the PBX, not imported)",
               changes={"audio": [None, stored or None], PHONE_RECORDING_KEY: rec})
     emit("announcement.recorded", {"extension": ext.number, "event": event.slug, "audio": stored or None,
-                                   "file": file_path, "duration": duration, "imported": bool(stored)}, event=event)
+                                   "file": file_path, "duration": duration, "imported": bool(stored),
+                                   "announcement": ann.pk}, event=event)
     provision_extension.delay(str(ext.pk))
     return ann
 
